@@ -45,6 +45,7 @@ Duas limitações do ambiente de artifact não existem mais fora dele, e precisa
 -- temas monitorados
 CREATE TABLE topics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   name TEXT NOT NULL,
   color TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -53,6 +54,7 @@ CREATE TABLE topics (
 -- cada execução de scan (um clique em "atualizar")
 CREATE TABLE scans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   topics_snapshot JSONB NOT NULL,  -- lista de temas usados nesse scan
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -91,6 +93,7 @@ CREATE TABLE insights (
 -- ideias salvas pelo usuário (o "produto" final do fluxo)
 CREATE TABLE saved_ideas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   insight_ref TEXT,         -- ref do insight de origem; permite detectar "já salva" no scan atual
   type TEXT,
   title TEXT NOT NULL,
@@ -118,7 +121,7 @@ CREATE TABLE saved_ideas (
 > o `ScanResult` no formato exato que o `buildGraph()` do frontend espera, sem tradução de
 > ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
 
-> Quando o multi-usuário entrar em escopo (ver `ROADMAP.md`), todas as tabelas acima ganham uma coluna `user_id` com FK para uma tabela `users`.
+> **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `middleware.ts`, lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
 
 ## 5. Endpoints propostos
 
