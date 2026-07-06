@@ -99,6 +99,7 @@ export async function saveScan(topics: string[], result: ScanResult): Promise<vo
         title: ins.title,
         description: ins.description,
         rationale: ins.rationale,
+        why_now: ins.whyNow,
         so_what: ins.soWhat,
         related_refs: ins.related_items,
       }));
@@ -110,6 +111,7 @@ export async function saveScan(topics: string[], result: ScanResult): Promise<vo
         "title",
         "description",
         "rationale",
+        "why_now",
         "so_what",
         "related_refs",
       )}`;
@@ -150,11 +152,12 @@ export async function getLatestScan(): Promise<{
       title: string;
       description: string | null;
       rationale: string | null;
+      why_now: string | null;
       so_what: string | null;
       related_refs: string[] | null;
     }[]
   >`
-    SELECT ref, type, title, description, rationale, so_what, related_refs
+    SELECT ref, type, title, description, rationale, why_now, so_what, related_refs
     FROM insights WHERE scan_id = ${scan.id} ORDER BY created_at ASC
   `;
 
@@ -174,6 +177,7 @@ export async function getLatestScan(): Promise<{
     title: r.title,
     description: r.description ?? "",
     rationale: r.rationale ?? "",
+    whyNow: r.why_now ?? "",
     soWhat: r.so_what ?? "",
     related_items: r.related_refs ?? [],
   }));
@@ -189,6 +193,7 @@ interface NewIdea {
   title: string;
   description: string;
   rationale: string;
+  whyNow: string;
   soWhat: string;
   notes: string;
   relatedItems: NewsItem[];
@@ -201,6 +206,7 @@ function mapIdeaRow(r: {
   title: string;
   description: string | null;
   rationale: string | null;
+  why_now: string | null;
   so_what: string | null;
   notes: string | null;
   related_items: NewsItem[] | null;
@@ -215,6 +221,7 @@ function mapIdeaRow(r: {
     title: r.title,
     description: r.description ?? "",
     rationale: r.rationale ?? "",
+    whyNow: r.why_now ?? "",
     soWhat: r.so_what ?? "",
     notes: r.notes ?? "",
     savedAt: toIso(r.saved_at),
@@ -226,7 +233,7 @@ function mapIdeaRow(r: {
 
 export async function listIdeas(): Promise<SavedIdea[]> {
   const rows = await sql<Parameters<typeof mapIdeaRow>[0][]>`
-    SELECT id, insight_ref, type, title, description, rationale, so_what, notes, related_items, deep_dive, financials, saved_at
+    SELECT id, insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items, deep_dive, financials, saved_at
     FROM saved_ideas ORDER BY saved_at DESC
   `;
   return rows.map(mapIdeaRow);
@@ -235,7 +242,7 @@ export async function listIdeas(): Promise<SavedIdea[]> {
 // busca uma ideia salva pelo id (para o mergulho ler a semente)
 export async function getIdea(id: string): Promise<SavedIdea | null> {
   const rows = await sql<Parameters<typeof mapIdeaRow>[0][]>`
-    SELECT id, insight_ref, type, title, description, rationale, so_what, notes, related_items, deep_dive, financials, saved_at
+    SELECT id, insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items, deep_dive, financials, saved_at
     FROM saved_ideas WHERE id = ${id} LIMIT 1
   `;
   return rows[0] ? mapIdeaRow(rows[0]) : null;
@@ -247,7 +254,7 @@ export async function saveDeepDive(id: string, dive: DeepDive): Promise<SavedIde
     UPDATE saved_ideas
     SET deep_dive = ${sql.json(dive as unknown as Parameters<typeof sql.json>[0])}, dived_at = now()
     WHERE id = ${id}
-    RETURNING id, insight_ref, type, title, description, rationale, so_what, notes, related_items, deep_dive, financials, saved_at
+    RETURNING id, insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items, deep_dive, financials, saved_at
   `;
   return rows[0] ? mapIdeaRow(rows[0]) : null;
 }
@@ -258,25 +265,26 @@ export async function saveFinancials(id: string, fin: Financials): Promise<Saved
     UPDATE saved_ideas
     SET financials = ${sql.json(fin as unknown as Parameters<typeof sql.json>[0])}
     WHERE id = ${id}
-    RETURNING id, insight_ref, type, title, description, rationale, so_what, notes, related_items, deep_dive, financials, saved_at
+    RETURNING id, insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items, deep_dive, financials, saved_at
   `;
   return rows[0] ? mapIdeaRow(rows[0]) : null;
 }
 
 export async function saveIdea(idea: NewIdea): Promise<SavedIdea> {
   const [row] = await sql<Parameters<typeof mapIdeaRow>[0][]>`
-    INSERT INTO saved_ideas (insight_ref, type, title, description, rationale, so_what, notes, related_items)
+    INSERT INTO saved_ideas (insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items)
     VALUES (
       ${idea.insightRef},
       ${idea.type},
       ${idea.title},
       ${idea.description},
       ${idea.rationale},
+      ${idea.whyNow},
       ${idea.soWhat},
       ${idea.notes},
       ${sql.json(idea.relatedItems as unknown as Parameters<typeof sql.json>[0])}
     )
-    RETURNING id, insight_ref, type, title, description, rationale, so_what, notes, related_items, deep_dive, financials, saved_at
+    RETURNING id, insight_ref, type, title, description, rationale, why_now, so_what, notes, related_items, deep_dive, financials, saved_at
   `;
   return mapIdeaRow(row);
 }

@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     title?: unknown;
     description?: unknown;
     rationale?: unknown;
+    whyNow?: unknown;
     soWhat?: unknown;
     notes?: unknown;
     relatedItems?: unknown;
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
       title: body.title,
       description: typeof body.description === "string" ? body.description : "",
       rationale: typeof body.rationale === "string" ? body.rationale : "",
+      whyNow: typeof body.whyNow === "string" ? body.whyNow : "",
       soWhat: typeof body.soWhat === "string" ? body.soWhat : "",
       notes: typeof body.notes === "string" ? body.notes.slice(0, 500) : "",
       relatedItems: Array.isArray(body.relatedItems) ? (body.relatedItems as NewsItem[]) : [],

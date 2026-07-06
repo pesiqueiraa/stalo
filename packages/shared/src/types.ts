@@ -22,6 +22,7 @@ export interface Insight {
   title: string;
   description: string;
   rationale: string; // "por que conecta": a linha de raciocínio entre os setores
+  whyNow: string; // "por que agora": o sinal de timing que torna o cruzamento relevante neste momento
   soWhat: string; // "e daí?": a ação/oportunidade concreta
   related_items: string[];
 }
@@ -44,6 +45,7 @@ export interface InsightNode {
   title: string;
   description: string;
   rationale: string;
+  whyNow: string;
   soWhat: string;
   related: string[];
   color: string;
@@ -94,6 +96,7 @@ export interface SavedIdea {
   title: string;
   description: string;
   rationale: string; // "por que conecta" — snapshot do insight de origem
+  whyNow: string; // "por que agora" — snapshot do insight de origem
   soWhat: string; // "e daí?" — snapshot do insight de origem
   notes: string; // anotação do usuário no momento do save (por que isso importa)
   savedAt: string;

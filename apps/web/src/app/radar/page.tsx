@@ -9,6 +9,7 @@ import { DetailPanel } from "@/components/DetailPanel";
 import { IdeasPanel } from "@/components/IdeasPanel";
 import { Toast, type ToastAction } from "@/components/Toast";
 import { DeepDiveView } from "@/components/DeepDiveView";
+import { Brief } from "@/components/Brief";
 import {
   createIdea,
   createTopic,
@@ -22,22 +23,26 @@ import {
   requestScan,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
+import { insightKey } from "@/lib/ui";
 import {
   getServerSettingsSnapshot,
   getSettingsSnapshot,
   setGraphSettings,
   subscribeSettings,
 } from "@/lib/settings";
-import type { Graph, GraphNode, NewsItem, SavedIdea, Topic } from "@stalo/shared";
+import type {
+  Graph,
+  GraphNode,
+  InsightNode,
+  NewsItem,
+  NewsNode,
+  SavedIdea,
+  Topic,
+} from "@stalo/shared";
 
 const MAX_TOPICS = 5;
 const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
-
-// Identidade de conteúdo de um insight (tipo + título normalizado), usada pra
-// detectar "já salva". O id do insight (i1, i2…) vem do LLM e REINICIA a cada
-// scan, então não é único entre scans — usá-lo como chave fazia insights
-// diferentes (ex: o "i1" de scans distintos) colidirem e bloquearem o save.
-const insightKey = (type: string, title: string) => `${type}::${title.trim().toLowerCase()}`;
+type View = "brief" | "mapa";
 
 export default function Home() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -48,6 +53,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30); // janela de recência do scan (30/60/90 ou null = sem limite)
+  const [view, setView] = useState<View>("brief"); // brief-first: memo é a tela principal, grafo é secundário
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [highlightedIdeaId, setHighlightedIdeaId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null);
@@ -203,6 +209,7 @@ export default function Home() {
         title: node.title,
         description: node.description,
         rationale: node.rationale,
+        whyNow: node.whyNow,
         soWhat: node.soWhat,
         notes,
         relatedItems,
@@ -243,6 +250,7 @@ export default function Home() {
             title: removed.title,
             description: removed.description,
             rationale: removed.rationale,
+            whyNow: removed.whyNow,
             soWhat: removed.soWhat,
             notes: removed.notes,
             relatedItems: removed.relatedItems,
@@ -290,6 +298,12 @@ export default function Home() {
 
   const openDiveIdea = openDiveId ? ideas.find((i) => i.id === openDiveId) ?? null : null;
 
+  // dados do brief, derivados do mesmo grafo (ScanResult é a fronteira única):
+  // insights ranqueáveis, notícias para as fontes, e as chaves já salvas.
+  const insights = graph.nodes.filter((n): n is InsightNode => n.kind === "insight");
+  const newsNodes = graph.nodes.filter((n): n is NewsNode => n.kind === "news");
+  const savedKeys = new Set(ideas.map((i) => insightKey(i.type, i.title)));
+
   const alreadySaved =
     selectedNode?.kind === "insight"
       ? ideas.some(
@@ -313,44 +327,78 @@ export default function Home() {
           settings={settings}
           onSettingsChange={setGraphSettings}
         />
-        <div className="panel graph-wrap" style={{ padding: 0 }}>
-          <GraphCanvas
-            graph={graph}
-            onSelect={handleSelect}
-            highlightId={highlightedIdeaId}
-            settings={settings}
-          />
-          {graph.nodes.length === 0 && !loading && (
-            <div className="empty-state">
-              {lastUpdated === null ? (
-                <>
-                  Adicione temas ao lado e clique em <span>&quot;Atualizar notícias&quot;</span>
-                  <br />
-                  para o radar buscar conexões, tendências e lacunas entre eles.
-                </>
-              ) : (
-                <>
-                  O radar não encontrou notícias ou conexões para esses temas dessa vez.
-                  <br />
-                  Tente ajustar os temas monitorados e clicar em{" "}
-                  <span>&quot;Atualizar notícias&quot;</span> de novo.
-                </>
-              )}
-            </div>
-          )}
-          {loading && <ScanLoader />}
-          {banner && !loading && (
-            <div className="reveal-banner" role="status">
-              <span className="reveal-banner-dot" />
-              {banner}
-            </div>
-          )}
-          <DetailPanel
-            node={selectedNode}
-            alreadySaved={alreadySaved}
-            onSave={saveIdea}
-            onClose={() => setSelectedNode(null)}
-          />
+        <div className="panel center-panel" style={{ padding: 0 }}>
+          <div className="view-toggle" role="tablist" aria-label="Modo de visualização">
+            <button
+              role="tab"
+              aria-selected={view === "brief"}
+              className={`view-tab${view === "brief" ? " active" : ""}`}
+              onClick={() => setView("brief")}
+            >
+              Brief
+            </button>
+            <button
+              role="tab"
+              aria-selected={view === "mapa"}
+              className={`view-tab${view === "mapa" ? " active" : ""}`}
+              onClick={() => setView("mapa")}
+            >
+              Mapa
+            </button>
+          </div>
+          <div className="center-body">
+            {view === "brief" ? (
+              <Brief
+                insights={insights}
+                newsNodes={newsNodes}
+                topics={topics.map((t) => t.name)}
+                savedKeys={savedKeys}
+                hasScanned={lastUpdated !== null}
+                onSave={saveIdea}
+              />
+            ) : (
+              <div className="graph-wrap">
+                <GraphCanvas
+                  graph={graph}
+                  onSelect={handleSelect}
+                  highlightId={highlightedIdeaId}
+                  settings={settings}
+                />
+                {graph.nodes.length === 0 && !loading && (
+                  <div className="empty-state">
+                    {lastUpdated === null ? (
+                      <>
+                        Adicione temas ao lado e clique em{" "}
+                        <span>&quot;Atualizar notícias&quot;</span>
+                        <br />
+                        para o radar buscar conexões, tendências e lacunas entre eles.
+                      </>
+                    ) : (
+                      <>
+                        O radar não encontrou notícias ou conexões para esses temas dessa vez.
+                        <br />
+                        Tente ajustar os temas monitorados e clicar em{" "}
+                        <span>&quot;Atualizar notícias&quot;</span> de novo.
+                      </>
+                    )}
+                  </div>
+                )}
+                {banner && !loading && (
+                  <div className="reveal-banner" role="status">
+                    <span className="reveal-banner-dot" />
+                    {banner}
+                  </div>
+                )}
+                <DetailPanel
+                  node={selectedNode}
+                  alreadySaved={alreadySaved}
+                  onSave={saveIdea}
+                  onClose={() => setSelectedNode(null)}
+                />
+              </div>
+            )}
+            {loading && <ScanLoader />}
+          </div>
         </div>
         {ideasOpen ? (
           <IdeasPanel
