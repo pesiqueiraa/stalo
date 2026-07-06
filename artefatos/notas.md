@@ -27,6 +27,14 @@ Uma aba separada do grafo interativo, com um resumo consolidado das notícias/in
 
 Depende de coisas que ainda não existem: histórico de scans navegável (hoje só guardamos o último scan) e algum tipo de agregação entre múltiplos scans ao longo da semana — ambos já aparecem como backlog separado em `roadmap.md` ("Histórico de scans navegável" e "Scan agendado"). Faz sentido revisitar essa ideia depois que essas peças existirem.
 
+### Score de confiança do cruzamento
+
+A ideia: cada insight do brief carregaria um nível de confiança (quão sólido é aquele cruzamento entre setores), usado para ranquear o memo e dar um sinal de trust ao público exigente (scout/estrategista). Chegou a ser implementado como um campo `confidence` (`alta`/`media`/`baixa`) preenchido pelo próprio Analista, com medidor visual no brief — e foi **removido**.
+
+Por que adiar: a versão que veio (autoavaliação do LLM num scan único) é **subjetiva demais** para ser exibida como sinal — o modelo tende a inflar a própria confiança, e o número não corresponde a nada mensurável. A versão que valeria a pena é **objetiva**: confiança derivada de **recorrência** — "esse mesmo cruzamento apareceu em N scans ao longo do tempo". Isso é sinal medido, não opinião, e casa com o público profissional (amplitude + tempo; ver `produto.md` §2-3).
+
+Depende de peças que ainda não existem: **histórico de scans** e **deduplicação/matching semântico** entre insights de scans diferentes (para saber que dois cruzamentos são "o mesmo") — ambos já no `roadmap.md`. O ranqueamento do brief hoje é por evidência (nº de notícias que sustentam a tese), o que segura o lugar até lá. Revisitar quando o histórico acumular volume suficiente para a recorrência significar algo.
+
 ### Aba dedicada só para ideias salvas
 
 Hoje "Minhas ideias salvas" é uma sidebar fixa e compacta ao lado do grafo — funciona como lembrete rápido, mas não como um lugar pra de fato trabalhar em cima das ideias (revisar, comparar, filtrar por tipo/tema, ler o contexto completo sem o espaço apertado da coluna lateral). Uma aba própria (fora do grafo) daria mais espaço pra isso, especialmente depois que a ideia salva passou a carregar mais contexto (notícias relacionadas, seção "Pendentes" item 1).

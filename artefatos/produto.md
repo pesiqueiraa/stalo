@@ -6,15 +6,20 @@ Acompanhar notícias de vários setores de tecnologia ao mesmo tempo é lento e 
 
 ## 2. Usuário-alvo
 
-**V1 (MVP):** o próprio fundador — um usuário único, sem necessidade de conta/login, usando a ferramenta como radar pessoal de oportunidades de negócio.
+Stalo é um **canal de estratégia** para quem precisa detectar cruzamentos entre setores antes dos outros. Isso é **um único job**, servido em três níveis de disposição a pagar e de sofisticação — não três mercados paralelos. Mirar nos três ao mesmo tempo é o erro clássico: cada um puxa produto, preço e motion de venda para um lado, e o resultado fica morno para todos. Por isso há um **wedge** e um **funil**, não três alvos simultâneos.
 
-**Futuro (fora do escopo do MVP):** outros estudantes/empreendedores early-stage que querem o mesmo tipo de radar para os próprios setores de interesse. Isso implica multi-usuário, autenticação e isolamento de dados — ver `ROADMAP.md`.
+- **Wedge (alvo primário, quem paga):** scout de VC / analista / anjo. Tem a dor de forma aguda, tem orçamento próprio, e o output do produto — "esses dois setores estão cruzando e abre um gap" — é literalmente matéria-prima de tese de investimento / deal flow. Motion self-serve, que a arquitetura atual já suporta.
+- **Topo do funil (grátis, aquisição + validação):** fundador solo / empreendedor early-stage, uso esporádico. É quem valida a qualidade do insight e alimenta o funil, mas é o mais sensível a preço e o mais churny — por isso vive no tier grátis, não no pago.
+- **Expansão (depois):** times de inovação / estratégia / inteligência competitiva em empresas. Orçamento maior, mas motion sales-led (procurement, segurança, seats) — lento demais para agora. Entra quando "times/workspaces" (ver `roadmap.md`) fizer sentido, sobre a tração do wedge.
+
+**Realidade do MVP hoje:** o produto ainda é single-user, sem login (regra 2 do `CLAUDE.md`). O posicionamento acima orienta **o que vai para grátis vs. pago (§8) e como o produto se apresenta** — não é autorização para antecipar `user_id`/login. A implementação de tiers, cobrança e autenticação é pós-validação e depende de multi-usuário entrar em escopo (`roadmap.md`).
 
 ## 3. Proposta de valor
 
 - **Sem esforço de curadoria manual:** o usuário escolhe os temas, o sistema busca e resume.
-- **A unidade de valor não é a notícia, é a conexão:** o produto prioriza identificar tendências, gaps e oportunidades que cruzam setores — não apenas listar manchetes.
-- **De insight a ideia salva em um clique:** qualquer conexão relevante vira um item guardado, pronto para virar hipótese de startup a ser validada.
+- **A unidade de valor não é a notícia, é a tese:** o produto prioriza cruzamentos entre setores — tendência, gap, oportunidade — e os entrega como uma tese acionável (o *por que conecta*, o *por que agora* e o *e daí?*), com as fontes que a sustentam. Para o público-alvo (scout/estrategista), uma conexão só vale se for **rastreável até a evidência** e vier com um *so-what* explícito.
+- **A saída principal é um brief priorizado, não um grafo:** o público exigente quer o "memo da manhã do analista" — as N oportunidades da semana rankeadas (hoje por evidência), cada uma com tese e fontes. O grafo deixa de ser o protagonista e vira a camada de *explorar o mapa* / evidência visual de como as conexões se ligam (ver `arquiteturad.md`).
+- **De insight a ideia salva em um clique:** qualquer tese relevante vira um item guardado, pronto para virar hipótese a ser validada — e, no tier pago, aprofundada em deep dive / análise financeira.
 
 ## 4. Histórias de usuário (MVP)
 
@@ -71,16 +76,19 @@ Nada aqui é compromisso de escopo. É a estratégia registrada para **não toma
 
 ### Escada de valor (grátis → pago)
 
-A fronteira já está desenhada: o que hoje é "fora do escopo do MVP" (§5) e o backlog do `roadmap.md` são justamente as features pagas. Grátis = radar manual; pago = o radar trabalha sozinho.
+O tiering espelha o wedge (§2): **grátis serve o fundador que usa esporadicamente; pago serve o scout/estrategista que usa como ferramenta de trabalho.** A fronteira coincide com o que era "fora do escopo do MVP" (§5) e o backlog do `roadmap.md` — grátis = radar manual; pago = o radar trabalha sozinho e entrega tese, não só conexão.
 
-| Grátis (MVP de hoje) | Pago |
+| Grátis — fundador, uso esporádico | Pro — scout / estrategista |
 |---|---|
-| Scan manual, sob demanda | Scan agendado/automático (cron) |
-| Até 5 temas | Mais temas |
+| Scan manual, sob demanda | Scan manual + agendado/automático (cron) |
+| Poucos scans/mês (teto baixo) | Teto alto de scans + créditos para excedente |
+| Até 3 temas | Mais temas |
+| Brief básico + grafo | Brief com scoring por recorrência (aparece em N scans — ver `notas.md`) |
+| — | Deep dive + análise financeira por ideia (IA) |
 | — | Notificações / digest por e-mail |
 | — | Exportar para Notion/Slack/Docs |
 | Lista de ideias | Dedup semântico + priorização/scoring de ideias |
-| Uso individual | Times/workspaces compartilhados |
+| Uso individual | (Expansão enterprise) Times/workspaces compartilhados |
 
 ### Modelo candidato
 
