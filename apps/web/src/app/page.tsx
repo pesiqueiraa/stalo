@@ -292,9 +292,6 @@ export default function Landing() {
             <a href="#evidencia">Evidência</a>
           </div>
           <div className="nav-cta">
-            <Link className="signin" href="/radar">
-              Entrar
-            </Link>
             <Link className="btn btn-primary" href="/radar">
               Começar
             </Link>

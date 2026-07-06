@@ -119,8 +119,6 @@
 .lp .nav-links a { font-size: 0.9rem; color: var(--dim); transition: color 0.15s ease; }
 .lp .nav-links a:hover { color: var(--lp-text); }
 .lp .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 0.7rem; }
-.lp .nav-cta .signin { font-size: 0.9rem; color: var(--dim); }
-.lp .nav-cta .signin:hover { color: var(--lp-text); }
 @media (min-width: 820px) { .lp .nav-links { display: flex; } }
 
 /* ---------- hero (radar-grafo imersivo, fundo inteiro) ---------- */
