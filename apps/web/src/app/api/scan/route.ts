@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runScan } from "@stalo/server";
 import { saveScan } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
+import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
 // POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
 // resultado (scans + news_items + insights) e devolve o ScanResult (items +
@@ -32,6 +33,16 @@ export async function POST(request: Request) {
   // janela de recência: só os valores da UI aplicam janela; qualquer outra
   // coisa (null, ausente, inválido) = sem limite de data
   const window = typeof days === "number" && ALLOWED_DAYS.includes(days) ? days : null;
+
+  // rate limit por IP ANTES de chamar a IA — o scan é o endpoint mais caro
+  // (busca web). Um 429 aqui não gasta a OpenAI.
+  const limited = await enforceRateLimit(
+    request,
+    SCAN_LIMIT.bucket,
+    SCAN_LIMIT.limit,
+    SCAN_LIMIT.windowSeconds,
+  );
+  if (limited) return limited;
 
   try {
     const result = await runScan(topics, window);
