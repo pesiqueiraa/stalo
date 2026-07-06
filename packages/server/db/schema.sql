@@ -84,6 +84,15 @@ CREATE TABLE IF NOT EXISTS saved_ideas (
   saved_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- rate limiting (infra, não domínio): contador de janela fixa por chave
+-- ("scan:<ip>", "dive:<ip>", ...), para proteger os endpoints de IA de abuso de
+-- custo agora que o app é público. Uma linha por chave, atualizada no lugar.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  window_start TIMESTAMPTZ NOT NULL,
+  count INT NOT NULL
+);
+
 -- migrações idempotentes: CREATE TABLE IF NOT EXISTS acima só vale para bancos
 -- novos; para os que já existem, adiciona os campos ausentes. Rodar de novo não
 -- quebra. Linhas antigas (pré-isolamento) ficam com workspace_id NULL — não

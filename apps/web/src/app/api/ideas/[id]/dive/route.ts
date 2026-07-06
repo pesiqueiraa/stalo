@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getIdea, runDeepDive, saveDeepDive } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
+import { DIVE_LIMIT, enforceRateLimit } from "@/lib/rateLimit";
 
 // POST /api/ideas/:id/dive — "Mergulhar": gera o relatório fundo (IA) a partir da
 // ideia salva, persiste em saved_ideas.deep_dive e devolve a ideia atualizada.
 // A chave da IA nunca chega ao client — tudo roda aqui no servidor.
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const wid = await getWorkspaceId();
@@ -17,6 +18,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (idea.deepDive) {
       return NextResponse.json(idea);
     }
+    // rate limit só quando vai de fato gerar (cache acima não consome cota)
+    const limited = await enforceRateLimit(
+      request,
+      DIVE_LIMIT.bucket,
+      DIVE_LIMIT.limit,
+      DIVE_LIMIT.windowSeconds,
+    );
+    if (limited) return limited;
     const dive = await runDeepDive(idea);
     const updated = await saveDeepDive(wid, id, dive);
     return NextResponse.json(updated ?? { ...idea, deepDive: dive });

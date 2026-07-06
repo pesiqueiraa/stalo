@@ -113,6 +113,15 @@ CREATE TABLE saved_ideas (
                             -- premissas, custo de validar); null = não aprofundado
   saved_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- rate limiting (infra, não domínio): contador de janela fixa por chave
+-- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
+-- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
+CREATE TABLE rate_limits (
+  key TEXT PRIMARY KEY,
+  window_start TIMESTAMPTZ NOT NULL,
+  count INT NOT NULL
+);
 ```
 
 > **`ref` (id local do scan):** o `ScanResult` que sai do LLM usa ids locais como
@@ -121,7 +130,7 @@ CREATE TABLE saved_ideas (
 > o `ScanResult` no formato exato que o `buildGraph()` do frontend espera, sem tradução de
 > ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
 
-> **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `middleware.ts`, lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
+> **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `apps/web/src/proxy.ts` (convenção "proxy" do Next 16, ex-middleware), lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
 
 ## 5. Endpoints propostos
 

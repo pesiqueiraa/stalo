@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getIdea, runFinancials, saveFinancials } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
+import { enforceRateLimit, FINANCIALS_LIMIT } from "@/lib/rateLimit";
 
 // POST /api/ideas/:id/financials — "Aprofundar": análise financeira (2º nível),
 // por cima do mergulho. Exige que a ideia já tenha sido mergulhada. Persiste em
 // saved_ideas.financials (cache) e devolve a ideia atualizada.
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const wid = await getWorkspaceId();
@@ -23,6 +24,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (idea.financials) {
       return NextResponse.json(idea);
     }
+    // rate limit só quando vai de fato gerar (cache acima não consome cota)
+    const limited = await enforceRateLimit(
+      request,
+      FINANCIALS_LIMIT.bucket,
+      FINANCIALS_LIMIT.limit,
+      FINANCIALS_LIMIT.windowSeconds,
+    );
+    if (limited) return limited;
     const fin = await runFinancials(idea);
     const updated = await saveFinancials(wid, id, fin);
     return NextResponse.json(updated ?? { ...idea, financials: fin });

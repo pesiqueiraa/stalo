@@ -45,7 +45,7 @@ Sem ordem de prioridade fixa — organizado por tema, para revisitar depois que 
 
 ### Técnico
 - Camada de cache para não rechamar a API em buscas muito próximas no tempo sobre os mesmos temas.
-- Rate limiting no endpoint de scan (evitar custo descontrolado de API).
+- ~~Rate limiting no endpoint de scan (evitar custo descontrolado de API).~~ **Implementado** (por IP, contador em Postgres) nos endpoints de IA — scan, dive e financials — quando o app foi a público.
 - Observabilidade básica: logs de erro de parsing de JSON do LLM, taxa de sucesso dos scans.
 
 ## Fora de escopo por enquanto (não é objetivo do produto)

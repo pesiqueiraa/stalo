@@ -4,6 +4,7 @@
 //
 // Este index expõe a API pública que as rotas consomem.
 export { runScan, isValidScanResult, runDeepDive, runFinancials } from "./scan";
+export { checkRateLimit, type RateLimitResult } from "./rateLimit";
 export {
   MAX_TOPICS,
   listTopics,
