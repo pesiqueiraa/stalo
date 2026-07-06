@@ -1,0 +1,158 @@
+// Fonte da verdade dos prompts de scan (busca + extração de JSON).
+//
+// CLAUDE.md regra 4: os prompts vivem num único módulo compartilhado — não
+// duplicar em outros lugares do backend. Ao alterá-los, garanta que o formato
+// descrito continua compatível com os tipos NewsItem/Insight e com buildGraph()
+// no frontend (frontend/src/lib/graph.ts).
+//
+// A arquitetura de scan tem DUAS etapas (ver frontend/src/server/scan.ts):
+//   ① COLETOR  — busca web ligada, devolve só as notícias (items).
+//   ② ANALISTA — sem busca, recebe os items e cruza os temas → insights.
+// Cada etapa tem seu prompt aqui. São provider-neutros de propósito: descrevem
+// a tarefa, não a API. A saída em JSON é garantida por structured outputs no
+// provider (schema Zod em scan.ts), então os prompts focam nas REGRAS, não na
+// formatação do JSON.
+
+// ---------- ① COLETOR ----------
+
+export const COLLECT_SYSTEM_PROMPT = `Você é um motor de pesquisa de notícias de tecnologia e negócios.
+Use a busca na web para encontrar notícias recentes e ESPECÍFICAS sobre os temas fornecidos, respeitando a JANELA DE TEMPO indicada na mensagem do usuário (quando houver).
+Sua ÚNICA tarefa é coletar e estruturar notícias — NÃO tire conclusões nem cruze temas (isso é feito em outra etapa).
+
+Cada notícia deve ser um ACONTECIMENTO concreto e datável (um lançamento, um investimento, uma decisão, um resultado) — não matéria genérica, institucional ou "evergreen", e não artigo acadêmico/paper (use veículos de imprensa).
+
+Para cada notícia, produza:
+- id: identificador sequencial curto começando em "n1", "n2", ...
+- topic: exatamente um dos temas fornecidos, escrito igual ao que foi passado
+- title: título curto, fiel ao artigo (não deduza nem invente nomes de produtos, números ou fatos que não estejam na fonte)
+- summary: resumo em 1 frase, até 20 palavras, em português, baseado no que a fonte de fato diz
+- source: nome do veículo original (ex: "Reuters", "Valor Econômico"); prefira a fonte original a agregadores
+- url: link DIRETO do artigo específico. NUNCA uma home, página de seção ou índice de listagem (ex: ".../noticias-sobre/energia/"). Se só houver página de listagem, descarte essa notícia e busque outra
+- entities: até 3 palavras-chave TEMÁTICAS e NORMALIZADAS — substantivos comuns que possam reaparecer em outras notícias e criar conexões (ex: "chips", "data center", "regulação", "energia renovável", "baterias"). NÃO use nomes próprios específicos de um único artigo (empresa, produto, pessoa), que não conectam nada
+- publishedAt: data de publicação real do artigo, no formato AAAA-MM-DD; se não for possível datar a notícia, descarte-a
+
+Regras: no máximo 3 notícias por tema, no máximo 15 no total. Evite duplicar a mesma notícia entre temas.
+Se a mensagem indicar uma data-limite, DESCARTE qualquer notícia publicada antes dela, por mais relevante que pareça.
+Nunca invente notícias — baseie-se apenas no que encontrar na busca. Se não achar nada relevante e específico para um tema, pule esse tema (é melhor devolver menos que encher com genérico).`;
+
+export function buildCollectMessage(
+  topics: string[],
+  days: number | null,
+  since: string | null,
+): string {
+  const window =
+    days != null && since != null
+      ? `Janela de tempo: APENAS notícias publicadas nos últimos ${days} dias — ou seja, a partir de ${since} (AAAA-MM-DD). Descarte qualquer notícia mais antiga que essa data.`
+      : `Sem restrição de data: traga as notícias mais recentes e relevantes que encontrar (priorize as mais novas).`;
+  return `Temas para monitorar agora: ${topics.join(", ")}.
+${window}
+Pesquise notícias sobre cada tema e devolva as notícias estruturadas.`;
+}
+
+// ---------- ② ANALISTA ----------
+
+export const ANALYZE_SYSTEM_PROMPT = `Você é um analista que cruza notícias de tecnologia e negócios entre setores diferentes.
+Você recebe uma lista de notícias JÁ COLETADAS (cada uma com um id). Sua tarefa é identificar tendências emergentes, lacunas de mercado (gaps) ou oportunidades que CONECTAM os temas entre si.
+Para cada insight, produza:
+- id: identificador sequencial curto começando em "i1", "i2", ...
+- type: um de "tendencia", "gap" ou "oportunidade"
+- title: título curto e direto
+- description: a frase de efeito — explicação em até 25 palavras, em português, do porquê isso é relevante, cruzando informação entre temas
+- rationale: a LINHA DE RACIOCÍNIO, em 2 a 3 frases: por que essas notícias ESPECÍFICAS, de setores diferentes, se conectam nesse insight. Nomeie os setores/temas envolvidos e o que cada um contribui para a conexão. Não repita a description literalmente
+- soWhat: o "E DAÍ?", em 1 a 2 frases: o que um empreendedor faria com isso — a ação ou o ângulo de oportunidade concreto (um produto, um segmento a atacar, uma hipótese a validar). Prático, não genérico
+- related_items: lista dos ids das notícias fornecidas que esse insight conecta — pelo menos 2, e SOMENTE ids que existem na lista recebida
+Regras: no máximo 5 insights. Priorize insights que conectam mais de um tema entre si.
+NUNCA invente notícias nem ids — use apenas as notícias fornecidas. Se não houver conexão relevante entre elas, devolva menos insights (ou nenhum).`;
+
+interface CollectedItem {
+  id: string;
+  topic: string;
+  title: string;
+  summary: string;
+  entities: string[];
+}
+
+// ---------- ③ MERGULHAR (deep dive) ----------
+// Expande uma ideia salva num relatório fundo. Recebe a semente (título,
+// descrição, "por que conecta", "e daí?") + as notícias que ela cruza, e gera
+// SÓ as seções novas (não repete o rationale/soWhat, que a UI já tem).
+
+export const DEEP_DIVE_SYSTEM_PROMPT = `Você é um analista de estratégia que aprofunda uma oportunidade de negócio já identificada, para um empreendedor early-stage decidir se vale investigar.
+Você recebe uma ideia (tipo, título, frase de efeito, "por que conecta" e "e daí?") e as notícias que a originaram. Gere um relatório curto e ACIONÁVEL, sem encher linguiça.
+Produza:
+- panorama: 1 parágrafo (2 a 4 frases) que situa a oportunidade — os vetores/forças que se aproximam e por que o cruzamento importa agora. Concreto, não genérico
+- porQueAgora: 1 parágrafo (2 a 3 frases) sobre o TIMING: por que a janela está aberta agora e o que a fecha (movimento de incumbentes, regulação, contratos, adoção)
+- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir
+- sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
+Regras: tudo em português, direto, sem jargão de consultoria. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+
+interface DeepDiveInput {
+  type: string;
+  title: string;
+  description: string;
+  rationale: string;
+  soWhat: string;
+  relatedItems: { topic: string; title: string; summary: string; source: string }[];
+}
+
+export function buildDeepDiveMessage(idea: DeepDiveInput): string {
+  const evidence = idea.relatedItems
+    .map((it) => `- [${it.topic}] ${it.title}${it.summary ? ` — ${it.summary}` : ""} (${it.source})`)
+    .join("\n");
+  return `Ideia a aprofundar (tipo: ${idea.type}):
+Título: ${idea.title}
+Frase de efeito: ${idea.description}
+Por que conecta: ${idea.rationale || "(não informado)"}
+E daí?: ${idea.soWhat || "(não informado)"}
+
+Notícias que ela cruza:
+${evidence || "(nenhuma)"}
+
+Gere o relatório de aprofundamento.`;
+}
+
+// ---------- ④ APROFUNDAR: análise financeira ----------
+// Segundo nível, gerado por cima do deep dive. Emphasis: ordens de grandeza e
+// "o que precisa ser verdade", nunca números precisos inventados.
+
+export const FINANCIALS_SYSTEM_PROMPT = `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage para um empreendedor decidir se vale seguir.
+Você recebe uma ideia já aprofundada (com panorama e timing). NÃO invente números precisos nem cite valores de mercado específicos sem base — trabalhe com ORDENS DE GRANDEZA e com "o que precisaria ser verdade" para a conta fechar. Honestidade sobre a incerteza vale mais que falsa precisão.
+Produza:
+- mercado: 1 parágrafo (2 a 3 frases) sobre o tamanho e a atratividade do mercado em ordem de grandeza — quem paga, quantos são, se é nicho caro ou volume barato. Diga se é grande o bastante pra valer a pena
+- monetizacao: 1 parágrafo (2 a 3 frases) — como isso ganharia dinheiro (modelo de receita concreto) e por que alguém pagaria por isso
+- premissas: 3 a 4 premissas FINANCEIRAS que precisam ser verdade para o negócio fechar (ex: "o custo de X precisa ficar abaixo de Y", "o cliente precisa economizar pelo menos Z%"). Cada uma uma frase verificável, começando pela variável-chave
+- custoValidar: 1 a 2 frases — quão barato e rápido dá pra testar a hipótese financeira ANTES de investir pesado (o experimento mais barato que mata ou confirma a ideia)
+Tudo em português, direto, sem jargão de banco de investimento. É hipótese a validar, nunca afirme como certeza.`;
+
+interface FinancialsInput {
+  type: string;
+  title: string;
+  description: string;
+  soWhat: string;
+  panorama: string;
+  porQueAgora: string;
+}
+
+export function buildFinancialsMessage(idea: FinancialsInput): string {
+  return `Ideia a analisar financeiramente (tipo: ${idea.type}):
+Título: ${idea.title}
+Frase de efeito: ${idea.description}
+Oportunidade (e daí?): ${idea.soWhat || "(não informado)"}
+Panorama: ${idea.panorama || "(não informado)"}
+Timing (por que agora): ${idea.porQueAgora || "(não informado)"}
+
+Gere a análise financeira.`;
+}
+
+export function buildAnalyzeMessage(items: CollectedItem[]): string {
+  // passa só o que o analista precisa pra raciocinar (id/tema/título/resumo/
+  // entidades) — sem url/fonte/data, que não ajudam no cruzamento.
+  const slim = items.map((it) => ({
+    id: it.id,
+    topic: it.topic,
+    title: it.title,
+    summary: it.summary,
+    entities: it.entities,
+  }));
+  return `Notícias coletadas (cruze estas, referenciando os ids):\n${JSON.stringify(slim, null, 2)}`;
+}

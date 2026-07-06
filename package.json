@@ -1,0 +1,20 @@
+{
+  "name": "stalo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@11.12.1",
+  "scripts": {
+    "dev": "npm run dev --workspace @stalo/web",
+    "build": "npm run build --workspace @stalo/web",
+    "start": "npm run start --workspace @stalo/web",
+    "lint": "npm run lint --workspace @stalo/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
