@@ -21,7 +21,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stalo — o radar de tendências",
+  title: "Stalo",
   description:
     "Radar que cruza notícias entre setores de tecnologia e transforma conexões em ideias de negócio.",
 };
