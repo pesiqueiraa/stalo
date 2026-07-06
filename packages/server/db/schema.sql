@@ -6,12 +6,16 @@
 -- Como aplicar: cole no SQL Editor do Supabase e rode, OU
 --   psql "$DATABASE_URL" -f db/schema.sql
 --
--- MVP é single-user por decisão de produto (produto.md §2): nenhuma tabela tem
--- user_id. Isso muda quando multi-usuário entrar no roadmap.
+-- Isolamento por WORKSPACE ANÔNIMO (produto.md §2): sem login, mas cada visitante
+-- tem um workspace_id (vindo de um cookie) para seus dados não vazarem para os
+-- outros. topics/scans/saved_ideas têm workspace_id; news_items/insights herdam o
+-- escopo via scan_id. Não é autenticação — quando contas reais (magic link)
+-- entrarem, workspace_id vira o user_id.
 
 -- temas monitorados
 CREATE TABLE IF NOT EXISTS topics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   name TEXT NOT NULL,
   color TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -20,6 +24,7 @@ CREATE TABLE IF NOT EXISTS topics (
 -- cada execução de scan (um clique em "atualizar")
 CREATE TABLE IF NOT EXISTS scans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   topics_snapshot JSONB NOT NULL,  -- lista de temas usados nesse scan (ordem = cor no grafo)
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -58,6 +63,7 @@ CREATE TABLE IF NOT EXISTS insights (
 -- ideias salvas pelo usuário (o "produto" final do fluxo)
 CREATE TABLE IF NOT EXISTS saved_ideas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
   insight_ref TEXT,         -- ref do insight de origem; permite detectar "já salva" no scan atual
   type TEXT,
   title TEXT NOT NULL,
@@ -79,22 +85,21 @@ CREATE TABLE IF NOT EXISTS saved_ideas (
 );
 
 -- migrações idempotentes: CREATE TABLE IF NOT EXISTS acima só vale para bancos
--- novos; para os que já existem, adiciona o campo de timing do brief
--- (why_now — ver arquiteturad.md §7). Rodar de novo não quebra.
+-- novos; para os que já existem, adiciona os campos ausentes. Rodar de novo não
+-- quebra. Linhas antigas (pré-isolamento) ficam com workspace_id NULL — não
+-- pertencem a nenhum visitante, então somem da visão de todos (sem vazamento).
 ALTER TABLE insights    ADD COLUMN IF NOT EXISTS why_now TEXT;
 ALTER TABLE saved_ideas ADD COLUMN IF NOT EXISTS why_now TEXT;
+ALTER TABLE topics      ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE scans       ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE saved_ideas ADD COLUMN IF NOT EXISTS workspace_id UUID;
 
--- índices para as leituras mais comuns (último scan, itens/insights por scan)
-CREATE INDEX IF NOT EXISTS scans_created_at_idx ON scans (created_at DESC);
+-- índices para as leituras mais comuns, todas escopadas por workspace_id.
+CREATE INDEX IF NOT EXISTS topics_workspace_idx ON topics (workspace_id);
+CREATE INDEX IF NOT EXISTS scans_workspace_created_idx ON scans (workspace_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS news_items_scan_id_idx ON news_items (scan_id);
 CREATE INDEX IF NOT EXISTS insights_scan_id_idx ON insights (scan_id);
-CREATE INDEX IF NOT EXISTS saved_ideas_saved_at_idx ON saved_ideas (saved_at DESC);
+CREATE INDEX IF NOT EXISTS saved_ideas_workspace_saved_idx ON saved_ideas (workspace_id, saved_at DESC);
 
--- seed dos temas iniciais (só quando a tabela está vazia) — os mesmos que o
--- mock de scan usa como demonstração enquanto a API de IA não é plugada.
--- Rodar o schema de novo não duplica: o WHERE NOT EXISTS impede.
-INSERT INTO topics (name)
-SELECT name FROM (
-  VALUES ('Inteligência Artificial'), ('Energia'), ('Blockchain'), ('Computação Quântica')
-) AS seed(name)
-WHERE NOT EXISTS (SELECT 1 FROM topics);
+-- Sem seed de temas: com isolamento por workspace, cada visitante começa com o
+-- radar vazio e adiciona os próprios temas (um seed global não faz mais sentido).

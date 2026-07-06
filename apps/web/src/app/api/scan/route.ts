@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runScan } from "@stalo/server";
 import { saveScan } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 
 // POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
 // resultado (scans + news_items + insights) e devolve o ScanResult (items +
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     // persiste o scan para que /api/scan/latest o recupere ao recarregar a
     // página. Se a gravação falhar, o scan não é considerado bem-sucedido —
     // não falha silenciosamente (CLAUDE.md).
-    await saveScan(topics, result);
+    await saveScan(await getWorkspaceId(), topics, result);
     return NextResponse.json(result);
   } catch (err) {
     console.error("scan failed", err);

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { listIdeas, saveIdea } from "@stalo/server";
 import type { InsightType, NewsItem } from "@stalo/shared";
+import { getWorkspaceId } from "@/lib/workspace";
 
 const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
 
 // GET /api/ideas — lista as ideias salvas (mais recentes primeiro).
 export async function GET() {
   try {
-    return NextResponse.json(await listIdeas());
+    return NextResponse.json(await listIdeas(await getWorkspaceId()));
   } catch (err) {
     console.error("listIdeas failed", err);
     return NextResponse.json({ error: "Não consegui carregar as ideias." }, { status: 500 });
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const idea = await saveIdea({
+    const idea = await saveIdea(await getWorkspaceId(), {
       insightRef: body.insightRef,
       type: body.type as InsightType,
       title: body.title,

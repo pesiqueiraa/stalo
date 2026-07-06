@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { removeIdea } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 
 // DELETE /api/ideas/:id — remove uma ideia salva.
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    await removeIdea(id);
+    await removeIdea(await getWorkspaceId(), id);
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error("removeIdea failed", err);

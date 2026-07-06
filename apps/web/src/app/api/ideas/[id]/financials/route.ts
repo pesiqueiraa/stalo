@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getIdea, runFinancials, saveFinancials } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 
 // POST /api/ideas/:id/financials — "Aprofundar": análise financeira (2º nível),
 // por cima do mergulho. Exige que a ideia já tenha sido mergulhada. Persiste em
@@ -7,7 +8,8 @@ import { getIdea, runFinancials, saveFinancials } from "@stalo/server";
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const idea = await getIdea(id);
+    const wid = await getWorkspaceId();
+    const idea = await getIdea(wid, id);
     if (!idea) {
       return NextResponse.json({ error: "Ideia não encontrada." }, { status: 404 });
     }
@@ -22,7 +24,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return NextResponse.json(idea);
     }
     const fin = await runFinancials(idea);
-    const updated = await saveFinancials(id, fin);
+    const updated = await saveFinancials(wid, id, fin);
     return NextResponse.json(updated ?? { ...idea, financials: fin });
   } catch (err) {
     console.error("financials failed", err);

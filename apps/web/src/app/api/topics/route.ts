@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { addTopic, countTopics, listTopics, MAX_TOPICS } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 
 // GET /api/topics — lista os temas monitorados (ordenados por criação = ordem de cor).
 export async function GET() {
   try {
-    return NextResponse.json(await listTopics());
+    return NextResponse.json(await listTopics(await getWorkspaceId()));
   } catch (err) {
     console.error("listTopics failed", err);
     return NextResponse.json({ error: "Não consegui carregar os temas." }, { status: 500 });
@@ -27,13 +28,14 @@ export async function POST(request: Request) {
   const trimmed = name.trim();
 
   try {
-    if ((await countTopics()) >= MAX_TOPICS) {
+    const wid = await getWorkspaceId();
+    if ((await countTopics(wid)) >= MAX_TOPICS) {
       return NextResponse.json(
         { error: `Máximo de ${MAX_TOPICS} temas por vez.` },
         { status: 409 },
       );
     }
-    const topic = await addTopic(trimmed);
+    const topic = await addTopic(wid, trimmed);
     if (!topic) {
       return NextResponse.json({ error: "Esse tema já está na lista." }, { status: 409 });
     }
