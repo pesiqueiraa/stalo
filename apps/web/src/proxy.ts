@@ -7,7 +7,9 @@ import { WORKSPACE_COOKIE, WORKSPACE_COOKIE_MAX_AGE } from "@/lib/workspaceCooki
 // paralelos para /api/*. Isso evita a corrida em que três chamadas simultâneas
 // no primeiro load gerariam três ids diferentes — quando os fetches saem, o
 // cookie já existe e todos carregam o mesmo id.
-export function middleware(request: NextRequest) {
+//
+// Arquivo "proxy" = a convenção do Next 16 que substituiu "middleware".
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
   if (!request.cookies.get(WORKSPACE_COOKIE)) {
     response.cookies.set(WORKSPACE_COOKIE, crypto.randomUUID(), {
