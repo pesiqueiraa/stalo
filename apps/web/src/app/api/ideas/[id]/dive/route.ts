@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getIdea, runDeepDive, saveDeepDive } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 
 // POST /api/ideas/:id/dive — "Mergulhar": gera o relatório fundo (IA) a partir da
 // ideia salva, persiste em saved_ideas.deep_dive e devolve a ideia atualizada.
@@ -7,7 +8,8 @@ import { getIdea, runDeepDive, saveDeepDive } from "@stalo/server";
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const idea = await getIdea(id);
+    const wid = await getWorkspaceId();
+    const idea = await getIdea(wid, id);
     if (!idea) {
       return NextResponse.json({ error: "Ideia não encontrada." }, { status: 404 });
     }
@@ -16,7 +18,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return NextResponse.json(idea);
     }
     const dive = await runDeepDive(idea);
-    const updated = await saveDeepDive(id, dive);
+    const updated = await saveDeepDive(wid, id, dive);
     return NextResponse.json(updated ?? { ...idea, deepDive: dive });
   } catch (err) {
     console.error("deep dive failed", err);
