@@ -82,6 +82,7 @@ CREATE TABLE insights (
   title TEXT NOT NULL,
   description TEXT,             -- a frase de efeito (até 25 palavras)
   rationale TEXT,              -- "por que conecta": a linha de raciocínio entre os setores
+  why_now TEXT,               -- "por que agora": o sinal de timing que torna o cruzamento relevante neste momento
   so_what TEXT,               -- "e daí?": a ação/oportunidade concreta
   related_refs TEXT[],          -- refs das notícias relacionadas (as mesmas de news_items.ref)
   created_at TIMESTAMPTZ DEFAULT now()
@@ -95,6 +96,7 @@ CREATE TABLE saved_ideas (
   title TEXT NOT NULL,
   description TEXT,
   rationale TEXT,           -- "por que conecta" — snapshot do insight de origem
+  why_now TEXT,             -- "por que agora" — snapshot do insight de origem
   so_what TEXT,             -- "e daí?" — snapshot do insight de origem
   related_items JSONB,      -- retrato das notícias relacionadas no momento do save
                              -- (título, resumo, fonte, url, published_at) — não é só
@@ -152,6 +154,8 @@ CREATE TABLE saved_ideas (
 - **JSON estruturado direto do LLM em vez de pipeline de NLP próprio** (NER, classificação separada): mais rápido de construir, custo de precisão aceitável para v1. Se a qualidade da extração de entidades for um problema recorrente, vale revisitar com um passo de pós-processamento dedicado.
 - **Scan em duas etapas (Coletor + Analista) em vez de uma chamada só**: separa "buscar/estruturar" de "cruzar setores". O Analista roda **sem busca web**, então só cruza notícias que o Coletor de fato encontrou — anti-alucinação de graça. Custo é ~2 chamadas, mas a 2ª é pequena (só os `items`, sem re-busca). Ver análise de custo do projeto.
 - **OpenAI no MVP, Claude no fim**: decisão de custo para a fase inicial. O provider é isolado em `scan.ts`; os prompts (`scanPrompt.ts`) são provider-neutros, então a troca não mexe na lógica do produto.
+- **Brief priorizado como superfície principal, grafo como camada secundária**: para o público-alvo (scout/estrategista, ver `produto.md` §2-3), a saída de valor é um memo rankeado — as oportunidades da semana com tese, *por que agora* e fontes rastreáveis — não uma rede para explorar às cegas. O ranqueamento hoje é por evidência (nº de notícias que sustentam a tese). O grafo (`buildGraph()` + D3) continua como visão de "explorar o mapa" / evidência de como as conexões se ligam, mas deixa de ser o headline. O `ScanResult` continua sendo a fronteira única: alimenta tanto o brief quanto o grafo, então essa mudança é de apresentação, não de contrato de dados.
+- **`Insight` enriquecido com `why_now`**: o cruzamento vira tese quando tem timing (*por que agora*), além do *por que conecta* e do *e daí?*. Campo adicionado ao schema (§4); o Analista (`scanPrompt.ts`) o emite e os tipos de `@stalo/shared` (`Insight`), o `repo.ts` e `packages/server/db/schema.sql` acompanham (regras 3 e 4 do `CLAUDE.md`). Um score de confiança do cruzamento foi considerado e adiado para backlog (ver `notas.md`): a versão útil é objetiva (recorrência entre scans), que depende de histórico ainda não acumulado — a autoavaliação do LLM sozinha era subjetiva demais para exibir.
 - **Coleta sob demanda com LLM+busca em vez de pipeline volumoso (RSS/API de notícias)**: o valor do produto é curadoria + cruzamento, não volume (ver `produto.md`). Pipeline volumoso fica no backlog, só se cobertura/histórico/digest agendado virarem prioridade.
 - **`max_tokens` fixo e prompt com limites explícitos** (máx. 8 notícias, máx. 3 insights por scan): decisão deliberada para manter respostas previsíveis e baratas; ajustar para cima só se o volume de temas monitorados crescer no roadmap.
 
