@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS insights (
   title TEXT NOT NULL,
   description TEXT,             -- a frase de efeito (até 25 palavras)
   rationale TEXT,              -- "por que conecta": a linha de raciocínio entre os setores
+  why_now TEXT,               -- "por que agora": o sinal de timing que torna o cruzamento relevante neste momento
   so_what TEXT,               -- "e daí?": a ação/oportunidade concreta
   related_refs TEXT[],          -- refs das notícias relacionadas (as mesmas de news_items.ref)
   created_at TIMESTAMPTZ DEFAULT now()
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS saved_ideas (
   title TEXT NOT NULL,
   description TEXT,
   rationale TEXT,           -- "por que conecta" — snapshot do insight de origem
+  why_now TEXT,             -- "por que agora" — snapshot do insight de origem
   so_what TEXT,             -- "e daí?" — snapshot do insight de origem
   related_items JSONB,      -- retrato das notícias relacionadas no momento do save
                             -- (título, resumo, fonte, url, published_at) — não é só uma
@@ -75,6 +77,12 @@ CREATE TABLE IF NOT EXISTS saved_ideas (
                             -- premissas, custo de validar); null = não aprofundado
   saved_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- migrações idempotentes: CREATE TABLE IF NOT EXISTS acima só vale para bancos
+-- novos; para os que já existem, adiciona o campo de timing do brief
+-- (why_now — ver arquiteturad.md §7). Rodar de novo não quebra.
+ALTER TABLE insights    ADD COLUMN IF NOT EXISTS why_now TEXT;
+ALTER TABLE saved_ideas ADD COLUMN IF NOT EXISTS why_now TEXT;
 
 -- índices para as leituras mais comuns (último scan, itens/insights por scan)
 CREATE INDEX IF NOT EXISTS scans_created_at_idx ON scans (created_at DESC);

@@ -59,6 +59,7 @@ Para cada insight, produza:
 - title: título curto e direto
 - description: a frase de efeito — explicação em até 25 palavras, em português, do porquê isso é relevante, cruzando informação entre temas
 - rationale: a LINHA DE RACIOCÍNIO, em 2 a 3 frases: por que essas notícias ESPECÍFICAS, de setores diferentes, se conectam nesse insight. Nomeie os setores/temas envolvidos e o que cada um contribui para a conexão. Não repita a description literalmente
+- whyNow: o "POR QUE AGORA", em 1 a 2 frases: o SINAL DE TIMING que torna esse cruzamento relevante NESTE momento — o que mudou agora (um movimento recente, uma barreira que caiu, uma janela que abriu) e por que esperar custaria. Não repita o rationale; foco no tempo, não na lógica da conexão
 - soWhat: o "E DAÍ?", em 1 a 2 frases: o que um empreendedor faria com isso — a ação ou o ângulo de oportunidade concreto (um produto, um segmento a atacar, uma hipótese a validar). Prático, não genérico
 - related_items: lista dos ids das notícias fornecidas que esse insight conecta — pelo menos 2, e SOMENTE ids que existem na lista recebida
 Regras: no máximo 5 insights. Priorize insights que conectam mais de um tema entre si.
@@ -91,6 +92,7 @@ interface DeepDiveInput {
   title: string;
   description: string;
   rationale: string;
+  whyNow: string;
   soWhat: string;
   relatedItems: { topic: string; title: string; summary: string; source: string }[];
 }
@@ -103,6 +105,7 @@ export function buildDeepDiveMessage(idea: DeepDiveInput): string {
 Título: ${idea.title}
 Frase de efeito: ${idea.description}
 Por que conecta: ${idea.rationale || "(não informado)"}
+Por que agora: ${idea.whyNow || "(não informado)"}
 E daí?: ${idea.soWhat || "(não informado)"}
 
 Notícias que ela cruza:

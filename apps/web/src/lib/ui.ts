@@ -6,6 +6,12 @@ export function labelForType(type: InsightType): string {
   return "Oportunidade";
 }
 
+// Identidade de conteúdo de um insight (tipo + título normalizado), usada pra
+// detectar "já salva". O id do insight (i1, i2…) vem do LLM e REINICIA a cada
+// scan, então não serve de chave estável entre scans.
+export const insightKey = (type: string, title: string) =>
+  `${type}::${title.trim().toLowerCase()}`;
+
 // rótulo do futuro "deep dive", com concordância de gênero por tipo
 export function deepDiveLabel(type: InsightType): string {
   if (type === "tendencia") return "Mergulhar nessa tendência";

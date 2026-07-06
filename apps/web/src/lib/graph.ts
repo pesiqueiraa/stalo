@@ -51,6 +51,7 @@ export function buildGraph(parsed: ScanResult, topics: string[]): Graph {
       title: ins.title || "(sem título)",
       description: ins.description || "",
       rationale: ins.rationale || "",
+      whyNow: ins.whyNow || "",
       soWhat: ins.soWhat || "",
       related: Array.isArray(ins.related_items) ? ins.related_items : [],
       color: INSIGHT_COLORS[insightType],

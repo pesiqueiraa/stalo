@@ -71,6 +71,7 @@ const InsightSchema = z.object({
   title: z.string(),
   description: z.string(),
   rationale: z.string(),
+  whyNow: z.string(),
   soWhat: z.string(),
   related_items: z.array(z.string()),
 });
@@ -173,6 +174,7 @@ function validateAndClean(items: NewsItem[], insights: Insight[]): ScanResult {
       title,
       description: stripNul(ins.description),
       rationale: stripNul(ins.rationale ?? ""),
+      whyNow: stripNul(ins.whyNow ?? ""),
       soWhat: stripNul(ins.soWhat ?? ""),
       related_items: related,
     });
@@ -220,6 +222,7 @@ export async function runDeepDive(idea: SavedIdea): Promise<DeepDive> {
           title: idea.title,
           description: idea.description,
           rationale: idea.rationale,
+          whyNow: idea.whyNow,
           soWhat: idea.soWhat,
           relatedItems: idea.relatedItems.map((it) => ({
             topic: it.topic,

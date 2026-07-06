@@ -100,6 +100,8 @@ const CURATED_INSIGHTS: Insight[] = [
       "Tanto modelos de IA quanto processadores quânticos dependem de avanços em chips, criando corrida por fornecedores especializados.",
     rationale:
       "A notícia sobre IA aponta escassez de GPUs; a de computação quântica descreve corrida por hardware criogênico. Os dois setores competem pela mesma cadeia de semicondutores de ponta — quem domina o processo de fabricação vira gargalo dos dois.",
+    whyNow:
+      "A escassez de GPUs virou manchete nas últimas semanas ao mesmo tempo que a corrida por hardware criogênico acelerou — a pressão sobre a mesma cadeia de fabricação está se formando agora, antes de os grandes travarem contratos de fornecimento.",
     soWhat:
       "Vale mapear fornecedores de nicho na cadeia de chips (packaging, materiais) que atendam os dois mercados — um fornecedor pequeno pode virar peça crítica antes de aparecer no radar dos grandes.",
     related_items: ["n1", "n7"],
@@ -112,6 +114,8 @@ const CURATED_INSIGHTS: Insight[] = [
       "Empresas enfrentam regras diferentes para IA e blockchain, sem padrão comum entre reguladores.",
     rationale:
       "A notícia de IA mostra o regulador exigindo explicabilidade; a de cripto, regras de rastreabilidade; a de compliance, auditoria de dados. Cada setor cria sua própria conformidade, mas ninguém oferece uma camada única que atenda os três.",
+    whyNow:
+      "Os três reguladores publicaram exigências novas quase ao mesmo tempo, cada um no seu silo — a janela para oferecer uma camada única existe antes de um incumbente de compliance padronizar o mercado a partir de um dos lados.",
     soWhat:
       "Há espaço para uma ferramenta de compliance transversal (proveniência de dados + auditoria) que sirva IA e cripto ao mesmo tempo. Validar com uma fintech que opere nos dois mundos.",
     related_items: ["n2", "n6", "n5"],
@@ -124,6 +128,8 @@ const CURATED_INSIGHTS: Insight[] = [
       "Demanda crescente de energia por IA abre espaço para provedores especializados em energia renovável para data centers.",
     rationale:
       "A notícia de IA cita explosão no consumo de energia dos data centers; a de energia, sobra de capacidade renovável ociosa fora dos centros urbanos. As duas pontas não se encontram — falta quem conecte geração limpa barata à demanda faminta da IA.",
+    whyNow:
+      "O salto no consumo dos data centers de IA e a sobra de capacidade renovável ociosa apareceram no mesmo ciclo de notícias — enquanto ninguém conecta as duas pontas, a janela para arbitrar geração barata e demanda faminta segue aberta.",
     soWhat:
       "Testar um modelo de data center modular colocado junto a parques solares/eólicos com energia ociosa. Começar conversando com um operador de energia que já tenha excedente.",
     related_items: ["n4", "n1"],

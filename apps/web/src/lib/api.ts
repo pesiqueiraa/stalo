@@ -65,6 +65,7 @@ export interface NewIdeaPayload {
   title: string;
   description: string;
   rationale: string;
+  whyNow: string;
   soWhat: string;
   notes: string;
   relatedItems: NewsItem[];
