@@ -1,0 +1,36 @@
+import { NextResponse } from "next/server";
+import { getIdea, runFinancials, saveFinancials } from "@stalo/server";
+
+// POST /api/ideas/:id/financials — "Aprofundar": análise financeira (2º nível),
+// por cima do mergulho. Exige que a ideia já tenha sido mergulhada. Persiste em
+// saved_ideas.financials (cache) e devolve a ideia atualizada.
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const idea = await getIdea(id);
+    if (!idea) {
+      return NextResponse.json({ error: "Ideia não encontrada." }, { status: 404 });
+    }
+    if (!idea.deepDive) {
+      return NextResponse.json(
+        { error: "Mergulhe na ideia antes de aprofundar no financeiro." },
+        { status: 409 },
+      );
+    }
+    // já analisada: devolve o cache, não re-gasta a IA
+    if (idea.financials) {
+      return NextResponse.json(idea);
+    }
+    const fin = await runFinancials(idea);
+    const updated = await saveFinancials(id, fin);
+    return NextResponse.json(updated ?? { ...idea, financials: fin });
+  } catch (err) {
+    console.error("financials failed", err);
+    const detail =
+      process.env.NODE_ENV !== "production" && err instanceof Error ? ` — ${err.message}` : "";
+    return NextResponse.json(
+      { error: `Não consegui gerar a análise financeira agora.${detail}` },
+      { status: 502 },
+    );
+  }
+}

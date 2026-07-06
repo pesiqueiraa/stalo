@@ -1,0 +1,1489 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0f1729;
+  --panel: #16213a;
+  --panel-alt: #1c2a47;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e4e8f0;
+  --text-dim: #8b96ae;
+  --amber: #e8a23d;
+  --amber-dim: rgba(232, 162, 61, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+  min-height: 100vh;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  /* altura FIXA no viewport (não min-height): trava o teto da tela. Com
+     min-height a coluna crescia com o conteúdo (ex.: vários insights salvos),
+     empurrando a .layout e o grafo pra baixo. Fixa em 100vh + overflow:hidden,
+     cada painel rola por dentro (overflow-y:auto) — inclusive a box de salvos —
+     e o grafo mantém a altura exata da tela, sempre centralizado.
+     No mobile a media query devolve height:auto pra página empilhar e rolar. */
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- Header ---- */
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--bg));
+}
+.logo {
+  height: 44px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+.header-titles p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-family: var(--font-mono), monospace;
+}
+
+/* ---- Layout ---- */
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 270px 1fr 300px;
+  /* linha única fracionária (não "auto"): a altura vem do viewport, não do
+     conteúdo. Sem isso, um painel alto (ex.: box de insight grande na aba
+     Salvo) estica a linha do grid além da tela e empurra o grafo pra baixo,
+     descentralizando-o. Com 1fr + os painéis em min-height:0/overflow, cada
+     coluna rola por dentro e o grafo mantém a altura da tela (centralizado). */
+  grid-template-rows: 1fr;
+  gap: 1px;
+  background: var(--border);
+  min-height: 0;
+}
+/* com o painel de ideias recolhido, a 3ª coluna encolhe pro trilho de reabrir
+   e o grafo (1fr) fica com o espaço extra */
+.layout.ideas-collapsed {
+  grid-template-columns: 270px 1fr auto;
+}
+.panel {
+  background: var(--bg);
+  padding: 16px;
+  overflow-y: auto;
+  /* deixa o item de grid encolher abaixo do min-content pra a linha 1fr não
+     ser esticada pelo conteúdo — o overflow acima é que rola por dentro */
+  min-height: 0;
+}
+.panel h2 {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
+
+/* ---- Topics sidebar ---- */
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 6px 5px 12px;
+  margin: 0 6px 8px 0;
+  font-size: 13px;
+}
+.topic-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.topic-chip button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  line-height: 1;
+}
+.topic-chip button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+.topic-count {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 2px 0 14px;
+}
+.add-topic {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.add-topic input {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--font-body), sans-serif;
+}
+.add-topic input:focus {
+  outline: none;
+  border-color: rgba(232, 162, 61, 0.5);
+}
+.add-topic button {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.add-topic button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.add-topic button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.period {
+  margin-bottom: 12px;
+}
+.period-label {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
+}
+.period-options {
+  display: flex;
+  gap: 6px;
+}
+.period-btn {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 0;
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: var(--font-body), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.period-btn:hover:not(.active):not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.period-btn.active {
+  background: rgba(232, 162, 61, 0.15);
+  border-color: rgba(232, 162, 61, 0.6);
+  color: var(--amber);
+  font-weight: 600;
+}
+.period-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.period-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+}
+
+.btn-scan {
+  width: 100%;
+  background: var(--amber);
+  color: #1a1206;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  font-family: var(--font-body), sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-scan:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-scan:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-top-color: #1a1206;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.status-line {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 10px;
+  text-align: center;
+}
+.error-banner {
+  margin-top: 10px;
+  background: rgba(232, 111, 95, 0.12);
+  border: 1px solid rgba(232, 111, 95, 0.4);
+  color: #f0a79b;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.legend {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+/* seção recolhível de configurações do grafo */
+.settings {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.settings > summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  user-select: none;
+}
+.settings > summary::-webkit-details-marker {
+  display: none;
+}
+.settings[open] > summary {
+  margin-bottom: 10px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 5px 0;
+  cursor: pointer;
+}
+.setting-row input {
+  accent-color: var(--amber);
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+}
+/* slider de espaçamento (juntar / separar) */
+.setting-slider {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.setting-slider-label {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.setting-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+.setting-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+/* ---- Graph area ---- */
+.graph-wrap {
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, rgba(232, 162, 61, 0.04), transparent 60%),
+    var(--bg);
+}
+#graph {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+}
+#graph svg {
+  cursor: grab;
+  /* entrega os gestos de toque (arrastar = pan, pinça = zoom, arrastar nó)
+     ao d3-zoom/d3-drag em vez de o navegador tratá-los como rolagem da
+     página — sem isso o grafo não se move com o dedo no mobile. Aplica ao
+     svg inteiro, então vale pro fundo e pros nós (filhos herdam o hit). */
+  touch-action: none;
+}
+#graph svg:active {
+  cursor: grabbing;
+}
+
+.graph-controls {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+}
+.graph-controls button {
+  width: 30px;
+  height: 30px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.graph-controls button:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: var(--panel-alt);
+}
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.empty-state span {
+  font-family: var(--font-mono), monospace;
+}
+
+/* overlay durante o scan — dá feedback na área do grafo, não só no botão;
+   cobre o grafo antigo num re-scan pra não parecer travado */
+.graph-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(15, 23, 41, 0.72);
+  backdrop-filter: blur(1.5px);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font-mono), monospace;
+}
+/* radar animado da tela de execução: anéis concêntricos + crosshair + feixe
+   varrendo + um "blip" piscando, no acento âmbar. Ecoa os anéis de fundo do grafo. */
+.radar {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 162, 61, 0.3);
+  /* dois anéis concêntricos + brilho suave no centro */
+  background:
+    radial-gradient(
+      circle,
+      transparent 0 31%,
+      rgba(255, 255, 255, 0.07) 31% 32%,
+      transparent 32% 63%,
+      rgba(255, 255, 255, 0.07) 63% 64%,
+      transparent 64%
+    ),
+    radial-gradient(circle, rgba(232, 162, 61, 0.06), transparent 70%);
+  overflow: hidden;
+}
+/* crosshair (linhas horizontal e vertical) */
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.06);
+}
+.radar::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+.radar::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+/* feixe que varre: setor de cor decaindo, girando */
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(232, 162, 61, 0.55) 0deg,
+    rgba(232, 162, 61, 0) 65deg,
+    rgba(232, 162, 61, 0) 360deg
+  );
+  animation: radar-sweep 1.6s linear infinite;
+}
+@keyframes radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.radar-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+}
+/* alvo "detectado" que pisca uma vez por posição — o React remonta o blip num
+   novo ponto a cada passagem do feixe (ScanLoader), então cada fade é um alvo novo */
+.radar-blip {
+  position: absolute;
+  top: 27%;
+  left: 66%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  animation: radar-blip 1.6s ease-in-out;
+}
+@keyframes radar-blip {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.15;
+  }
+}
+/* texto do scan: fade-in a cada troca de fase (via key={phase} no React) */
+.graph-loading-text {
+  animation: loading-text-in 0.45s ease;
+}
+@keyframes loading-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* manchete que anuncia o resultado do scan, surgindo ao fim da revelação */
+.reveal-banner {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px;
+  background: rgba(22, 33, 58, 0.9);
+  border: 1px solid var(--amber-dim);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 18px rgba(232, 162, 61, 0.15);
+  backdrop-filter: blur(3px);
+  animation: reveal-banner-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal-banner-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+}
+@keyframes reveal-banner-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep,
+  .radar-blip,
+  .graph-loading-text,
+  .reveal-banner {
+    animation: none;
+  }
+  .radar-blip {
+    opacity: 0.6;
+  }
+}
+
+.detail-panel {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: min(320px, calc(100% - 32px));
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  /* estado FECHADO = animação de SAÍDA: mais longa e com desaceleração
+     suave (ease-out), pra a box "deslizar embora" em vez de sumir seca */
+  transition:
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease;
+}
+.detail-panel.open {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+  /* estado ABERTO = animação de ENTRADA: mais curta/responsiva */
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.16s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-panel,
+  .detail-panel.open {
+    transition: opacity 0.2s ease;
+    transform: none;
+  }
+}
+.detail-panel h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px;
+  margin: 6px 0 8px;
+}
+.detail-panel p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
+.detail-type {
+  display: inline-block;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--panel-alt);
+  color: var(--text-dim);
+}
+/* sincronizado com INSIGHT_COLORS em lib/graph.ts (paleta neon dos insights) */
+.detail-tendencia {
+  color: #3ddc97;
+}
+.detail-gap {
+  color: #ff6b6b;
+}
+.detail-oportunidade {
+  color: #ffb13d;
+}
+.detail-source {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: -6px;
+}
+/* campo de nota do usuário ao salvar um insight */
+.detail-note {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 60px;
+}
+.detail-note::placeholder {
+  color: var(--text-dim);
+}
+.detail-note:focus {
+  outline: none;
+  border-color: var(--amber-dim);
+}
+/* seções "Por que conecta" e "E daí?" no detalhe do insight */
+.detail-section {
+  margin: 0 0 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.detail-section-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.reason-chain {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reason-chain li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.reason-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+}
+.reason-chain a,
+.reason-chain span:last-child {
+  color: var(--text);
+  text-decoration: none;
+}
+.reason-chain a:hover {
+  color: var(--amber);
+  text-decoration: underline;
+}
+.btn-save {
+  background: var(--amber);
+  color: #1a1206;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-close,
+.btn-link {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-link {
+  color: var(--amber);
+  border-color: rgba(232, 162, 61, 0.3);
+}
+
+/* ---- Ideas sidebar ---- */
+/* header do painel: título + botão de recolher */
+.panel-ideas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.panel-ideas-header h2 {
+  margin: 0;
+}
+.ideas-collapse {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ideas-collapse:hover {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+}
+/* trilho vertical de reabrir, mostrado no lugar do painel quando recolhido */
+.ideas-reopen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 8px;
+  background: var(--bg);
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.ideas-reopen:hover {
+  color: var(--amber);
+  background: var(--panel);
+}
+.ideas-reopen-chevron {
+  font-size: 16px;
+  line-height: 1;
+}
+.ideas-reopen-label {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.idea-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.idea-card .detail-type {
+  margin-bottom: 6px;
+}
+.idea-card h4 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 13.5px;
+  margin: 0 0 6px;
+  padding-right: 20px;
+}
+.idea-card p {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+.idea-card time {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+/* nota do usuário — destacada da descrição do LLM por uma faixa âmbar à esquerda.
+   Seletor com duas classes pra vencer .idea-card p (que senão sobrescreveria cor/margem). */
+.idea-card .idea-note {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0 0 8px;
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid var(--amber-dim);
+  white-space: pre-wrap;
+}
+/* teaser "Cruza" no card da ideia salva — só as notícias que o insight cruza
+   (bolinha por setor + título). O contexto detalhado fica pro deep dive. */
+.idea-card .detail-section {
+  padding-top: 10px;
+  margin-bottom: 10px;
+}
+/* abas Salvas / Deep Dive */
+.ideas-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ideas-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 4px 9px;
+  margin-bottom: -1px;
+  color: var(--text-dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ideas-tab:hover {
+  color: var(--text);
+}
+.ideas-tab.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+/* botão do deep dive: gerar (tracejado) / mergulhando / já mergulhado (sólido âmbar) */
+.btn-deepdive {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin: 2px 0 10px;
+  padding: 7px 10px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--text-dim);
+  font-family: var(--font-body), sans-serif;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.btn-deepdive:hover:not(:disabled) {
+  border-color: rgba(232, 162, 61, 0.5);
+  color: var(--text);
+}
+.btn-deepdive:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.btn-deepdive.is-dived {
+  border-style: solid;
+  border-color: var(--amber-dim);
+  background: rgba(232, 162, 61, 0.08);
+  color: var(--amber);
+}
+.idea-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+.idea-remove:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+.empty-ideas {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  /* só o botão de ação recebe clique — o corpo do toast não bloqueia
+     cliques no grafo/controles embaixo dele */
+  pointer-events: none;
+  transition: all 0.2s ease;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--amber);
+  font-family: var(--font-body), sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  pointer-events: auto;
+}
+.toast-action:hover {
+  text-decoration: underline;
+}
+
+/* ---- Graph node/link styles ---- */
+.node {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.15s ease;
+}
+.node text {
+  font-family: var(--font-mono), monospace;
+  pointer-events: none;
+  user-select: none;
+}
+.link {
+  transition: opacity 0.15s ease;
+}
+.node-dimmed {
+  opacity: 0.2;
+}
+.link-dimmed {
+  opacity: 0.08;
+}
+.node-highlighted .node-main-circle,
+.node-highlighted .node-main-shape {
+  stroke: #fff;
+  stroke-width: 3px;
+}
+/* glow neon dos insights — --glow é a cor do tipo, setada no grupo pelo GraphCanvas.
+   Sutil de propósito ("neon mas não muito chamativo"). */
+.node-insight .node-main-shape {
+  filter: drop-shadow(0 0 3px var(--glow));
+}
+.node-insight .node-glyph {
+  filter: drop-shadow(0 0 2px var(--glow));
+}
+/* toggles de visualização (settings) — ligam/desligam elementos por CSS.
+   Só escondem: quando a classe some, o display inline (ex: colisão de rótulos) volta a valer. */
+#graph.hide-links line {
+  display: none;
+}
+/* só as arestas notícia↔notícia (as que não tocam insights); as dos insights ficam */
+#graph.hide-entity-links line.link-entity {
+  display: none;
+}
+#graph.hide-labels text {
+  display: none;
+}
+@media (max-width: 900px) {
+  /* no empilhamento mobile a página inteira rola, então solta o teto do #app */
+  #app {
+    height: auto;
+    overflow: visible;
+  }
+  .layout,
+  .layout.ideas-collapsed {
+    grid-template-columns: 1fr;
+    /* empilhado: controles (altura natural) · grafo (altura responsiva, mais
+       quadrado que os 420px largos de antes, pra os nós não espalharem e os
+       rótulos não vazarem) · ideias (altura natural). A página é que rola. */
+    grid-template-rows: auto clamp(380px, 58vh, 560px) auto;
+  }
+  /* sem teto nos painéis no mobile: o de temas cortava o botão "Atualizar
+     notícias" (e legenda/config) atrás de um scroll interno escondido, e o de
+     ideias cortava a lista. Aqui cada um tem altura natural e a página rola. */
+  .panel {
+    max-height: none;
+  }
+  /* no empilhamento mobile, o trilho de reabrir vira uma barra horizontal */
+  .ideas-reopen {
+    height: auto;
+    flex-direction: row;
+    justify-content: center;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: 12px;
+  }
+  .ideas-reopen-label {
+    writing-mode: horizontal-tb;
+  }
+  .ideas-reopen-chevron {
+    transform: rotate(-90deg);
+  }
+}
+
+/* ---- Mergulhar (deep dive) — tela imersiva ---- */
+.dive-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow-y: auto;
+  background:
+    radial-gradient(1100px 600px at 80% -8%, rgba(232, 162, 61, 0.09), transparent 60%),
+    radial-gradient(900px 700px at 10% 110%, rgba(94, 200, 216, 0.06), transparent 55%),
+    #090d18;
+  animation: dive-fade 0.2s ease;
+}
+@keyframes dive-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.dive-ambient {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.dive-ambient svg {
+  position: absolute;
+  top: -12%;
+  right: -8%;
+  width: 620px;
+  height: 620px;
+}
+.dive-sheet {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 34px 28px 48px;
+  animation: dive-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+@keyframes dive-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* saída suave do mergulho: o fundo esmaece e a folha desce/encolhe de leve
+   (o componente fica montado durante os ~260ms via estado `closing`) */
+.dive-overlay.closing {
+  animation: dive-fade-out 0.26s ease forwards;
+}
+.dive-overlay.closing .dive-sheet {
+  animation: dive-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes dive-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dive-out {
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+}
+.dive-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.dive-eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.dive-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.dive-back:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+.dive-title {
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+  margin: 14px 0 12px;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+.dive-punch {
+  font-size: 16.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 0 0 14px;
+  max-width: 56ch;
+}
+.dive-punch--divider {
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 34px;
+}
+.dive-sec {
+  margin-bottom: 34px;
+}
+.dive-sec-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dive-sec-num {
+  color: var(--amber);
+}
+.dive-sec-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.dive-prose {
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: #d3d9e8;
+  margin: 0;
+}
+.dive-cross {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 560px) {
+  .dive-cross {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.dive-cross-group {
+  background: rgba(15, 23, 41, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.dive-cross-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.dive-ev {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.dive-ev:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.dive-ev-title {
+  display: block;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.dive-ev:hover .dive-ev-title {
+  color: var(--amber);
+}
+.dive-ev-meta {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.dive-payoff {
+  background: linear-gradient(180deg, rgba(232, 162, 61, 0.14), rgba(232, 162, 61, 0.04));
+  border: 1px solid var(--amber-dim);
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 0 40px rgba(232, 162, 61, 0.08);
+}
+.dive-payoff .dive-sec-label {
+  color: var(--amber);
+}
+.dive-payoff .dive-sec-label::after {
+  background: var(--amber-dim);
+}
+.dive-payoff p {
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0;
+}
+.dive-steps {
+  display: grid;
+  gap: 12px;
+  counter-reset: s;
+}
+.dive-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #d3d9e8;
+}
+.dive-step::before {
+  counter-increment: s;
+  content: counter(s);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--amber);
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--amber-dim);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.dive-signals {
+  display: grid;
+  gap: 10px;
+}
+.dive-signal {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d3d9e8;
+}
+.dive-signal-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.dive-signal-tag.risco {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+.dive-signal-tag.favor {
+  color: #3ddc97;
+  background: rgba(61, 220, 151, 0.1);
+}
+.dive-note {
+  border-left: 2px solid var(--amber-dim);
+  padding: 4px 0 4px 16px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text);
+  font-style: italic;
+  margin: 0;
+}
+/* CTA "Aprofundar" (2º nível financeiro) — antes de gerar */
+.dive-deepen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 8px 0 28px;
+  padding: 20px 22px;
+  background: linear-gradient(180deg, rgba(232, 162, 61, 0.1), rgba(232, 162, 61, 0.03));
+  border: 1px solid var(--amber-dim);
+  border-radius: 16px;
+}
+.dive-deepen-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.dive-deepen-sub {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.dive-deepen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--amber);
+  color: #1a1206;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-body), sans-serif;
+  font-weight: 650;
+  font-size: 14px;
+  padding: 12px 22px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(232, 162, 61, 0.25);
+}
+.dive-deepen-btn:disabled {
+  opacity: 0.8;
+  cursor: default;
+  box-shadow: none;
+}
+/* seções financeiras — depois de gerado */
+.dive-fin {
+  margin: 8px 0 28px;
+  padding-top: 26px;
+  border-top: 1px solid var(--amber-dim);
+}
+.dive-fin-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 24px;
+}
+.dive-premissas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.dive-premissas li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #d3d9e8;
+}
+.dive-premissas li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber-dim);
+}
+.dive-actions {
+  margin-top: 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dive-actions-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.dive-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 41, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.dive-chip:hover {
+  border-color: var(--text-dim);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dive-overlay,
+  .dive-sheet {
+    animation: none;
+  }
+}
