@@ -32,10 +32,10 @@ export default function SignupPage() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    // STUB: sem backend ainda. Simula o cadastro e leva ao radar.
-    // Trocar por chamada real de criação de conta quando o backend entrar.
+    // STUB: sem backend ainda. Simula o cadastro e segue pro onboarding de
+    // setores. Trocar por criação de conta real quando o backend entrar.
     setLoading(true);
-    setTimeout(() => router.push("/radar"), 900);
+    setTimeout(() => router.push("/onboarding"), 900);
   }
 
   return (
