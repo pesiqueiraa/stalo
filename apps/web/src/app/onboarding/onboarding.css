@@ -207,6 +207,12 @@
 .onb-cta:disabled { opacity: 0.45; cursor: default; }
 .onb-cta .arrow { transition: transform 0.2s ease; }
 .onb-cta:hover:not(:disabled) .arrow { transform: translateX(3px); }
+.onb-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(26, 18, 5, 0.3); border-top-color: #1a1205;
+  animation: onb-spin 0.7s linear infinite;
+}
+@keyframes onb-spin { to { transform: rotate(360deg); } }
 
 /* radar compacto (passo de revelação) */
 .onb-radar.compact { width: min(280px, 64vw); margin-top: 1.2rem; }
