@@ -326,8 +326,11 @@ export default function Landing() {
             <a href="#evidencia">Evidência</a>
           </div>
           <div className="nav-cta">
-            <Link className="btn btn-primary" href="/radar">
-              Começar
+            <Link className="btn btn-ghost" href="/login">
+              Entrar
+            </Link>
+            <Link className="btn btn-primary" href="/signup">
+              Criar conta grátis
             </Link>
           </div>
         </div>
@@ -348,8 +351,8 @@ export default function Landing() {
               Escolha seus setores. A IA cruza as notícias e aponta o gap.
             </p>
             <div className="cta-row">
-              <Link className="btn btn-primary" href="/radar">
-                Abrir o radar <span className="arrow">→</span>
+              <Link className="btn btn-primary" href="/signup">
+                Criar conta grátis <span className="arrow">→</span>
               </Link>
               <a className="btn btn-ghost" href="#como">
                 Como funciona
@@ -639,8 +642,8 @@ export default function Landing() {
           <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
           <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
           <div className="cta-row">
-            <Link className="btn btn-primary" href="/radar">
-              Começar meu radar
+            <Link className="btn btn-primary" href="/signup">
+              Criar conta grátis
             </Link>
             <a className="btn btn-ghost" href="#pra-quem">
               Ver qual lente é a minha
