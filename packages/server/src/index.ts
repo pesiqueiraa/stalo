@@ -19,4 +19,6 @@ export {
   getIdea,
   saveDeepDive,
   saveFinancials,
+  getLens,
+  setLens,
 } from "./repo";

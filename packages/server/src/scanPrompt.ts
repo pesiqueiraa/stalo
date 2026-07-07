@@ -13,6 +13,8 @@
 // provider (schema Zod em scan.ts), então os prompts focam nas REGRAS, não na
 // formatação do JSON.
 
+import type { Lens } from "@stalo/shared";
+
 // ---------- ① COLETOR ----------
 
 export const COLLECT_SYSTEM_PROMPT = `Você é um motor de pesquisa de notícias de tecnologia e negócios.
@@ -63,6 +65,7 @@ Para cada insight, produza:
 - soWhat: o "E DAÍ?", em 1 a 2 frases: o que um empreendedor faria com isso — a ação ou o ângulo de oportunidade concreto (um produto, um segmento a atacar, uma hipótese a validar). Prático, não genérico
 - related_items: lista dos ids das notícias fornecidas que esse insight conecta — pelo menos 2, e SOMENTE ids que existem na lista recebida
 Regras: no máximo 5 insights. Priorize insights que conectam mais de um tema entre si.
+Nos campos de TEXTO (description, rationale, whyNow, soWhat) escreva em prosa corrida e SOMENTE em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas) — e NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); os ids vão SOMENTE no campo related_items.
 NUNCA invente notícias nem ids — use apenas as notícias fornecidas. Se não houver conexão relevante entre elas, devolva menos insights (ou nenhum).`;
 
 interface CollectedItem {
@@ -78,14 +81,41 @@ interface CollectedItem {
 // descrição, "por que conecta", "e daí?") + as notícias que ela cruza, e gera
 // SÓ as seções novas (não repete o rationale/soWhat, que a UI já tem).
 
-export const DEEP_DIVE_SYSTEM_PROMPT = `Você é um analista de estratégia que aprofunda uma oportunidade de negócio já identificada, para um empreendedor early-stage decidir se vale investigar.
+// A "linguagem de direcionamento" do mergulho muda por lente (arquiteturad §7):
+// o esquema de saída é o MESMO (panorama, porQueAgora, proximosPassos, sinais),
+// mas o público e o que conta como "próximo passo" se ajustam ao perfil. A
+// taxonomia de insight (tendência/gap/oportunidade) não muda aqui.
+const DEEP_DIVE_LENS: Record<Lens, { audience: string; passos: string }> = {
+  founder: {
+    audience: "para um FOUNDER early-stage decidir se vale a pena CONSTRUIR",
+    passos:
+      "- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir",
+  },
+  investor: {
+    audience: "para um INVESTIDOR avaliar se isso vira uma tese/deal defensável",
+    passos:
+      "- proximosPassos: 3 a 4 passos de DILIGÊNCIA na ordem em que fariam sentido — mapear quem já está construindo (inclusive stealth), medir o tamanho da janela, e identificar o que separaria um vencedor. Cada passo é uma frase de ação (comece com verbo)",
+  },
+  explorer: {
+    audience:
+      "para quem quer ENTENDER a tendência e se posicionar cedo (não necessariamente construir ou investir)",
+    passos:
+      "- proximosPassos: 3 a 4 SINAIS A ACOMPANHAR pra saber se a tendência se confirma ou esfria (métricas, movimentos de players, marcos regulatórios). Cada um é uma frase começando com um verbo de observação (Acompanhe, Monitore, Observe)",
+  },
+};
+
+// Prompt do mergulho já ajustado à lente do usuário (default: founder).
+export function buildDeepDiveSystemPrompt(lens?: Lens | null): string {
+  const l = DEEP_DIVE_LENS[lens ?? "founder"];
+  return `Você é um analista de estratégia que aprofunda uma oportunidade já identificada, ${l.audience}.
 Você recebe uma ideia (tipo, título, frase de efeito, "por que conecta" e "e daí?") e as notícias que a originaram. Gere um relatório curto e ACIONÁVEL, sem encher linguiça.
 Produza:
 - panorama: 1 parágrafo (2 a 4 frases) que situa a oportunidade — os vetores/forças que se aproximam e por que o cruzamento importa agora. Concreto, não genérico
 - porQueAgora: 1 parágrafo (2 a 3 frases) sobre o TIMING: por que a janela está aberta agora e o que a fecha (movimento de incumbentes, regulação, contratos, adoção)
-- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir
+${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
-Regras: tudo em português, direto, sem jargão de consultoria. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+}
 
 interface DeepDiveInput {
   type: string;
@@ -118,14 +148,38 @@ Gere o relatório de aprofundamento.`;
 // Segundo nível, gerado por cima do deep dive. Emphasis: ordens de grandeza e
 // "o que precisa ser verdade", nunca números precisos inventados.
 
-export const FINANCIALS_SYSTEM_PROMPT = `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage para um empreendedor decidir se vale seguir.
+// Mesma ideia da lente no mergulho (arquiteturad §7): esquema de saída idêntico
+// (mercado, monetizacao, premissas, custoValidar), mas o público e o foco da
+// análise se ajustam ao perfil.
+const FINANCIALS_LENS: Record<Lens, { audience: string; foco: string }> = {
+  founder: {
+    audience: "para um FOUNDER early-stage decidir se vale seguir",
+    foco: "Foco: dá pra começar pequeno e o negócio se paga? Qual o caminho de receita mais concreto e o menor teste que confirma a conta.",
+  },
+  investor: {
+    audience: "para um INVESTIDOR decidir se é uma aposta de retorno venture-scale",
+    foco: "Foco: o mercado é grande e cresce rápido o bastante? Quem captura o valor na cadeia, quão defensável é, e o que precisa ser verdade pra virar um desfecho grande.",
+  },
+  explorer: {
+    audience:
+      "para quem quer ENTENDER a economia dessa mudança (não necessariamente investir ou construir)",
+    foco: "Foco: por onde o dinheiro flui nessa mudança, quem ganha e quem perde, e como medir barato se o capital está de fato se movendo pra lá.",
+  },
+};
+
+// Prompt do 2º nível (financeiro) já ajustado à lente (default: founder).
+export function buildFinancialsSystemPrompt(lens?: Lens | null): string {
+  const l = FINANCIALS_LENS[lens ?? "founder"];
+  return `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage, ${l.audience}.
 Você recebe uma ideia já aprofundada (com panorama e timing). NÃO invente números precisos nem cite valores de mercado específicos sem base — trabalhe com ORDENS DE GRANDEZA e com "o que precisaria ser verdade" para a conta fechar. Honestidade sobre a incerteza vale mais que falsa precisão.
+${l.foco}
 Produza:
 - mercado: 1 parágrafo (2 a 3 frases) sobre o tamanho e a atratividade do mercado em ordem de grandeza — quem paga, quantos são, se é nicho caro ou volume barato. Diga se é grande o bastante pra valer a pena
 - monetizacao: 1 parágrafo (2 a 3 frases) — como isso ganharia dinheiro (modelo de receita concreto) e por que alguém pagaria por isso
 - premissas: 3 a 4 premissas FINANCEIRAS que precisam ser verdade para o negócio fechar (ex: "o custo de X precisa ficar abaixo de Y", "o cliente precisa economizar pelo menos Z%"). Cada uma uma frase verificável, começando pela variável-chave
 - custoValidar: 1 a 2 frases — quão barato e rápido dá pra testar a hipótese financeira ANTES de investir pesado (o experimento mais barato que mata ou confirma a ideia)
-Tudo em português, direto, sem jargão de banco de investimento. É hipótese a validar, nunca afirme como certeza.`;
+Tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de banco de investimento. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]). É hipótese a validar, nunca afirme como certeza.`;
+}
 
 interface FinancialsInput {
   type: string;

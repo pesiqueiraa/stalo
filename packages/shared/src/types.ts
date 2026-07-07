@@ -1,5 +1,10 @@
 export type InsightType = "tendencia" | "gap" | "oportunidade";
 
+// Lente/perfil do usuário, escolhida no onboarding. Não muda a taxonomia de
+// insights (universal); afina a "linguagem de direcionamento" do mergulho e o
+// ranqueamento do brief (ver arquiteturad §7).
+export type Lens = "founder" | "investor" | "explorer";
+
 export interface Topic {
   id: string;
   name: string;

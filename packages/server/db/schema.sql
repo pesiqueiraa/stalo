@@ -84,6 +84,15 @@ CREATE TABLE IF NOT EXISTS saved_ideas (
   saved_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- preferências do workspace (uma linha por workspace). Hoje guarda só a lente
+-- escolhida no onboarding (founder/investor/explorer). Quando contas reais
+-- entrarem, workspace_id vira user_id, como no resto do schema.
+CREATE TABLE IF NOT EXISTS workspace_settings (
+  workspace_id UUID PRIMARY KEY,
+  lens TEXT CHECK (lens IN ('founder','investor','explorer')),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...), para proteger os endpoints de IA de abuso de
 -- custo agora que o app é público. Uma linha por chave, atualizada no lugar.
