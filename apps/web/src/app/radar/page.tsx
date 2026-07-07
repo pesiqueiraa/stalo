@@ -80,26 +80,40 @@ export default function Home() {
 
   // carrega o estado persistido ao abrir a página: temas, ideias salvas e o
   // último scan (que o client remonta em grafo com as cores dos temas atuais).
+  // Usuário novo recebe listas vazias (nada a mostrar, sem erro). O único motivo
+  // de falhar aqui é hiccup transitório do banco (ex.: cold-start da Supabase),
+  // então tentamos de novo automaticamente antes de incomodar o usuário — em vez
+  // de mandá-lo "recarregar a página", já que ele pode nem ter dados salvos.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const [loadedTopics, loadedIdeas, latest] = await Promise.all([
-          fetchTopics(),
-          fetchIdeas(),
-          fetchLatestScan(),
-        ]);
-        if (cancelled) return;
-        setTopics(loadedTopics);
-        setIdeas(loadedIdeas);
-        if (latest.result) {
-          setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
-          setLastUpdated(latest.createdAt);
-        }
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) {
-          setError("Não consegui carregar seus dados salvos. Recarregue a página em instantes.");
+      const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const [loadedTopics, loadedIdeas, latest] = await Promise.all([
+            fetchTopics(),
+            fetchIdeas(),
+            fetchLatestScan(),
+          ]);
+          if (cancelled) return;
+          setTopics(loadedTopics);
+          setIdeas(loadedIdeas);
+          if (latest.result) {
+            setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
+            setLastUpdated(latest.createdAt);
+          }
+          setError(null);
+          return;
+        } catch (err) {
+          console.error(err);
+          if (cancelled) return;
+          if (attempt < RETRY_DELAYS.length) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+            if (cancelled) return;
+            continue;
+          }
+          setError("Instabilidade ao conectar. Tente adicionar um tema ou recarregar em instantes.");
+          return;
         }
       }
     })();
