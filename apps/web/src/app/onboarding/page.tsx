@@ -256,13 +256,6 @@ export default function OnboardingPage() {
             );
           })}
         </svg>
-        {!compact && (
-          <div className="onb-hint" style={{ opacity: count === 0 ? 1 : 0 }}>
-            seu radar está vazio
-            <br />
-            escolha setores abaixo
-          </div>
-        )}
       </div>
     );
   }
