@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createTopic, saveLens } from "@/lib/api";
+import { LENS_LEAD_CATEGORY } from "@/lib/ui";
 import type { Lens } from "@stalo/shared";
 import "./onboarding.css";
 
@@ -37,7 +38,7 @@ const LENSES = [
     name: "Founder",
     desc: "Quer achar a próxima ideia pronta pra construir.",
     payoffLabel: "E daí?",
-    cat: "oportunidade",
+    cat: LENS_LEAD_CATEGORY.founder,
   },
   {
     id: "investor",
@@ -45,7 +46,7 @@ const LENSES = [
     name: "Investidor",
     desc: "Quer enxergar a categoria antes de virar óbvia.",
     payoffLabel: "O deal",
-    cat: "gap",
+    cat: LENS_LEAD_CATEGORY.investor,
   },
   {
     id: "explorer",
@@ -53,7 +54,7 @@ const LENSES = [
     name: "Explorador",
     desc: "Quer entender pra onde a tecnologia está indo.",
     payoffLabel: "A leitura",
-    cat: "tendencia",
+    cat: LENS_LEAD_CATEGORY.explorer,
   },
 ] as const;
 

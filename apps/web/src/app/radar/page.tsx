@@ -17,6 +17,7 @@ import {
   deleteTopic,
   fetchIdeas,
   fetchLatestScan,
+  fetchSettings,
   fetchTopics,
   requestDeepDive,
   requestFinancials,
@@ -34,6 +35,7 @@ import type {
   Graph,
   GraphNode,
   InsightNode,
+  Lens,
   NewsItem,
   NewsNode,
   SavedIdea,
@@ -49,6 +51,7 @@ export default function Home() {
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [lens, setLens] = useState<Lens | null>(null); // lente do workspace: ordena o brief por perfil
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,14 +93,16 @@ export default function Home() {
       const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
       for (let attempt = 0; ; attempt++) {
         try {
-          const [loadedTopics, loadedIdeas, latest] = await Promise.all([
+          const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
             fetchTopics(),
             fetchIdeas(),
             fetchLatestScan(),
+            fetchSettings(),
           ]);
           if (cancelled) return;
           setTopics(loadedTopics);
           setIdeas(loadedIdeas);
+          setLens(loadedSettings.lens);
           if (latest.result) {
             setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
             setLastUpdated(latest.createdAt);
@@ -368,6 +373,7 @@ export default function Home() {
                 topics={topics.map((t) => t.name)}
                 savedKeys={savedKeys}
                 hasScanned={lastUpdated !== null}
+                lens={lens}
                 onSave={saveIdea}
               />
             ) : (
