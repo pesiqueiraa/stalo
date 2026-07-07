@@ -1,4 +1,4 @@
-import type { NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
+import type { Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -90,6 +90,35 @@ export async function createIdea(payload: NewIdeaPayload): Promise<SavedIdea> {
 export async function deleteIdea(id: string): Promise<void> {
   const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao remover ideia."));
+}
+
+// ---------- settings (lente do workspace) ----------
+
+export async function fetchSettings(): Promise<{ lens: Lens | null }> {
+  const res = await fetch("/api/settings");
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar preferências."));
+  return (await res.json()) as { lens: Lens | null };
+}
+
+export async function saveLens(lens: Lens): Promise<void> {
+  const res = await fetch("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lens }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao salvar a lente."));
+}
+
+// Destino após autenticar: quem ainda não configurou (sem setores e sem lente)
+// vai pro onboarding; os demais, pro radar. Mesmo critério do /auth/callback do
+// OAuth, aqui no client para o login por e-mail.
+export async function postAuthDestination(): Promise<"/onboarding" | "/radar"> {
+  try {
+    const [topics, settings] = await Promise.all([fetchTopics(), fetchSettings()]);
+    return topics.length === 0 && !settings.lens ? "/onboarding" : "/radar";
+  } catch {
+    return "/radar";
+  }
 }
 
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia

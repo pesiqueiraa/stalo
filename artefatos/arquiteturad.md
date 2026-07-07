@@ -114,6 +114,15 @@ CREATE TABLE saved_ideas (
   saved_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- preferências do workspace (uma linha por workspace). Hoje só a lente escolhida
+-- no onboarding (founder/investor/explorer). Quando contas reais entrarem,
+-- workspace_id vira user_id, como no resto do schema.
+CREATE TABLE workspace_settings (
+  workspace_id UUID PRIMARY KEY,
+  lens TEXT CHECK (lens IN ('founder','investor','explorer')),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
 -- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -123,6 +132,8 @@ CREATE TABLE rate_limits (
   count INT NOT NULL
 );
 ```
+
+> **Lente do workspace (`workspace_settings`):** a lente escolhida no onboarding é preferência de workspace (uma linha por `workspace_id`), não atributo de insight — a taxonomia de insights continua universal. Ela afina a *linguagem de direcionamento* do mergulho e o ranqueamento do brief (§7), não o scan nem o grafo.
 
 > **`ref` (id local do scan):** o `ScanResult` que sai do LLM usa ids locais como
 > `"n1"`/`"i1"` para ligar insights às notícias. Guardamos esses ids na coluna `ref`
@@ -170,6 +181,7 @@ CREATE TABLE rate_limits (
 - **`Insight` enriquecido com `why_now`**: o cruzamento vira tese quando tem timing (*por que agora*), além do *por que conecta* e do *e daí?*. Campo adicionado ao schema (§4); o Analista (`scanPrompt.ts`) o emite e os tipos de `@stalo/shared` (`Insight`), o `repo.ts` e `packages/server/db/schema.sql` acompanham (regras 3 e 4 do `CLAUDE.md`). Um score de confiança do cruzamento foi considerado e adiado para backlog (ver `notas.md`): a versão útil é objetiva (recorrência entre scans), que depende de histórico ainda não acumulado — a autoavaliação do LLM sozinha era subjetiva demais para exibir.
 - **Coleta sob demanda com LLM+busca em vez de pipeline volumoso (RSS/API de notícias)**: o valor do produto é curadoria + cruzamento, não volume (ver `produto.md`). Pipeline volumoso fica no backlog, só se cobertura/histórico/digest agendado virarem prioridade.
 - **`max_tokens` fixo e prompt com limites explícitos** (máx. 8 notícias, máx. 3 insights por scan): decisão deliberada para manter respostas previsíveis e baratas; ajustar para cima só se o volume de temas monitorados crescer no roadmap.
+- **Personalização por lente (perfil) mora no prompt do mergulho (`dive`), não no scan nem no brief**: o onboarding captura a lente do usuário (**founder / investidor / explorador** — a ideia de "público" de `produto.md` §2-3). As **categorias de insight continuam universais** (`tendência / gap / oportunidade` — mesmos glifos, cores e taxonomia em grafo, brief e mergulho); por isso **não é mudança no `type` do `Insight`** nem no schema de `insights`. O que muda por lente é a **linguagem de direcionamento** — o *"e daí?"/payoff*, os *passos* e o *2º nível financeiro* do mergulho — e, opcionalmente, a **ordem do brief** (qual categoria lidera é ranqueamento, não regeneração de texto). O **grafo permanece neutro** (é a superfície de triagem/mapa; a divergência por perfil precisa de densidade, e o mergulho é onde ela cabe). Consequência técnica: a lente vira **parâmetro do prompt do `dive`** (e do `financials`), threaded pelo módulo compartilhado de prompts (regra 4). Isso isola a personalização à geração sob demanda (barata, por insight) e preserva o "mesmo radar pra todo mundo" (comparabilidade). A lente é preferência de **workspace/usuário** (não por insight), persistida em `workspace_settings` (§4). **Implementado:** capturada no onboarding, e o prompt do mergulho já se ajusta a ela (`buildDeepDiveSystemPrompt` em `scanPrompt.ts`; a rota `/api/ideas/:id/dive` lê `getLens(wid)` e passa pra `runDeepDive`) — founder puxa validação com cliente, investidor puxa diligência/deal, explorador puxa sinais a acompanhar. O 2º nível financeiro também se ajusta à lente (`buildFinancialsSystemPrompt`; a rota `/api/ideas/:id/financials` lê `getLens(wid)`): founder foca em bootstrap/receita, investidor em venture-scale/defensibilidade, explorador em por onde o dinheiro flui. Os esquemas de saída (mergulho e financeiro) e o scan/brief/grafo seguem neutros. Falta (opcional) só o ranqueamento do brief por lente.
 
 ## 8. Como começar a implementar
 

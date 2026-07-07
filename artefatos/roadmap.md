@@ -31,9 +31,10 @@ Sem ordem de prioridade fixa — organizado por tema, para revisitar depois que 
 - Pontuação/priorização automática das ideias salvas (ex: "quantos scans essa conexão já apareceu").
 - Espaço para o usuário anotar aprendizados em cada ideia salva (campo `notes` já previsto no schema) e marcar status: "a validar", "validando", "descartada", "virou hipótese de startup".
 - Permitir feedback do usuário sobre a qualidade de um insight (útil/não útil), para eventualmente calibrar o prompt.
+- Personalização por lente/perfil (**founder / investidor / explorador**, capturada no onboarding): a lente parametriza a **linguagem de direcionamento do mergulho** e, opcionalmente, o **ranqueamento do brief**; o **grafo** e a **taxonomia de categorias** (tendência/gap/oportunidade) permanecem neutros/universais. **Implementado:** persistência da lente (`workspace_settings`) e prompts do mergulho **e** do 2º nível financeiro ajustados por lente. **Falta (opcional):** ranqueamento do brief por lente. Decisão em `arquiteturad.md` §7.
 
 ### Alcance e colaboração
-- Multi-usuário com autenticação (login simples por e-mail/magic link).
+- Multi-usuário com autenticação (login simples por e-mail/magic link). _(Telas de login/cadastro e o fluxo de onboarding de setores + lente já existem no **frontend**, como stub — sem backend de auth nem persistência ainda.)_
 - Times/workspaces compartilhados — mais de uma pessoa acompanhando o mesmo radar.
 - Exportação de ideias salvas para Notion/Google Docs/Slack.
 

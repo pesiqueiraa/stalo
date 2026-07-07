@@ -4,6 +4,7 @@ import type {
   DeepDive,
   Financials,
   Insight,
+  Lens,
   NewsItem,
   SavedIdea,
   ScanResult,
@@ -303,4 +304,29 @@ export async function saveIdea(wid: string, idea: NewIdea): Promise<SavedIdea> {
 
 export async function removeIdea(wid: string, id: string): Promise<void> {
   await sql`DELETE FROM saved_ideas WHERE id = ${id} AND workspace_id = ${wid}`;
+}
+
+// ---------- settings (lente do workspace) ----------
+
+const LENSES: readonly Lens[] = ["founder", "investor", "explorer"];
+function toLens(value: unknown): Lens | null {
+  return typeof value === "string" && (LENSES as readonly string[]).includes(value)
+    ? (value as Lens)
+    : null;
+}
+
+export async function getLens(wid: string): Promise<Lens | null> {
+  const [row] = await sql<{ lens: string | null }[]>`
+    SELECT lens FROM workspace_settings WHERE workspace_id = ${wid} LIMIT 1
+  `;
+  return toLens(row?.lens);
+}
+
+// upsert: uma linha por workspace, atualizada no lugar
+export async function setLens(wid: string, lens: Lens): Promise<void> {
+  await sql`
+    INSERT INTO workspace_settings (workspace_id, lens, updated_at)
+    VALUES (${wid}, ${lens}, now())
+    ON CONFLICT (workspace_id) DO UPDATE SET lens = ${lens}, updated_at = now()
+  `;
 }

@@ -20,12 +20,20 @@ import {
   buildAnalyzeMessage,
   COLLECT_SYSTEM_PROMPT,
   buildCollectMessage,
-  DEEP_DIVE_SYSTEM_PROMPT,
+  buildDeepDiveSystemPrompt,
   buildDeepDiveMessage,
-  FINANCIALS_SYSTEM_PROMPT,
+  buildFinancialsSystemPrompt,
   buildFinancialsMessage,
 } from "./scanPrompt";
-import type { DeepDive, Financials, Insight, NewsItem, SavedIdea, ScanResult } from "@stalo/shared";
+import type {
+  DeepDive,
+  Financials,
+  Insight,
+  Lens,
+  NewsItem,
+  SavedIdea,
+  ScanResult,
+} from "@stalo/shared";
 
 // Modelos por etapa — os "botões" de custo/qualidade.
 // Coletor PRECISA de um modelo que suporte a tool web_search; Analista não.
@@ -209,12 +217,12 @@ export async function runScan(topics: string[], days: number | null): Promise<Sc
 // ③ MERGULHAR — aprofunda uma ideia salva num relatório (sem busca web). Gera só
 // as seções novas (panorama, timing, passos, sinais); rationale/soWhat já estão
 // na ideia. SERVER-ONLY, mesma regra da key.
-export async function runDeepDive(idea: SavedIdea): Promise<DeepDive> {
+export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
   const res = await client.responses.parse({
     model: DEEP_DIVE_MODEL,
     max_output_tokens: DEEP_DIVE_MAX_TOKENS,
     input: [
-      { role: "system", content: DEEP_DIVE_SYSTEM_PROMPT },
+      { role: "system", content: buildDeepDiveSystemPrompt(lens) },
       {
         role: "user",
         content: buildDeepDiveMessage({
@@ -249,12 +257,12 @@ export async function runDeepDive(idea: SavedIdea): Promise<DeepDive> {
 
 // ④ APROFUNDAR — análise financeira (2º nível), por cima do deep dive. Exige que
 // a ideia já tenha sido mergulhada (usa panorama/porQueAgora como contexto).
-export async function runFinancials(idea: SavedIdea): Promise<Financials> {
+export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promise<Financials> {
   const res = await client.responses.parse({
     model: FINANCIALS_MODEL,
     max_output_tokens: FINANCIALS_MAX_TOKENS,
     input: [
-      { role: "system", content: FINANCIALS_SYSTEM_PROMPT },
+      { role: "system", content: buildFinancialsSystemPrompt(lens) },
       {
         role: "user",
         content: buildFinancialsMessage({
