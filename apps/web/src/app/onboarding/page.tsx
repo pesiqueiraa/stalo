@@ -35,6 +35,7 @@ const LENSES = [
     name: "Founder",
     desc: "Quer achar a próxima ideia pronta pra construir.",
     payoffLabel: "E daí?",
+    cat: "oportunidade",
   },
   {
     id: "investor",
@@ -42,6 +43,7 @@ const LENSES = [
     name: "Investidor",
     desc: "Quer enxergar a categoria antes de virar óbvia.",
     payoffLabel: "O deal",
+    cat: "gap",
   },
   {
     id: "explorer",
@@ -49,8 +51,25 @@ const LENSES = [
     name: "Explorador",
     desc: "Quer entender pra onde a tecnologia está indo.",
     payoffLabel: "A leitura",
+    cat: "tendencia",
   },
 ] as const;
+
+// Categorias de insight (universais). Cada lente lidera com uma delas na
+// revelação — a taxonomia não muda, só qual sobe primeiro (ver arquiteturad §7).
+const CATS: Record<string, { label: string; color: string }> = {
+  oportunidade: { label: "oportunidade", color: "#e8a23d" },
+  gap: { label: "gap de mercado", color: "#ef6d7e" },
+  tendencia: { label: "tendência", color: "#63d29b" },
+};
+
+// glifos da marca por categoria (triângulo/losango/estrela), na cor da categoria
+function renderCatGlyph(cat: string, color: string) {
+  const common = { fill: color, fillOpacity: 0.18, stroke: color, strokeWidth: 1.5, strokeLinejoin: "round" as const };
+  if (cat === "tendencia") return <path d="M0 -9 L8 7 L-8 7 Z" {...common} />;
+  if (cat === "gap") return <path d="M0 -9 L9 0 L0 9 L-9 0 Z" {...common} />;
+  return <path d="M0 -10 L2.6 -2.6 L10 0 L2.6 2.6 L0 10 L-2.6 2.6 L-10 0 L-2.6 -2.6 Z" {...common} />;
+}
 
 // ícones simples por lente (marcas geométricas na cor da lente, via --c)
 function renderLensIcon(id: string) {
@@ -169,6 +188,17 @@ export default function OnboardingPage() {
       : activeLens?.id === "investor"
         ? `categoria nova em ${a} × ${b}, com poucos players e nenhum consolidado.`
         : `${a} × ${b} está virando tendência; entenda o movimento antes de virar consenso.`;
+
+  // a lente lidera com uma categoria; a revelação usa o glifo/cor dela e uma
+  // manchete no mesmo enquadramento (a taxonomia é universal, ver arquiteturad §7)
+  const cat = activeLens?.cat ?? "oportunidade";
+  const catInfo = CATS[cat];
+  const headline =
+    cat === "oportunidade"
+      ? `No encontro de ${a} e ${b} abre uma oportunidade que ninguém vende pronta ainda.`
+      : cat === "gap"
+        ? `Entre ${a} e ${b} tem um gap: categoria nova e ainda sem dono.`
+        : `${a} e ${b} estão convergindo numa tendência que ainda não virou consenso.`;
 
   // radar reutilizado nos passos de setores e de revelação (continuidade visual).
   // Função inline (não componente aninhado): chamada como {renderRadar()}, os
@@ -368,16 +398,17 @@ export default function OnboardingPage() {
               ) : (
                 <div className="onb-signal">
                   <div className="onb-signal-tags">
-                    <span className="onb-signal-tag">
-                      <span className="d" style={{ background: "#e8a23d" }} /> oportunidade
+                    <span className="onb-signal-tag" style={{ color: catInfo.color }}>
+                      <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                        {renderCatGlyph(cat, catInfo.color)}
+                      </svg>
+                      {catInfo.label}
                     </span>
                     <span className="onb-signal-tag">
                       <span className="d" style={{ background: "#5ec8d8" }} /> {a} × {b}
                     </span>
                   </div>
-                  <h3>
-                    No encontro de {a} e {b} abre uma categoria que ninguém vende pronta ainda.
-                  </h3>
+                  <h3>{headline}</h3>
                   <div className="onb-signal-payoff">
                     <b style={{ color: activeLens?.color }}>{activeLens?.payoffLabel} →</b> {payoffText}
                   </div>
