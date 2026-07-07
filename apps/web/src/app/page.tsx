@@ -305,15 +305,13 @@ export default function Landing() {
         <div className="hero-scrim" />
         <div className="wrap hero-inner">
           <div className="hero-col">
-            <span className="eyebrow">cruza setores · encontra o gap</span>
+            <span className="eyebrow">ache sua oportunidade</span>
             <h1>
               Onde dois setores se <span className="cross">cruzam</span>, mora a{" "}
               <span className="accent">oportunidade</span>.
             </h1>
             <p className="lede">
-              O Stalo vigia os temas de tecnologia que você escolhe, cruza as notícias entre eles com
-              IA e busca na web, e destaca tendências, gaps e oportunidades — prontas pra virar ideia
-              de negócio.
+              Escolha seus setores. A IA cruza as notícias e aponta o gap.
             </p>
             <div className="cta-row">
               <Link className="btn btn-primary" href="/radar">
@@ -370,11 +368,10 @@ export default function Landing() {
         <div className="wrap">
           <div className="sec-head">
             <span className="eyebrow">a unidade de valor</span>
-            <h2>Notícia é commodity. O que ninguém te dá é a conexão entre setores.</h2>
+            <h2>Notícia é commodity. A conexão entre setores, não.</h2>
             <p>
-              Um agregador te afoga em manchetes. O Stalo faz o contrário: pega dois setores que você
-              segue e mostra onde eles se tocam — porque é ali, no atrito entre mundos diferentes, que
-              mora a ideia que ainda não é óbvia.
+              O Stalo pega dois setores que você segue e mostra onde eles se tocam. É ali que mora a
+              ideia que ainda não é óbvia.
             </p>
           </div>
 
@@ -395,7 +392,7 @@ export default function Landing() {
             <span className="flow-op">=</span>
             <div className="flow-card result">
               <span className="fc-label">O cruzamento</span>
-              <strong>“Energy-for-compute” vira categoria — e ninguém vende isso pronto no Brasil ainda.</strong>
+              <strong>“Energy-for-compute” vira categoria, e ninguém vende isso pronto no Brasil ainda.</strong>
             </div>
           </div>
         </div>
@@ -407,10 +404,7 @@ export default function Landing() {
           <div className="sec-head">
             <span className="eyebrow">uma engine, três lentes</span>
             <h2>O mesmo radar. Quem olha muda o que importa.</h2>
-            <p>
-              A engine cruza setores igual pra todo mundo. O que muda por público é a unidade de
-              valor, o que sobe pro topo do card e qual é o gesto seguinte.
-            </p>
+            <p>O radar é o mesmo pra todo mundo. Muda o que sobe pro topo do card.</p>
           </div>
 
           <div className="lanes">
@@ -422,8 +416,7 @@ export default function Landing() {
               <h3>Pra apostar com menos medo.</h3>
               <p className="who">Quem constrói sozinho e precisa saber se a aposta é real.</p>
               <p className="desc">
-                Poucas oportunidades, fundas. Cada uma já vem com o “e daí?” e o primeiro passo pra
-                validar antes de gastar mês nenhum.
+                Poucas oportunidades, fundas. Cada uma com o “e daí?” e o primeiro teste de validação.
               </p>
               <ul>
                 <li>O “e daí?” acionável no topo, não escondido</li>
@@ -452,12 +445,12 @@ export default function Landing() {
               <h3>Pra cobrir o espaço e achar o deal antes.</h3>
               <p className="who">Quem precisa parecer antenado toda semana e não perder a onda.</p>
               <p className="desc">
-                Densidade e cobertura. Cada sinal vem com o calor do setor, quem já está construindo e
-                o encaixe na sua tese — empurrado num digest semanal.
+                Densidade e cobertura. Cada sinal com o calor do setor e quem já está construindo, num
+                digest semanal.
               </p>
               <ul>
                 <li>Setores aquecendo, com o estágio da onda</li>
-                <li>Players que já se mexeram — inclusive stealth</li>
+                <li>Players que já se mexeram, inclusive stealth</li>
                 <li>Digest semanal por e-mail: você não abre à toa</li>
               </ul>
               <div className="mini">
@@ -481,8 +474,8 @@ export default function Landing() {
               <h3>Pra defender o “por que agora”.</h3>
               <p className="who">Quem precisa levar risco e timing pra uma mesa de decisão.</p>
               <p className="desc">
-                Menos ideia, mais ameaça e janela. Cada card enquadra o risco pra <em>você</em>, o
-                movimento dos incumbentes, e sai com um memo pronto pro board.
+                Menos ideia, mais ameaça e janela. Cada card enquadra o risco pra <em>você</em> e sai
+                com um memo pronto pro board.
               </p>
               <ul>
                 <li>Ameaça ou janela enquadrada pra sua operação</li>
@@ -516,17 +509,17 @@ export default function Landing() {
             <div className="step">
               <span className="num">01</span>
               <h4>Escolha seus setores</h4>
-              <p>Aponte os temas de tecnologia que você quer vigiar. Você define o campo; o radar cuida do resto.</p>
+              <p>Aponte os temas que você quer vigiar. O radar cuida do resto.</p>
             </div>
             <div className="step">
               <span className="num">02</span>
               <h4>A IA lê, busca e cruza</h4>
-              <p>Duas etapas de IA com busca web: uma coleta as notícias recentes e específicas, outra cruza os setores atrás da conexão.</p>
+              <p>Uma etapa coleta as notícias recentes; outra cruza os setores atrás da conexão.</p>
             </div>
             <div className="step">
               <span className="num">03</span>
               <h4>Você guarda e age</h4>
-              <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo, exporte o memo — sempre com as fontes do lado.</p>
+              <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo e exporte o memo, sempre com as fontes.</p>
             </div>
           </div>
         </div>
@@ -539,10 +532,8 @@ export default function Landing() {
             <span className="eyebrow">confiança por construção</span>
             <h2>Insight sem fonte é chute bonito.</h2>
             <p>
-              O valor todo é “isso eu não teria visto sozinho” — e isso só vale se você puder
-              conferir. Todo cruzamento carrega as notícias que o sustentam: veículo original, data e
-              link. Uma conexão espúria e a confiança acaba; por isso a evidência vem junto, não
-              depois.
+              Todo cruzamento carrega as notícias que o sustentam: veículo original, data e link. A
+              evidência vem junto, não depois.
             </p>
           </div>
 
@@ -555,20 +546,20 @@ export default function Landing() {
                 <span className="d" style={{ background: "var(--cyan)" }} /> IA × Energia
               </span>
             </div>
-            <h4>Data centers de IA vão brigar por energia firme — e ninguém vende isso pronto pra eles</h4>
+            <h4>Data centers de IA vão brigar por energia firme, e ninguém vende isso pronto pra eles</h4>
             <div className="ev-src">
               <span className="name">Reuters</span>
-              <span className="txt">— hyperscaler fecha PPA de 1,2 GW</span>
+              <span className="txt">· hyperscaler fecha PPA de 1,2 GW</span>
               <span className="date">há 2 dias</span>
             </div>
             <div className="ev-src">
               <span className="name">Valor Econômico</span>
-              <span className="txt">— leilão no NE atrai compute</span>
+              <span className="txt">· leilão no NE atrai compute</span>
               <span className="date">há 6 dias</span>
             </div>
             <div className="ev-src">
               <span className="name">Canary Media</span>
-              <span className="txt">— “energy is the new bottleneck”</span>
+              <span className="txt">· “energy is the new bottleneck”</span>
               <span className="date">há 11 dias</span>
             </div>
           </div>
@@ -582,10 +573,7 @@ export default function Landing() {
             comece agora
           </span>
           <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
-          <p>
-            Founder, scout ou estrategista — a próxima ideia pode estar no atrito entre dois mundos
-            que você já acompanha.
-          </p>
+          <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
           <div className="cta-row">
             <Link className="btn btn-primary" href="/radar">
               Começar meu radar
