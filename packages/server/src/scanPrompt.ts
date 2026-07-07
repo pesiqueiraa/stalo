@@ -65,6 +65,7 @@ Para cada insight, produza:
 - soWhat: o "E DAÍ?", em 1 a 2 frases: o que um empreendedor faria com isso — a ação ou o ângulo de oportunidade concreto (um produto, um segmento a atacar, uma hipótese a validar). Prático, não genérico
 - related_items: lista dos ids das notícias fornecidas que esse insight conecta — pelo menos 2, e SOMENTE ids que existem na lista recebida
 Regras: no máximo 5 insights. Priorize insights que conectam mais de um tema entre si.
+Nos campos de TEXTO (description, rationale, whyNow, soWhat) escreva em prosa corrida e SOMENTE em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas) — e NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); os ids vão SOMENTE no campo related_items.
 NUNCA invente notícias nem ids — use apenas as notícias fornecidas. Se não houver conexão relevante entre elas, devolva menos insights (ou nenhum).`;
 
 interface CollectedItem {
@@ -113,7 +114,7 @@ Produza:
 - porQueAgora: 1 parágrafo (2 a 3 frases) sobre o TIMING: por que a janela está aberta agora e o que a fecha (movimento de incumbentes, regulação, contratos, adoção)
 ${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
-Regras: tudo em português, direto, sem jargão de consultoria. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
 }
 
 interface DeepDiveInput {
@@ -177,7 +178,7 @@ Produza:
 - monetizacao: 1 parágrafo (2 a 3 frases) — como isso ganharia dinheiro (modelo de receita concreto) e por que alguém pagaria por isso
 - premissas: 3 a 4 premissas FINANCEIRAS que precisam ser verdade para o negócio fechar (ex: "o custo de X precisa ficar abaixo de Y", "o cliente precisa economizar pelo menos Z%"). Cada uma uma frase verificável, começando pela variável-chave
 - custoValidar: 1 a 2 frases — quão barato e rápido dá pra testar a hipótese financeira ANTES de investir pesado (o experimento mais barato que mata ou confirma a ideia)
-Tudo em português, direto, sem jargão de banco de investimento. É hipótese a validar, nunca afirme como certeza.`;
+Tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de banco de investimento. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]). É hipótese a validar, nunca afirme como certeza.`;
 }
 
 interface FinancialsInput {
