@@ -6,6 +6,40 @@ import "./landing.css";
 
 export default function Landing() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // scroll-reveal das seções via IntersectionObserver (nunca scroll listeners —
+  // ver skill 5.D). SSR-safe: as seções nascem visíveis; só ativamos o "esconde
+  // e revela" quando há JS + IO + sem reduced-motion. Assim, sem JS ou com
+  // movimento reduzido, todo o conteúdo aparece normalmente.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || !("IntersectionObserver" in window)) return;
+
+    const els = Array.from(root.querySelectorAll<HTMLElement>(".reveal"));
+    // o que já está na viewport nasce revelado (sem flash de esconde→mostra)
+    for (const el of els) {
+      if (el.getBoundingClientRect().top < window.innerHeight * 0.92) el.classList.add("in");
+    }
+    root.classList.add("reveal-ready");
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("in");
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+    );
+    els.forEach((el) => {
+      if (!el.classList.contains("in")) io.observe(el);
+    });
+    return () => io.disconnect();
+  }, []);
 
   // ---------- radar-grafo do herói (nós = notícias, glifos = insights) ----------
   useEffect(() => {
@@ -275,7 +309,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="lp">
+    <div className="lp" ref={rootRef}>
       <div className="atmos" aria-hidden="true" />
 
       {/* ---------- nav ---------- */}
@@ -364,10 +398,9 @@ export default function Landing() {
       </header>
 
       {/* ---------- o cruzamento ---------- */}
-      <section className="band" id="cruzamento">
+      <section className="band reveal" id="cruzamento">
         <div className="wrap">
           <div className="sec-head">
-            <span className="eyebrow">a unidade de valor</span>
             <h2>Notícia é commodity. A conexão entre setores, não.</h2>
             <p>
               O Stalo pega dois setores que você segue e mostra onde eles se tocam. É ali que mora a
@@ -399,10 +432,9 @@ export default function Landing() {
       </section>
 
       {/* ---------- pra quem ---------- */}
-      <section className="band" id="pra-quem">
+      <section className="band reveal" id="pra-quem">
         <div className="wrap">
           <div className="sec-head">
-            <span className="eyebrow">uma engine, três lentes</span>
             <h2>O mesmo radar. Quem olha muda o que importa.</h2>
             <p>O radar é o mesmo pra todo mundo. Muda o que sobe pro topo do card.</p>
           </div>
@@ -410,9 +442,7 @@ export default function Landing() {
           <div className="lanes">
             {/* founder */}
             <article className="lane founder">
-              <span className="lane-kicker">
-                <span className="d" /> Founder solo
-              </span>
+              <span className="lane-kicker">Founder solo</span>
               <h3>Pra apostar com menos medo.</h3>
               <p className="who">Quem constrói sozinho e precisa saber se a aposta é real.</p>
               <p className="desc">
@@ -439,9 +469,7 @@ export default function Landing() {
 
             {/* scout */}
             <article className="lane scout">
-              <span className="lane-kicker">
-                <span className="d" /> Scout de VC
-              </span>
+              <span className="lane-kicker">Scout de VC</span>
               <h3>Pra cobrir o espaço e achar o deal antes.</h3>
               <p className="who">Quem precisa parecer antenado toda semana e não perder a onda.</p>
               <p className="desc">
@@ -468,9 +496,7 @@ export default function Landing() {
 
             {/* corp */}
             <article className="lane corp">
-              <span className="lane-kicker">
-                <span className="d" /> Estratégia corporativa
-              </span>
+              <span className="lane-kicker">Estratégia corporativa</span>
               <h3>Pra defender o “por que agora”.</h3>
               <p className="who">Quem precisa levar risco e timing pra uma mesa de decisão.</p>
               <p className="desc">
@@ -499,34 +525,75 @@ export default function Landing() {
       </section>
 
       {/* ---------- como funciona ---------- */}
-      <section className="band" id="como">
+      <section className="band reveal" id="como">
         <div className="wrap">
           <div className="sec-head">
-            <span className="eyebrow">do tema ao insight guardado</span>
             <h2>Três passos. Sem curadoria manual.</h2>
           </div>
-          <div className="steps">
-            <div className="step">
-              <span className="num">01</span>
-              <h4>Escolha seus setores</h4>
-              <p>Aponte os temas que você quer vigiar. O radar cuida do resto.</p>
+          <div className="flow">
+            <div className="flow-step">
+              <div className="flow-node">
+                {/* seus setores: nós de temas nas cores do radar */}
+                <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                  <circle cx="-5.5" cy="-1" r="3" fill="var(--cyan)" />
+                  <circle cx="5" cy="-4.5" r="3" fill="var(--mint)" />
+                  <circle cx="1.5" cy="6" r="3" fill="var(--amber)" />
+                </svg>
+              </div>
+              <div className="flow-text">
+                <span className="flow-num">01</span>
+                <h4>Escolha seus setores</h4>
+                <p>Aponte os temas que você quer vigiar. O radar cuida do resto.</p>
+              </div>
             </div>
-            <div className="step">
-              <span className="num">02</span>
-              <h4>A IA lê, busca e cruza</h4>
-              <p>Uma etapa coleta as notícias recentes; outra cruza os setores atrás da conexão.</p>
+            <div className="flow-step">
+              <div className="flow-node">
+                {/* o cruzamento: dois nós ligados pela conexão tracejada */}
+                <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                  <line
+                    x1="-6"
+                    y1="-5"
+                    x2="6"
+                    y2="5"
+                    stroke="var(--line-2)"
+                    strokeWidth="1.4"
+                    strokeDasharray="2 2.4"
+                  />
+                  <circle cx="-6" cy="-5" r="3" fill="var(--cyan)" />
+                  <circle cx="6" cy="5" r="3" fill="var(--mint)" />
+                </svg>
+              </div>
+              <div className="flow-text">
+                <span className="flow-num">02</span>
+                <h4>A IA lê, busca e cruza</h4>
+                <p>Uma etapa coleta as notícias recentes; outra cruza os setores atrás da conexão.</p>
+              </div>
             </div>
-            <div className="step">
-              <span className="num">03</span>
-              <h4>Você guarda e age</h4>
-              <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo e exporte o memo, sempre com as fontes.</p>
+            <div className="flow-step">
+              <div className="flow-node">
+                {/* a oportunidade: o glifo-estrela do radar */}
+                <svg viewBox="-12 -12 24 24" aria-hidden="true">
+                  <path
+                    d="M0 -10 L2.6 -2.6 L10 0 L2.6 2.6 L0 10 L-2.6 2.6 L-10 0 L-2.6 -2.6 Z"
+                    fill="rgba(232,162,61,0.18)"
+                    stroke="var(--amber)"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="flow-text">
+                <span className="flow-num">03</span>
+                <h4>Você guarda e age</h4>
+                <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo e exporte o memo, sempre com as fontes.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ---------- evidência ---------- */}
-      <section className="band" id="evidencia">
+      <section className="band reveal" id="evidencia">
         <div className="wrap evidence">
           <div className="sec-head">
             <span className="eyebrow">confiança por construção</span>
@@ -549,17 +616,17 @@ export default function Landing() {
             <h4>Data centers de IA vão brigar por energia firme, e ninguém vende isso pronto pra eles</h4>
             <div className="ev-src">
               <span className="name">Reuters</span>
-              <span className="txt">· hyperscaler fecha PPA de 1,2 GW</span>
+              <span className="txt">hyperscaler fecha PPA de 1,2 GW</span>
               <span className="date">há 2 dias</span>
             </div>
             <div className="ev-src">
               <span className="name">Valor Econômico</span>
-              <span className="txt">· leilão no NE atrai compute</span>
+              <span className="txt">leilão no NE atrai compute</span>
               <span className="date">há 6 dias</span>
             </div>
             <div className="ev-src">
               <span className="name">Canary Media</span>
-              <span className="txt">· “energy is the new bottleneck”</span>
+              <span className="txt">“energy is the new bottleneck”</span>
               <span className="date">há 11 dias</span>
             </div>
           </div>
@@ -567,11 +634,8 @@ export default function Landing() {
       </section>
 
       {/* ---------- cta final ---------- */}
-      <section className="band final" id="comecar">
+      <section className="band final reveal" id="comecar">
         <div className="wrap">
-          <span className="eyebrow" style={{ justifyContent: "center" }}>
-            comece agora
-          </span>
           <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
           <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
           <div className="cta-row">

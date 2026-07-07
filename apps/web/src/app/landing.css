@@ -103,15 +103,38 @@
 .lp .btn-primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
 .lp .btn-ghost { border-color: var(--line-2); color: var(--dim); background: transparent; }
 .lp .btn-ghost:hover { color: var(--lp-text); border-color: var(--dim); }
+/* feedback tátil: o botão "afunda" no clique */
+.lp .btn:active { transform: translateY(0) scale(0.985); }
 
 /* ---------- nav ---------- */
 .lp .nav {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(12px);
-  background: rgba(7, 11, 20, 0.7);
+  /* liquid glass nativo: desfoca e satura o radar que passa por baixo (a
+     saturação é o que dá a sensação de refração), com uma quina superior que
+     "pega" a luz. Sem displacement/SVG — funciona em todo browser. Fallbacks
+     sólidos logo abaixo garantem legibilidade onde o vidro não rola. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 62%),
+    rgba(7, 11, 20, 0.6);
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
   border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+/* navegador sem backdrop-filter: fundo quase sólido, legibilidade acima do efeito */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lp .nav { background: rgba(7, 11, 20, 0.94); }
+}
+/* usuário que pediu menos transparência no sistema: vidro vira sólido */
+@media (prefers-reduced-transparency: reduce) {
+  .lp .nav {
+    background: var(--void);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
 }
 .lp .nav-in { display: flex; align-items: center; gap: 1.4rem; padding-block: 0.8rem; }
 .lp .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
@@ -217,8 +240,7 @@
 .lp .lane.corp { --h: var(--corp); }
 .lp .lane::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--h); opacity: 0.55; }
 .lp .lane:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--h) 40%, var(--line-2)); }
-.lp .lane-kicker { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--h); display: inline-flex; align-items: center; gap: 0.5em; }
-.lp .lane-kicker .d { width: 8px; height: 8px; border-radius: 50%; background: var(--h); }
+.lp .lane-kicker { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--h); }
 .lp .lane h3 { font-family: var(--display); font-size: 1.35rem; line-height: 1.12; letter-spacing: -0.02em; margin: 0.85rem 0 0; font-weight: 630; text-wrap: balance; }
 .lp .lane .who { color: var(--dimmer); font-size: 0.86rem; margin: 0.3rem 0 0; }
 .lp .lane .desc { color: var(--dim); font-size: 0.95rem; margin: 0.9rem 0 1.2rem; }
@@ -233,20 +255,53 @@
 .lp .mini .m-body { font-size: 0.84rem; color: #d6ddee; line-height: 1.4; }
 .lp .mini .m-body b { color: var(--h); font-weight: 600; }
 
-/* ---------- como funciona ---------- */
-.lp .steps { margin-top: 2.4rem; display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-@media (min-width: 780px) { .lp .steps { grid-template-columns: repeat(3, 1fr); } }
-.lp .step { background: var(--void); padding: 1.6rem 1.5rem; }
-.lp .step .num { font-family: var(--mono); font-size: 0.8rem; color: var(--amber); letter-spacing: 0.1em; }
-.lp .step h4 { font-family: var(--display); font-size: 1.12rem; letter-spacing: -0.02em; margin: 0.9rem 0 0.4rem; font-weight: 600; }
-.lp .step p { margin: 0; color: var(--dim); font-size: 0.94rem; }
+/* ---------- como funciona (fluxo conectado, motivo do grafo) ---------- */
+.lp .flow { margin-top: 2.8rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 780px) { .lp .flow { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; } }
+
+/* mobile: timeline (nó à esquerda, texto à direita) — desktop: nó no topo */
+.lp .flow-step { position: relative; display: flex; align-items: flex-start; gap: 1rem; }
+@media (min-width: 780px) { .lp .flow-step { flex-direction: column; gap: 0; } }
+
+.lp .flow-node {
+  flex-shrink: 0;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--void-2);
+  display: grid; place-items: center;
+  position: relative; z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.lp .flow-node svg { width: 22px; height: 22px; display: block; }
+
+/* conector tracejado nó→nó (ecoa os links tracejados do radar no hero) */
+.lp .flow-step:not(:last-child)::before {
+  content: ""; position: absolute; z-index: 0;
+  left: 22.5px; top: 46px;
+  height: calc(100% - 46px + 2rem);
+  border-left: 1px dashed var(--line-2);
+}
+@media (min-width: 780px) {
+  .lp .flow-step:not(:last-child)::before {
+    left: 46px; top: 22.5px;
+    width: calc(100% - 46px + 1.5rem); height: 0;
+    border-left: none;
+    border-top: 1px dashed var(--line-2);
+  }
+}
+
+.lp .flow-num { font-family: var(--mono); font-size: 0.72rem; color: var(--dimmer); letter-spacing: 0.14em; display: block; }
+@media (min-width: 780px) { .lp .flow-num { margin-top: 1.1rem; } }
+.lp .flow-step h4 { font-family: var(--display); font-size: 1.12rem; letter-spacing: -0.02em; margin: 0.3rem 0 0.4rem; font-weight: 600; }
+.lp .flow-step p { margin: 0; color: var(--dim); font-size: 0.94rem; max-width: 34ch; }
 
 /* ---------- evidência ---------- */
 .lp .evidence { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; }
 @media (min-width: 860px) { .lp .evidence { grid-template-columns: 1fr 0.9fr; } }
 .lp .ev-demo { border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.4rem; background: linear-gradient(180deg, var(--panel), var(--void-2)); }
 .lp .ev-demo .ed-top { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; margin-bottom: 0.8rem; }
-.lp .ev-demo .tag { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.24em 0.6em; border: 1px solid var(--line-2); border-radius: 6px; display: inline-flex; align-items: center; gap: 0.4em; }
+.lp .ev-demo .tag { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.24em 0.6em; border: 1px solid var(--line-2); border-radius: 8px; display: inline-flex; align-items: center; gap: 0.4em; }
 .lp .ev-demo .tag .d { width: 6px; height: 6px; border-radius: 50%; }
 .lp .ev-demo h4 { font-family: var(--display); font-size: 1.12rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0 0 0.9rem; font-weight: 600; text-wrap: balance; }
 .lp .ev-src { display: flex; gap: 0.6em; align-items: baseline; padding: 0.55rem 0; border-top: 1px solid var(--line); font-size: 0.86rem; }
@@ -267,6 +322,16 @@
 .lp .foot-link { color: var(--dim); text-decoration: none; font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; transition: color 0.2s ease; }
 .lp .foot-link:hover { color: var(--amber); }
 
+/* ---------- scroll-reveal ----------
+   só ganha efeito quando o JS adiciona .reveal-ready ao root (page.tsx). Sem JS
+   ou com reduced-motion, .reveal-ready nunca entra → conteúdo fica visível. */
+.lp.reveal-ready .reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.lp.reveal-ready .reveal.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
-  .lp .hero .trust-line .live { animation: none; }
+  .lp.reveal-ready .reveal { opacity: 1; transform: none; transition: none; }
 }
