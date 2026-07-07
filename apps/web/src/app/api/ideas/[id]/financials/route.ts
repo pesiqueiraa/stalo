@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getIdea, runFinancials, saveFinancials } from "@stalo/server";
+import { getIdea, getLens, runFinancials, saveFinancials } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { enforceRateLimit, FINANCIALS_LIMIT } from "@/lib/rateLimit";
 
@@ -32,7 +32,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       FINANCIALS_LIMIT.windowSeconds,
     );
     if (limited) return limited;
-    const fin = await runFinancials(idea);
+    // a lente do workspace ajusta o foco da análise financeira
+    const lens = await getLens(wid);
+    const fin = await runFinancials(idea, lens);
     const updated = await saveFinancials(wid, id, fin);
     return NextResponse.json(updated ?? { ...idea, financials: fin });
   } catch (err) {

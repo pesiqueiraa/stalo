@@ -147,14 +147,38 @@ Gere o relatório de aprofundamento.`;
 // Segundo nível, gerado por cima do deep dive. Emphasis: ordens de grandeza e
 // "o que precisa ser verdade", nunca números precisos inventados.
 
-export const FINANCIALS_SYSTEM_PROMPT = `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage para um empreendedor decidir se vale seguir.
+// Mesma ideia da lente no mergulho (arquiteturad §7): esquema de saída idêntico
+// (mercado, monetizacao, premissas, custoValidar), mas o público e o foco da
+// análise se ajustam ao perfil.
+const FINANCIALS_LENS: Record<Lens, { audience: string; foco: string }> = {
+  founder: {
+    audience: "para um FOUNDER early-stage decidir se vale seguir",
+    foco: "Foco: dá pra começar pequeno e o negócio se paga? Qual o caminho de receita mais concreto e o menor teste que confirma a conta.",
+  },
+  investor: {
+    audience: "para um INVESTIDOR decidir se é uma aposta de retorno venture-scale",
+    foco: "Foco: o mercado é grande e cresce rápido o bastante? Quem captura o valor na cadeia, quão defensável é, e o que precisa ser verdade pra virar um desfecho grande.",
+  },
+  explorer: {
+    audience:
+      "para quem quer ENTENDER a economia dessa mudança (não necessariamente investir ou construir)",
+    foco: "Foco: por onde o dinheiro flui nessa mudança, quem ganha e quem perde, e como medir barato se o capital está de fato se movendo pra lá.",
+  },
+};
+
+// Prompt do 2º nível (financeiro) já ajustado à lente (default: founder).
+export function buildFinancialsSystemPrompt(lens?: Lens | null): string {
+  const l = FINANCIALS_LENS[lens ?? "founder"];
+  return `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage, ${l.audience}.
 Você recebe uma ideia já aprofundada (com panorama e timing). NÃO invente números precisos nem cite valores de mercado específicos sem base — trabalhe com ORDENS DE GRANDEZA e com "o que precisaria ser verdade" para a conta fechar. Honestidade sobre a incerteza vale mais que falsa precisão.
+${l.foco}
 Produza:
 - mercado: 1 parágrafo (2 a 3 frases) sobre o tamanho e a atratividade do mercado em ordem de grandeza — quem paga, quantos são, se é nicho caro ou volume barato. Diga se é grande o bastante pra valer a pena
 - monetizacao: 1 parágrafo (2 a 3 frases) — como isso ganharia dinheiro (modelo de receita concreto) e por que alguém pagaria por isso
 - premissas: 3 a 4 premissas FINANCEIRAS que precisam ser verdade para o negócio fechar (ex: "o custo de X precisa ficar abaixo de Y", "o cliente precisa economizar pelo menos Z%"). Cada uma uma frase verificável, começando pela variável-chave
 - custoValidar: 1 a 2 frases — quão barato e rápido dá pra testar a hipótese financeira ANTES de investir pesado (o experimento mais barato que mata ou confirma a ideia)
 Tudo em português, direto, sem jargão de banco de investimento. É hipótese a validar, nunca afirme como certeza.`;
+}
 
 interface FinancialsInput {
   type: string;
