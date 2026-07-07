@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
 
   function validate() {
@@ -23,15 +24,24 @@ export default function LoginPage() {
     return e;
   }
 
-  function onSubmit(ev: React.FormEvent) {
+  async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    // STUB: sem backend ainda. Simula a autenticação e leva ao radar.
-    // Trocar por chamada real de auth quando o backend entrar.
     setLoading(true);
-    setTimeout(() => router.push("/radar"), 900);
+    const supabase = createSupabaseBrowser();
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) {
+      // não revela qual campo falhou (segurança)
+      setErrors({ form: "E-mail ou senha inválidos." });
+      setLoading(false);
+      return;
+    }
+    router.push("/radar");
   }
 
   return (
@@ -97,6 +107,8 @@ export default function LoginPage() {
             Esqueci minha senha
           </Link>
         </div>
+
+        {errors.form && <p className="auth-form-error">{errors.form}</p>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
           {loading ? (
