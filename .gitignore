@@ -13,3 +13,7 @@ yarn-error.log*
 *.tsbuildinfo
 .env*
 !.env.example
+
+# Skills de agente (tooling local; reinstalável via `npx skills add`) — não é código do app
+.agents/
+skills-lock.json
