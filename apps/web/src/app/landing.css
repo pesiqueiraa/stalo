@@ -143,6 +143,11 @@
 .lp .nav-links a:hover { color: var(--lp-text); }
 .lp .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 0.7rem; }
 @media (min-width: 820px) { .lp .nav-links { display: flex; } }
+/* telas estreitas: esconde o "Entrar" da nav (alcançável pelo /signup) pra o
+   CTA primário caber sozinho em 1 linha */
+@media (max-width: 480px) {
+  .lp .nav-cta .btn-ghost { display: none; }
+}
 
 /* ---------- hero (radar-grafo imersivo, fundo inteiro) ---------- */
 .lp .hero {
