@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { GoogleButton } from "../GoogleButton";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,6 +15,13 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
+
+  // OAuth que falhou volta com ?error=oauth
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("error") === "oauth") {
+      setErrors({ form: "Não consegui entrar com o Google. Tente de novo." });
+    }
+  }, []);
 
   function validate() {
     const e: { email?: string; password?: string } = {};
@@ -48,6 +56,11 @@ export default function LoginPage() {
     <div className="auth-card">
       <h1 className="auth-h1">Entrar</h1>
       <p className="auth-sub">Bem-vindo de volta. Retome seu radar.</p>
+
+      <GoogleButton label="Entrar com Google" />
+      <div className="auth-divider">
+        <span>ou</span>
+      </div>
 
       <form className="auth-form" onSubmit={onSubmit} noValidate>
         <div className="field">
