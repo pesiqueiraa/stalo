@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createTopic } from "@/lib/api";
 import "./onboarding.css";
 
 // Paleta de setores (mesma linguagem do radar). Cada setor escolhido ganha uma
@@ -125,6 +126,7 @@ export default function OnboardingPage() {
   const [custom, setCustom] = useState("");
   const [lens, setLens] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const isMax = selected.length >= MAX;
   const count = selected.length;
@@ -173,9 +175,20 @@ export default function OnboardingPage() {
     setCustom("");
   }
 
-  function finish() {
-    // STUB: sem backend ainda. A seleção e a lente ainda não persistem. Quando o
-    // backend entrar: criar os temas via /api/topics e guardar a lente escolhida.
+  async function finish() {
+    if (saving) return;
+    setSaving(true);
+    // Persiste os setores escolhidos como temas do workspace (em ordem = ordem de
+    // cor no radar). O backend valida limite/duplicidade; erros por item são
+    // ignorados pra não travar o fluxo. A lente ainda não persiste (etapa 2:
+    // precisa de campo novo no schema; ver arquiteturad §7).
+    for (const s of selected) {
+      try {
+        await createTopic(s.name);
+      } catch {
+        // tema duplicado ou no limite: segue em frente
+      }
+    }
     router.push("/radar");
   }
 
@@ -324,7 +337,7 @@ export default function OnboardingPage() {
                 {count < MIN ? "escolha ao menos 2 setores" : isMax ? "radar cheio" : "setores no radar"}
               </span>
               <div className="onb-actions">
-                <button type="button" className="onb-skip" onClick={finish}>
+                <button type="button" className="onb-skip" onClick={finish} disabled={saving}>
                   pular por agora
                 </button>
                 <button type="button" className="onb-cta" onClick={() => setStep("lens")} disabled={count < MIN}>
@@ -421,11 +434,19 @@ export default function OnboardingPage() {
 
             <div className="onb-foot">
               <div className="onb-actions">
-                <button type="button" className="onb-back" onClick={() => setStep("lens")}>
+                <button type="button" className="onb-back" onClick={() => setStep("lens")} disabled={saving}>
                   voltar
                 </button>
-                <button type="button" className="onb-cta" onClick={finish} disabled={!revealed}>
-                  Entrar no radar <span className="arrow">→</span>
+                <button type="button" className="onb-cta" onClick={finish} disabled={!revealed || saving}>
+                  {saving ? (
+                    <>
+                      <span className="onb-spinner" aria-hidden="true" /> Ativando…
+                    </>
+                  ) : (
+                    <>
+                      Entrar no radar <span className="arrow">→</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
