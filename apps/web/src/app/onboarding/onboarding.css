@@ -19,7 +19,8 @@
   --display: var(--font-display), var(--font-body), sans-serif;
   --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(900px 620px at 50% -8%, rgba(232, 162, 61, 0.07), transparent 60%),
     radial-gradient(760px 560px at 12% 110%, rgba(94, 200, 216, 0.06), transparent 55%),
@@ -36,18 +37,21 @@
 .onb :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 6px; }
 .onb ::selection { background: rgba(232, 162, 61, 0.28); color: #fff; }
 
-.onb-top { padding: 1.2rem clamp(1.1rem, 4vw, 2.4rem); }
+.onb-top { padding: 0.9rem clamp(1.1rem, 4vw, 2.4rem); flex-shrink: 0; }
 .onb-logo { height: 24px; width: auto; display: block; }
 
 .onb-main {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  padding: 0.5rem clamp(1.1rem, 4vw, 2.4rem) 2.6rem;
+  padding: 0.5rem clamp(1.1rem, 4vw, 2.4rem) 1.2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
   animation: onb-in 0.5s ease both;
 }
@@ -62,17 +66,18 @@
 }
 .onb-h1 {
   font-family: var(--display);
-  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
   letter-spacing: -0.035em;
   line-height: 1.04;
   font-weight: 660;
-  margin: 0.7rem 0 0;
+  margin: 0.5rem 0 0;
   text-wrap: balance;
 }
-.onb-sub { color: var(--dim); margin: 0.75rem auto 0; max-width: 46ch; font-size: 1rem; }
+.onb-sub { color: var(--dim); margin: 0.5rem auto 0; max-width: 46ch; font-size: 0.98rem; }
 
 /* ---------- radar que se preenche ---------- */
-.onb-radar { position: relative; width: min(420px, 82vw); aspect-ratio: 1; margin: 1.7rem auto 0; }
+/* tamanho atado à altura da viewport pra a tela caber sem rolar */
+.onb-radar { position: relative; width: min(340px, 72vw, 34vh); aspect-ratio: 1; margin: clamp(0.6rem, 1.8vh, 1.2rem) auto 0; }
 .onb-sweep {
   position: absolute;
   inset: 8%;
@@ -83,22 +88,6 @@
 }
 @keyframes onb-sweep { to { transform: rotate(360deg); } }
 .onb-radar-svg { position: relative; width: 100%; height: 100%; display: block; overflow: visible; }
-
-.onb-hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: var(--dimmer);
-  line-height: 1.8;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
 
 /* hub central */
 .onb-hub-glow { animation: onb-hub 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
@@ -125,21 +114,21 @@
 @keyframes onb-ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(3.6); opacity: 0; } }
 
 /* ---------- banco de sinais (chips) ---------- */
-.onb-bank { margin-top: 1.9rem; width: 100%; max-width: 720px; }
+.onb-bank { margin-top: clamp(0.8rem, 1.8vh, 1.3rem); width: 100%; max-width: 720px; }
 .onb-bank-label {
   font-family: var(--mono);
   font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--dimmer);
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.6rem;
 }
-.onb-chips { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+.onb-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
 .onb-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  padding: 0.5rem 0.95rem;
+  padding: 0.45rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--line-2);
   background: var(--void-2);
@@ -159,7 +148,7 @@
 .onb-chip.active .chip-x { opacity: 0.7; }
 .onb-chip .chip-x { font-size: 1.05em; line-height: 1; opacity: 0; margin-left: 0.1em; }
 
-.onb-custom { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1.1rem; }
+.onb-custom { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.7rem; }
 .onb-custom input {
   width: min(280px, 66vw);
   background: var(--void-2);
@@ -187,7 +176,7 @@
 .onb-add:disabled { opacity: 0.4; cursor: default; }
 
 /* ---------- rodapé (contador + CTA) ---------- */
-.onb-foot { margin-top: 2.1rem; display: flex; flex-direction: column; align-items: center; gap: 1.1rem; }
+.onb-foot { margin-top: clamp(0.8rem, 1.8vh, 1.4rem); display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
 .onb-count { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; color: var(--dim); }
 .onb-count b { color: var(--amber); font-weight: 500; }
 .onb-actions { display: flex; align-items: center; gap: 1.2rem; }
@@ -215,7 +204,7 @@
 @keyframes onb-spin { to { transform: rotate(360deg); } }
 
 /* radar compacto (passo de revelação) */
-.onb-radar.compact { width: min(280px, 64vw); margin-top: 1.2rem; }
+.onb-radar.compact { width: min(240px, 60vw, 26vh); margin-top: clamp(0.5rem, 1.4vh, 1rem); }
 
 /* ---------- indicador de passos ---------- */
 .onb-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
