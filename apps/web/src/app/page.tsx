@@ -445,16 +445,17 @@ export default function Landing() {
           <div className="lanes">
             {/* founder */}
             <article className="lane founder">
-              <span className="lane-kicker">Founder solo</span>
-              <h3>Pra apostar com menos medo.</h3>
+              <span className="lane-kicker">Founder</span>
+              <h3>Pra achar a próxima ideia pronta pra construir.</h3>
               <p className="who">Quem constrói sozinho e precisa saber se a aposta é real.</p>
               <p className="desc">
-                Poucas oportunidades, fundas. Cada uma com o “e daí?” e o primeiro teste de validação.
+                As <em>oportunidades</em> sobem primeiro no seu brief. Cada uma com o “e daí?” — e o
+                mergulho vira um plano de validação com cliente.
               </p>
               <ul>
-                <li>O “e daí?” acionável no topo, não escondido</li>
-                <li>Primeiro teste de validação sugerido</li>
-                <li>Mergulho fundo num clique: timing, riscos, quem já está lá</li>
+                <li>Oportunidades lideram o seu brief</li>
+                <li>O “e daí?” acionável, não escondido</li>
+                <li>Mergulho: passos de validação com gente real</li>
               </ul>
               <div className="mini">
                 <div className="m-top">
@@ -470,56 +471,58 @@ export default function Landing() {
               </div>
             </article>
 
-            {/* scout */}
-            <article className="lane scout">
-              <span className="lane-kicker">Scout de VC</span>
-              <h3>Pra cobrir o espaço e achar o deal antes.</h3>
-              <p className="who">Quem precisa parecer antenado toda semana e não perder a onda.</p>
+            {/* investidor */}
+            <article className="lane investor">
+              <span className="lane-kicker">Investidor</span>
+              <h3>Pra enxergar a categoria antes de virar óbvia.</h3>
+              <p className="who">Quem precisa achar o deal antes da manada.</p>
               <p className="desc">
-                Densidade e cobertura. Cada sinal com o calor do setor e quem já está construindo, num
-                digest semanal.
+                Os <em>gaps de mercado</em> lideram — o espaço em branco antes de ter nome. No mergulho,
+                vira diligência: quem já está lá e o tamanho da janela.
               </p>
               <ul>
-                <li>Setores aquecendo, com o estágio da onda</li>
-                <li>Players que já se mexeram, inclusive stealth</li>
-                <li>Digest semanal por e-mail: você não abre à toa</li>
+                <li>Gaps de mercado lideram o seu brief</li>
+                <li>Cada tese com as fontes que a sustentam</li>
+                <li>Mergulho: diligência e o que separa o vencedor</li>
               </ul>
               <div className="mini">
                 <div className="m-top">
                   <span className="cd" style={{ background: "var(--cyan)" }} />
                   IA<span className="mx">×</span>
                   <span className="cd" style={{ background: "var(--mint)" }} />
-                  Energia · aquecendo
+                  Energia · gap
                 </div>
                 <div className="m-body">
-                  <b>Deal angle →</b> “Energy-for-compute” virando categoria. 3 seeds lá fora, 0 no BR.
+                  <b>O deal →</b> “Energy-for-compute” virando categoria. Já se move lá fora, ninguém no
+                  BR ainda.
                 </div>
               </div>
             </article>
 
-            {/* corp */}
-            <article className="lane corp">
-              <span className="lane-kicker">Estratégia corporativa</span>
-              <h3>Pra defender o “por que agora”.</h3>
-              <p className="who">Quem precisa levar risco e timing pra uma mesa de decisão.</p>
+            {/* explorador */}
+            <article className="lane explorer">
+              <span className="lane-kicker">Explorador</span>
+              <h3>Pra entender pra onde a tecnologia está indo.</h3>
+              <p className="who">Quem quer se posicionar cedo, sem precisar construir ou investir.</p>
               <p className="desc">
-                Menos ideia, mais ameaça e janela. Cada card enquadra o risco pra <em>você</em> e sai
-                com um memo pronto pro board.
+                As <em>tendências</em> sobem primeiro. No mergulho, os sinais a acompanhar pra saber se a
+                onda se confirma — ou esfria.
               </p>
               <ul>
-                <li>Ameaça ou janela enquadrada pra sua operação</li>
-                <li>Timing: o que abre a janela e o que a fecha</li>
-                <li>Memo pronto pra levar à decisão</li>
+                <li>Tendências lideram o seu brief</li>
+                <li>A leitura do movimento, com o timing</li>
+                <li>Mergulho: sinais a monitorar, não achismo</li>
               </ul>
               <div className="mini">
                 <div className="m-top">
                   <span className="cd" style={{ background: "var(--cyan)" }} />
                   IA<span className="mx">×</span>
                   <span className="cd" style={{ background: "var(--mint)" }} />
-                  Energia · janela
+                  Energia · tendência
                 </div>
                 <div className="m-body">
-                  <b>Pra você →</b> Trave energia firme antes da disputa estourar o preço. Memo pronto.
+                  <b>A leitura →</b> Energia vira o gargalo do compute. Acompanhe PPAs e leilões pra ver
+                  se acelera.
                 </div>
               </div>
             </article>

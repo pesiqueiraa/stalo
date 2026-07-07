@@ -21,8 +21,8 @@
   --dimmer: #63748f;
   /* lentes de público */
   --founder: var(--amber);
-  --scout: var(--cyan);
-  --corp: var(--violet);
+  --investor: var(--cyan);
+  --explorer: var(--violet);
   --sans: var(--font-body), system-ui, sans-serif;
   --display: var(--font-display), var(--font-body), sans-serif;
   --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
@@ -49,7 +49,7 @@
 .lp a { color: inherit; text-decoration: none; }
 
 .lp :focus-visible {
-  outline: 2px solid var(--scout);
+  outline: 2px solid var(--investor);
   outline-offset: 3px;
   border-radius: 3px;
 }
@@ -241,8 +241,8 @@
   overflow: hidden;
 }
 .lp .lane.founder { --h: var(--founder); }
-.lp .lane.scout { --h: var(--scout); }
-.lp .lane.corp { --h: var(--corp); }
+.lp .lane.investor { --h: var(--investor); }
+.lp .lane.explorer { --h: var(--explorer); }
 .lp .lane::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--h); opacity: 0.55; }
 .lp .lane:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--h) 40%, var(--line-2)); }
 .lp .lane-kicker { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--h); }

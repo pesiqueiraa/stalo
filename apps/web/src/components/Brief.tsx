@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { GraphNode, InsightNode, NewsNode } from "@stalo/shared";
-import { insightKey, labelForType } from "@/lib/ui";
+import type { GraphNode, InsightNode, Lens, NewsNode } from "@stalo/shared";
+import { insightKey, labelForType, LENS_LEAD_CATEGORY } from "@/lib/ui";
 import { topicColor } from "@/lib/graph";
 
 interface BriefProps {
@@ -11,6 +11,7 @@ interface BriefProps {
   topics: string[]; // ordem = cor por tema
   savedKeys: Set<string>; // insightKey das ideias já salvas
   hasScanned: boolean; // distingue "ainda não escaneou" de "escaneou sem conexões"
+  lens: Lens | null; // lente do workspace: decide a categoria que lidera o brief
   onSave: (node: GraphNode, notes: string) => void;
 }
 
@@ -102,13 +103,23 @@ export function Brief({
   topics,
   savedKeys,
   hasScanned,
+  lens,
   onSave,
 }: BriefProps) {
-  // ranqueado por evidência: mais notícias sustentando a tese primeiro.
-  const ranked = useMemo(
-    () => [...insights].sort((a, b) => b.related.length - a.related.length),
-    [insights],
-  );
+  // ranqueado por lente + evidência: a categoria que a lente lidera sobe ao topo
+  // (arquiteturad §7), e dentro disso vale a evidência (mais notícias primeiro).
+  // Sem lente, cai no ranqueamento neutro por evidência.
+  const ranked = useMemo(() => {
+    const leadCat = lens ? LENS_LEAD_CATEGORY[lens] : null;
+    return [...insights].sort((a, b) => {
+      if (leadCat) {
+        const aLead = a.insightType === leadCat ? 1 : 0;
+        const bLead = b.insightType === leadCat ? 1 : 0;
+        if (aLead !== bLead) return bLead - aLead;
+      }
+      return b.related.length - a.related.length;
+    });
+  }, [insights, lens]);
 
   const newsById = useMemo(() => {
     const map = new Map<string, NewsNode>();
