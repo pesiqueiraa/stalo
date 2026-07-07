@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { GoogleButton } from "../GoogleButton";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
@@ -70,6 +71,11 @@ export default function SignupPage() {
     <div className="auth-card">
       <h1 className="auth-h1">Criar conta</h1>
       <p className="auth-sub">Comece seu radar em segundos.</p>
+
+      <GoogleButton label="Criar conta com Google" />
+      <div className="auth-divider">
+        <span>ou</span>
+      </div>
 
       <form className="auth-form" onSubmit={onSubmit} noValidate>
         <div className="field">
