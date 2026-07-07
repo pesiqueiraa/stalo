@@ -13,6 +13,8 @@
 // provider (schema Zod em scan.ts), então os prompts focam nas REGRAS, não na
 // formatação do JSON.
 
+import type { Lens } from "@stalo/shared";
+
 // ---------- ① COLETOR ----------
 
 export const COLLECT_SYSTEM_PROMPT = `Você é um motor de pesquisa de notícias de tecnologia e negócios.
@@ -78,14 +80,41 @@ interface CollectedItem {
 // descrição, "por que conecta", "e daí?") + as notícias que ela cruza, e gera
 // SÓ as seções novas (não repete o rationale/soWhat, que a UI já tem).
 
-export const DEEP_DIVE_SYSTEM_PROMPT = `Você é um analista de estratégia que aprofunda uma oportunidade de negócio já identificada, para um empreendedor early-stage decidir se vale investigar.
+// A "linguagem de direcionamento" do mergulho muda por lente (arquiteturad §7):
+// o esquema de saída é o MESMO (panorama, porQueAgora, proximosPassos, sinais),
+// mas o público e o que conta como "próximo passo" se ajustam ao perfil. A
+// taxonomia de insight (tendência/gap/oportunidade) não muda aqui.
+const DEEP_DIVE_LENS: Record<Lens, { audience: string; passos: string }> = {
+  founder: {
+    audience: "para um FOUNDER early-stage decidir se vale a pena CONSTRUIR",
+    passos:
+      "- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir",
+  },
+  investor: {
+    audience: "para um INVESTIDOR avaliar se isso vira uma tese/deal defensável",
+    passos:
+      "- proximosPassos: 3 a 4 passos de DILIGÊNCIA na ordem em que fariam sentido — mapear quem já está construindo (inclusive stealth), medir o tamanho da janela, e identificar o que separaria um vencedor. Cada passo é uma frase de ação (comece com verbo)",
+  },
+  explorer: {
+    audience:
+      "para quem quer ENTENDER a tendência e se posicionar cedo (não necessariamente construir ou investir)",
+    passos:
+      "- proximosPassos: 3 a 4 SINAIS A ACOMPANHAR pra saber se a tendência se confirma ou esfria (métricas, movimentos de players, marcos regulatórios). Cada um é uma frase começando com um verbo de observação (Acompanhe, Monitore, Observe)",
+  },
+};
+
+// Prompt do mergulho já ajustado à lente do usuário (default: founder).
+export function buildDeepDiveSystemPrompt(lens?: Lens | null): string {
+  const l = DEEP_DIVE_LENS[lens ?? "founder"];
+  return `Você é um analista de estratégia que aprofunda uma oportunidade já identificada, ${l.audience}.
 Você recebe uma ideia (tipo, título, frase de efeito, "por que conecta" e "e daí?") e as notícias que a originaram. Gere um relatório curto e ACIONÁVEL, sem encher linguiça.
 Produza:
 - panorama: 1 parágrafo (2 a 4 frases) que situa a oportunidade — os vetores/forças que se aproximam e por que o cruzamento importa agora. Concreto, não genérico
 - porQueAgora: 1 parágrafo (2 a 3 frases) sobre o TIMING: por que a janela está aberta agora e o que a fecha (movimento de incumbentes, regulação, contratos, adoção)
-- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir
+${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
 Regras: tudo em português, direto, sem jargão de consultoria. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+}
 
 interface DeepDiveInput {
   type: string;
