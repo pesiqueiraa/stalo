@@ -109,6 +109,18 @@ export async function saveLens(lens: Lens): Promise<void> {
   if (!res.ok) throw new Error(await parseError(res, "Falha ao salvar a lente."));
 }
 
+// Destino após autenticar: quem ainda não configurou (sem setores e sem lente)
+// vai pro onboarding; os demais, pro radar. Mesmo critério do /auth/callback do
+// OAuth, aqui no client para o login por e-mail.
+export async function postAuthDestination(): Promise<"/onboarding" | "/radar"> {
+  try {
+    const [topics, settings] = await Promise.all([fetchTopics(), fetchSettings()]);
+    return topics.length === 0 && !settings.lens ? "/onboarding" : "/radar";
+  } catch {
+    return "/radar";
+  }
+}
+
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia
 // atualizada, já com o deepDive preenchido.
 export async function requestDeepDive(id: string): Promise<SavedIdea> {

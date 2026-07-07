@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { postAuthDestination } from "@/lib/api";
 import { GoogleButton } from "../GoogleButton";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,7 +50,8 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/radar");
+    // novato (sem setores/lente) → onboarding; senão → radar
+    router.push(await postAuthDestination());
   }
 
   return (
