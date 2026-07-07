@@ -150,6 +150,26 @@
 .auth-link { color: var(--cyan); font-size: 0.85rem; }
 .auth-link:hover { text-decoration: underline; }
 
+.auth-form-error {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--danger);
+  background: rgba(239, 109, 126, 0.1);
+  border: 1px solid rgba(239, 109, 126, 0.32);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+}
+.auth-notice {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text);
+  background: color-mix(in oklab, var(--cyan) 12%, var(--void-2));
+  border: 1px solid color-mix(in oklab, var(--cyan) 32%, var(--line));
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+}
+
 .auth-submit {
   margin-top: 0.4rem;
   width: 100%;

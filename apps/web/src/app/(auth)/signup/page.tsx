@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
@@ -13,7 +14,13 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    form?: string;
+  }>({});
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   function validate() {
@@ -27,15 +34,36 @@ export default function SignupPage() {
     return e;
   }
 
-  function onSubmit(ev: React.FormEvent) {
+  async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    // STUB: sem backend ainda. Simula o cadastro e segue pro onboarding de
-    // setores. Trocar por criação de conta real quando o backend entrar.
     setLoading(true);
-    setTimeout(() => router.push("/onboarding"), 900);
+    const supabase = createSupabaseBrowser();
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { name: name.trim() } },
+    });
+    if (error) {
+      const msg = /already registered|already exists|user already/i.test(error.message)
+        ? "Esse e-mail já tem conta."
+        : "Não consegui criar a conta. Tente de novo.";
+      setErrors({ form: msg });
+      setLoading(false);
+      return;
+    }
+    if (data.session) {
+      // confirmação de e-mail desligada no projeto: já entra logado
+      router.push("/onboarding");
+    } else {
+      // confirmação de e-mail ligada: a sessão só vem depois de confirmar
+      setNotice(
+        "Enviamos um link de confirmação pro seu e-mail. Confirme e depois faça login pra continuar.",
+      );
+      setLoading(false);
+    }
   }
 
   return (
@@ -120,7 +148,10 @@ export default function SignupPage() {
           )}
         </div>
 
-        <button type="submit" className="auth-submit" disabled={loading}>
+        {errors.form && <p className="auth-form-error">{errors.form}</p>}
+        {notice && <p className="auth-notice">{notice}</p>}
+
+        <button type="submit" className="auth-submit" disabled={loading || Boolean(notice)}>
           {loading ? (
             <>
               <span className="auth-spinner" aria-hidden="true" /> Criando conta…
