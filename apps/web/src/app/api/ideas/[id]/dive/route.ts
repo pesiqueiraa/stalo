@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getIdea, runDeepDive, saveDeepDive } from "@stalo/server";
+import { getIdea, getLens, runDeepDive, saveDeepDive } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { DIVE_LIMIT, enforceRateLimit } from "@/lib/rateLimit";
 
@@ -26,7 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       DIVE_LIMIT.windowSeconds,
     );
     if (limited) return limited;
-    const dive = await runDeepDive(idea);
+    // a lente do workspace ajusta a linguagem de direcionamento do mergulho
+    const lens = await getLens(wid);
+    const dive = await runDeepDive(idea, lens);
     const updated = await saveDeepDive(wid, id, dive);
     return NextResponse.json(updated ?? { ...idea, deepDive: dive });
   } catch (err) {
