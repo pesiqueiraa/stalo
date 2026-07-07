@@ -22,7 +22,7 @@ import {
   buildCollectMessage,
   buildDeepDiveSystemPrompt,
   buildDeepDiveMessage,
-  FINANCIALS_SYSTEM_PROMPT,
+  buildFinancialsSystemPrompt,
   buildFinancialsMessage,
 } from "./scanPrompt";
 import type {
@@ -257,12 +257,12 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
 
 // ④ APROFUNDAR — análise financeira (2º nível), por cima do deep dive. Exige que
 // a ideia já tenha sido mergulhada (usa panorama/porQueAgora como contexto).
-export async function runFinancials(idea: SavedIdea): Promise<Financials> {
+export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promise<Financials> {
   const res = await client.responses.parse({
     model: FINANCIALS_MODEL,
     max_output_tokens: FINANCIALS_MAX_TOKENS,
     input: [
-      { role: "system", content: FINANCIALS_SYSTEM_PROMPT },
+      { role: "system", content: buildFinancialsSystemPrompt(lens) },
       {
         role: "user",
         content: buildFinancialsMessage({
