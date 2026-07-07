@@ -114,6 +114,15 @@ CREATE TABLE saved_ideas (
   saved_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- preferências do workspace (uma linha por workspace). Hoje só a lente escolhida
+-- no onboarding (founder/investor/explorer). Quando contas reais entrarem,
+-- workspace_id vira user_id, como no resto do schema.
+CREATE TABLE workspace_settings (
+  workspace_id UUID PRIMARY KEY,
+  lens TEXT CHECK (lens IN ('founder','investor','explorer')),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
 -- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -123,6 +132,8 @@ CREATE TABLE rate_limits (
   count INT NOT NULL
 );
 ```
+
+> **Lente do workspace (`workspace_settings`):** a lente escolhida no onboarding é preferência de workspace (uma linha por `workspace_id`), não atributo de insight — a taxonomia de insights continua universal. Ela afina a *linguagem de direcionamento* do mergulho e o ranqueamento do brief (§7), não o scan nem o grafo.
 
 > **`ref` (id local do scan):** o `ScanResult` que sai do LLM usa ids locais como
 > `"n1"`/`"i1"` para ligar insights às notícias. Guardamos esses ids na coluna `ref`

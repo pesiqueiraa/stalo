@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createTopic } from "@/lib/api";
+import { createTopic, saveLens } from "@/lib/api";
+import type { Lens } from "@stalo/shared";
 import "./onboarding.css";
 
 // Paleta de setores (mesma linguagem do radar). Cada setor escolhido ganha uma
@@ -180,13 +181,21 @@ export default function OnboardingPage() {
     setSaving(true);
     // Persiste os setores escolhidos como temas do workspace (em ordem = ordem de
     // cor no radar). O backend valida limite/duplicidade; erros por item são
-    // ignorados pra não travar o fluxo. A lente ainda não persiste (etapa 2:
-    // precisa de campo novo no schema; ver arquiteturad §7).
+    // ignorados pra não travar o fluxo.
     for (const s of selected) {
       try {
         await createTopic(s.name);
       } catch {
         // tema duplicado ou no limite: segue em frente
+      }
+    }
+    // Persiste a lente escolhida (preferência de workspace). Falha aqui não
+    // trava a entrada no radar.
+    if (lens) {
+      try {
+        await saveLens(lens as Lens);
+      } catch {
+        // segue mesmo se não salvar a lente
       }
     }
     router.push("/radar");
