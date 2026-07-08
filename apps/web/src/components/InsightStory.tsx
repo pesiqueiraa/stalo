@@ -20,15 +20,23 @@ function dayTime(iso: string): number | null {
 
 // O detalhe de um insight como um caminho de raciocínio, não um bloco único:
 // padrão (as notícias no tempo) → por que conecta → por que agora → e daí? →
-// ação (salvar). Cada etapa é revelada em sequência — clicar numa etapa abre
-// tudo até ela. É o mesmo conteúdo de antes, só faseado; nada é removido.
-// Usado pelo Brief (card) e pelo DetailPanel do grafo. O texto da nota é
-// estado local: o pai remonta via key={node.id}, então zera ao trocar de
-// insight sem precisar de effect.
+// notícias → ação (salvar). Cada etapa abre e fecha de forma independente
+// (accordion) — abrir uma não mexe nas outras. É o mesmo conteúdo de antes, só
+// faseado; nada é removido. Usado pelo Brief (card) e pelo DetailPanel do
+// grafo. O texto da nota é estado local: o pai remonta via key={node.id},
+// então zera ao trocar de insight sem precisar de effect.
 export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps) {
   const [notes, setNotes] = useState("");
-  // nº de etapas já reveladas (a 1ª nasce aberta)
-  const [revealed, setRevealed] = useState(1);
+  // etapas abertas (por key). A 1ª ("O padrão") nasce aberta; cada uma abre e
+  // fecha por conta própria.
+  const [open, setOpen] = useState<Set<string>>(() => new Set(["padrao"]));
+  const toggle = (key: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   // cronológico: o "padrão" se lê no tempo (evento isolado vs. sequência);
   // notícias sem data válida vão pro fim
@@ -71,27 +79,6 @@ export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps
       content: <p className="story-para">{node.soWhat}</p>,
     });
   }
-  steps.push({
-    key: "acao",
-    label: "Ação",
-    content: (
-      <>
-        {!saved && (
-          <textarea
-            className="detail-note"
-            placeholder="Sua nota (opcional): por que isso importa, o que investigar…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            maxLength={500}
-          />
-        )}
-        <button className="btn-save" disabled={saved} onClick={() => onSave(node, notes.trim())}>
-          {saved ? "Já salva" : "Salvar ideia"}
-        </button>
-      </>
-    ),
-  });
   if (chronological.length > 0) {
     steps.push({
       key: "noticias",
@@ -119,6 +106,27 @@ export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps
       ),
     });
   }
+  steps.push({
+    key: "acao",
+    label: "Ação",
+    content: (
+      <>
+        {!saved && (
+          <textarea
+            className="detail-note"
+            placeholder="Sua nota (opcional): por que isso importa, o que investigar…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            maxLength={500}
+          />
+        )}
+        <button className="btn-save" disabled={saved} onClick={() => onSave(node, notes.trim())}>
+          {saved ? "Já salva" : "Salvar ideia"}
+        </button>
+      </>
+    ),
+  });
 
   return (
     <>
@@ -131,29 +139,22 @@ export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps
       <div className="story-steps">
         {steps.map((step, i) => {
           const numLabel = String(i + 1).padStart(2, "0");
-          if (i < revealed) {
-            return (
-              <div className="story-step" key={step.key}>
-                <div className="story-step-label">
-                  <span className="story-step-num">{numLabel}</span> {step.label}
-                </div>
-                <div className="story-step-body">{step.content}</div>
-              </div>
-            );
-          }
+          const isOpen = open.has(step.key);
           return (
-            <button
-              key={step.key}
-              type="button"
-              className={`story-step-head${i === revealed ? " next" : ""}`}
-              aria-expanded={false}
-              onClick={() => setRevealed(i + 1)}
-            >
-              <span className="story-step-num">{numLabel}</span> {step.label}
-              <span className="story-step-plus" aria-hidden="true">
-                +
-              </span>
-            </button>
+            <div className={`story-step${isOpen ? " open" : ""}`} key={step.key}>
+              <button
+                type="button"
+                className="story-step-head"
+                aria-expanded={isOpen}
+                onClick={() => toggle(step.key)}
+              >
+                <span className="story-step-num">{numLabel}</span> {step.label}
+                <span className="story-step-plus" aria-hidden="true">
+                  {isOpen ? "−" : "+"}
+                </span>
+              </button>
+              {isOpen && <div className="story-step-body">{step.content}</div>}
+            </div>
           );
         })}
       </div>

@@ -1611,11 +1611,11 @@ header {
   margin-top: 4px;
 }
 
-/* ---- Caminho do insight (revelação progressiva — InsightStory) ----
-   O detalhe do insight vira uma sequência de etapas numeradas (padrão → por
-   que conecta → por que agora → e daí? → ação), no mesmo desenho das seções
-   numeradas do mergulho (.dive-sec-label). Etapas ainda não reveladas são
-   botões; clicar abre tudo até ali. Usado no brief e no DetailPanel do grafo. */
+/* ---- Caminho do insight (InsightStory) ----
+   O detalhe do insight vira etapas numeradas (padrão → por que conecta → por
+   que agora → e daí? → notícias → ação), no mesmo desenho das seções numeradas
+   do mergulho (.dive-sec-label). Accordion independente: cada etapa abre e
+   fecha por conta própria. Usado no brief e no DetailPanel do grafo. */
 p.story-lead {
   font-size: 13.5px;
   line-height: 1.55;
@@ -1635,43 +1635,28 @@ p.story-para {
 }
 .story-step {
   border-top: 1px solid var(--border);
-  padding: 11px 0 12px;
 }
-.story-step-label,
 .story-step-head {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 11px 0;
+  cursor: pointer;
+  text-align: left;
   font-family: var(--font-mono), monospace;
   font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--text-dim);
 }
-.story-step-label {
-  margin-bottom: 9px;
-}
 .story-step-num {
-  color: var(--amber);
-}
-.story-step-label::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-/* etapa ainda fechada: um botão que revela o caminho até ela */
-.story-step-head {
-  width: 100%;
-  background: none;
-  border: none;
-  border-top: 1px solid var(--border);
-  padding: 11px 0;
-  cursor: pointer;
-  text-align: left;
-}
-.story-step-head .story-step-num {
   color: var(--amber-dim);
+}
+.story-step.open .story-step-num {
+  color: var(--amber);
 }
 .story-step-head:hover {
   color: var(--text);
@@ -1681,22 +1666,23 @@ p.story-para {
 }
 .story-step-plus {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1;
   color: var(--text-dim);
 }
 .story-step-head:hover .story-step-plus {
   color: var(--amber);
 }
-/* a próxima etapa da sequência convida um pouco mais que as seguintes */
-.story-step-head:not(.next) {
-  opacity: 0.55;
+/* etapas fechadas ficam mais discretas; a aberta ganha destaque */
+.story-step:not(.open) .story-step-head {
+  opacity: 0.6;
 }
-.story-step-head:not(.next):hover {
+.story-step:not(.open) .story-step-head:hover {
   opacity: 1;
 }
 .story-step-body {
-  animation: story-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding-bottom: 12px;
+  animation: story-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @keyframes story-in {
   from {
