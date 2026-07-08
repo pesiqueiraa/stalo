@@ -143,7 +143,7 @@ export function GraphCanvas({
         .attr("stroke", (d) =>
           d.kind === "insight" ? "rgba(232,162,61,0.55)" : "rgba(255,255,255,0.15)",
         )
-        .attr("stroke-width", (d) => (d.kind === "insight" ? 2 : 1))
+        .attr("stroke-width", (d) => (d.kind === "insight" ? 1.25 : 1))
         .attr("stroke-dasharray", (d) => (d.kind === "insight" ? "4,3" : null));
       linkSelRef.current = linkSel;
 
