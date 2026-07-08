@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { computePriority } from "@/lib/enterpriseMock";
 import { useEnterpriseWorkspace } from "@/lib/enterpriseWorkspace";
 import { RadarScope } from "@/components/enterprise/RadarScope";
 import { AlertWire } from "@/components/enterprise/AlertWire";
@@ -16,6 +17,7 @@ export default function EnterpriseDashboardPage() {
   const { activeRadar } = useEnterpriseWorkspace();
   const [view, setView] = useState<ViewMode>("sala");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [onlyHigh, setOnlyHigh] = useState(false);
 
   // trocar de radar (workspace switcher) limpa a seleção do radar anterior —
   // ajustada durante a renderização (não em efeito), seguindo o padrão do
@@ -25,6 +27,26 @@ export default function EnterpriseDashboardPage() {
     setLastRadarId(activeRadar.id);
     setSelectedId(null);
   }
+
+  // Filtro de importância (padrão Crayon: pouca coisa em destaque): quando
+  // ligado, sala e lista mostram só o que é alta prioridade. Stats e timeline
+  // continuam com o radar inteiro — o filtro corta ruído, não esconde contexto.
+  const highIds = useMemo(
+    () =>
+      new Set(
+        activeRadar.insights
+          .filter((i) => computePriority(i, activeRadar).level === "alta")
+          .map((i) => i.id),
+      ),
+    [activeRadar],
+  );
+  const viewRadar = useMemo(
+    () =>
+      onlyHigh
+        ? { ...activeRadar, insights: activeRadar.insights.filter((i) => highIds.has(i.id)) }
+        : activeRadar,
+    [onlyHigh, activeRadar, highIds],
+  );
 
   function toggleSelect(id: string) {
     setSelectedId((prev) => (prev === id ? null : id));
@@ -57,6 +79,15 @@ export default function EnterpriseDashboardPage() {
         >
           Lista
         </button>
+        <button
+          type="button"
+          className={`ent-high-filter${onlyHigh ? " active" : ""}`}
+          aria-pressed={onlyHigh}
+          onClick={() => setOnlyHigh((v) => !v)}
+        >
+          <span className="ent-high-dot" aria-hidden="true" />
+          só alta prioridade ({highIds.size})
+        </button>
       </div>
 
       <div className="ent-situation">
@@ -66,17 +97,17 @@ export default function EnterpriseDashboardPage() {
             <ScanTimeline scans={activeRadar.scans} />
             <div className="ent-situation-grid">
               <div className="ent-scope-card">
-                <RadarScope radar={activeRadar} selectedId={selectedId} onSelect={toggleSelect} />
+                <RadarScope radar={viewRadar} selectedId={selectedId} onSelect={toggleSelect} />
                 <p className="ent-scope-caption">
                   Anéis = evidência: quanto mais perto do centro, mais fontes sustentam a tese.
                 </p>
                 <TopicLegend topics={activeRadar.topics} />
               </div>
-              <AlertWire radar={activeRadar} selectedId={selectedId} onSelect={toggleSelect} />
+              <AlertWire radar={viewRadar} selectedId={selectedId} onSelect={toggleSelect} />
             </div>
           </>
         ) : (
-          <SignalList radar={activeRadar} selectedId={selectedId} onSelect={toggleSelect} />
+          <SignalList radar={viewRadar} selectedId={selectedId} onSelect={toggleSelect} />
         )}
         <SignalDrawer radar={activeRadar} selectedId={selectedId} onClose={() => setSelectedId(null)} />
       </div>

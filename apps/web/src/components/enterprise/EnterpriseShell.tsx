@@ -8,6 +8,8 @@ import { LiveClock } from "./LiveClock";
 
 const NAV = [
   { href: "/enterprise", label: "Radar" },
+  { href: "/enterprise/historico", label: "Histórico" },
+  { href: "/enterprise/digest", label: "Digest & alertas" },
   { href: "/enterprise/team", label: "Time" },
   { href: "/enterprise/billing", label: "Cobrança" },
 ];

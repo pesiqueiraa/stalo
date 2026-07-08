@@ -261,6 +261,8 @@
   display: inline-flex; align-items: center; gap: 0.45em;
 }
 .ento-signal-tag.warn { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.4); }
+/* mesma cor de "alta" no workspace (PRIORITY_INFO em lib/enterpriseMock) */
+.ento-signal-tag.prio { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.4); }
 .ento-signal-tag .d { width: 6px; height: 6px; border-radius: 50%; }
 .ento-signal h3 {
   font-family: var(--display); font-size: 1.2rem; line-height: 1.3; letter-spacing: -0.02em;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { suggestCompetitors } from "@/lib/enterpriseMock";
 import "./ent-onboarding.css";
 
 // Onboarding do protótipo enterprise: passos próprios (empresa/setor, temas do
@@ -26,8 +27,8 @@ const SUGGESTED_TOPICS = [
 ];
 
 type Sector = { id: string; name: string; color: string };
-type Step = "empresa" | "temas" | "convidar" | "revelacao";
-const ORDER: Step[] = ["empresa", "temas", "convidar", "revelacao"];
+type Step = "empresa" | "concorrentes" | "temas" | "convidar" | "revelacao";
+const ORDER: Step[] = ["empresa", "concorrentes", "temas", "convidar", "revelacao"];
 
 const CX = 120;
 const CY = 120;
@@ -39,6 +40,11 @@ export default function EnterpriseOnboardingPage() {
 
   const [companyName, setCompanyName] = useState("");
   const [sector, setSector] = useState("");
+
+  const [competitors, setCompetitors] = useState<string[]>([]);
+  const [customCompetitor, setCustomCompetitor] = useState("");
+  const [products, setProducts] = useState<string[]>([]);
+  const [customProduct, setCustomProduct] = useState("");
 
   const [selected, setSelected] = useState<Sector[]>([]);
   const [customTopic, setCustomTopic] = useState("");
@@ -67,6 +73,32 @@ export default function EnterpriseOnboardingPage() {
     const t = setTimeout(() => setRevealed(true), 1700);
     return () => clearTimeout(t);
   }, [step]);
+
+  // Sugestões pré-preenchidas a partir do setor digitado no passo anterior —
+  // ajustar uma lista é muito mais barato que lembrar nomes numa página em
+  // branco (ver suggestCompetitors em lib/enterpriseMock).
+  const suggestedCompetitors = useMemo(() => suggestCompetitors(sector), [sector]);
+
+  function toggleCompetitor(name: string) {
+    setCompetitors((prev) =>
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
+    );
+  }
+  function onAddCustomCompetitor(e: React.FormEvent) {
+    e.preventDefault();
+    const name = customCompetitor.trim();
+    if (name && !competitors.includes(name)) setCompetitors((prev) => [...prev, name]);
+    setCustomCompetitor("");
+  }
+  function onAddProduct(e: React.FormEvent) {
+    e.preventDefault();
+    const name = customProduct.trim();
+    if (name && !products.includes(name)) setProducts((prev) => [...prev, name]);
+    setCustomProduct("");
+  }
+  function removeProduct(name: string) {
+    setProducts((prev) => prev.filter((p) => p !== name));
+  }
 
   function addTopic(rawName: string) {
     const name = rawName.trim();
@@ -116,7 +148,7 @@ export default function EnterpriseOnboardingPage() {
   const a = selected[0]?.name ?? "";
   const b = selected[1]?.name ?? "";
   const displayCompany = companyName.trim() || "sua empresa";
-  const headline = `Entre ${a} e ${b}, um sinal que ${displayCompany} ainda não tinha visto: risco competitivo em formação.`;
+  const headline = `Entre ${a} e ${b}, um sinal que ${displayCompany} ainda não tinha visto: risco competitivo em formação${competitors[0] ? `, envolvendo ${competitors[0]}` : ""}.`;
   const payoffText = `time inteiro vê o mesmo cruzamento — sem depender de um analista lembrar de avisar os outros.`;
 
   function renderRadar(compact?: boolean) {
@@ -175,13 +207,13 @@ export default function EnterpriseOnboardingPage() {
       <main className="ento-main" key={step}>
         {step === "empresa" && (
           <>
-            <span className="ento-eyebrow">passo 1 de 4</span>
+            <span className="ento-eyebrow">passo 1 de 5</span>
             <h1 className="ento-h1">Configure o workspace da sua empresa</h1>
             <p className="ento-sub">
               Um radar compartilhado por todo o time começa com quem vocês são.
             </p>
 
-            <form className="ento-form" onSubmit={(e) => { e.preventDefault(); setStep("temas"); }}>
+            <form className="ento-form" onSubmit={(e) => { e.preventDefault(); setStep("concorrentes"); }}>
               <div className="ento-field">
                 <label htmlFor="ento-company">Nome da empresa</label>
                 <input
@@ -207,6 +239,121 @@ export default function EnterpriseOnboardingPage() {
 
             <div className="ento-foot">
               <div className="ento-actions">
+                <button type="button" className="ento-skip" onClick={() => setStep("concorrentes")}>
+                  pular por agora
+                </button>
+                <button type="button" className="ento-cta" onClick={() => setStep("concorrentes")}>
+                  Continuar <span className="arrow">→</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === "concorrentes" && (
+          <>
+            <span className="ento-eyebrow">passo 2 de 5</span>
+            <h1 className="ento-h1">Quem vocês estão de olho?</h1>
+            <p className="ento-sub">
+              {suggestedCompetitors.length > 0
+                ? `Pelo setor (${sector.trim()}), estes costumam ser os nomes vigiados — ajuste a lista.`
+                : "Diga os concorrentes e produtos que o time acompanha — o radar e os alertas usam isso como escopo."}
+            </p>
+
+            <div className="ento-bank">
+              <div className="ento-bank-label">Concorrentes monitorados</div>
+              <div className="ento-chips">
+                {[...suggestedCompetitors, ...competitors.filter((c) => !suggestedCompetitors.includes(c))].map(
+                  (name) => {
+                    const active = competitors.includes(name);
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        className={`ento-chip${active ? " active" : ""}`}
+                        onClick={() => toggleCompetitor(name)}
+                        aria-pressed={active}
+                      >
+                        <span className="chip-dot" />
+                        {name}
+                        {active && (
+                          <span className="chip-x" aria-hidden="true">
+                            ×
+                          </span>
+                        )}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+              <form className="ento-custom" onSubmit={onAddCustomCompetitor}>
+                <input
+                  type="text"
+                  placeholder="Adicionar concorrente…"
+                  value={customCompetitor}
+                  onChange={(e) => setCustomCompetitor(e.target.value)}
+                  aria-label="Adicionar concorrente"
+                />
+                <button
+                  type="submit"
+                  className="ento-add"
+                  disabled={!customCompetitor.trim()}
+                  aria-label="Adicionar concorrente"
+                >
+                  +
+                </button>
+              </form>
+            </div>
+
+            <div className="ento-bank">
+              <div className="ento-bank-label">Produtos / teses que o time acompanha</div>
+              {products.length > 0 && (
+                <div className="ento-chips">
+                  {products.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      className="ento-chip active"
+                      onClick={() => removeProduct(name)}
+                    >
+                      <span className="chip-dot" />
+                      {name}
+                      <span className="chip-x" aria-hidden="true">
+                        ×
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form className="ento-custom" onSubmit={onAddProduct}>
+                <input
+                  type="text"
+                  placeholder="Ex.: crédito embarcado, checkout, POS…"
+                  value={customProduct}
+                  onChange={(e) => setCustomProduct(e.target.value)}
+                  aria-label="Adicionar produto monitorado"
+                />
+                <button
+                  type="submit"
+                  className="ento-add"
+                  disabled={!customProduct.trim()}
+                  aria-label="Adicionar produto"
+                >
+                  +
+                </button>
+              </form>
+            </div>
+
+            <div className="ento-foot">
+              <span className="ento-count">
+                <b>{competitors.length}</b>{" "}
+                {competitors.length === 1 ? "concorrente" : "concorrentes"} ·{" "}
+                <b>{products.length}</b> {products.length === 1 ? "produto" : "produtos"}
+              </span>
+              <div className="ento-actions">
+                <button type="button" className="ento-back" onClick={() => setStep("empresa")}>
+                  voltar
+                </button>
                 <button type="button" className="ento-skip" onClick={() => setStep("temas")}>
                   pular por agora
                 </button>
@@ -220,7 +367,7 @@ export default function EnterpriseOnboardingPage() {
 
         {step === "temas" && (
           <>
-            <span className="ento-eyebrow">passo 2 de 4</span>
+            <span className="ento-eyebrow">passo 3 de 5</span>
             <h1 className="ento-h1">O que o time vai vigiar?</h1>
             <p className="ento-sub">
               Escolha de 2 a 5 setores. O radar cruza as notícias entre eles pra todo mundo do
@@ -283,7 +430,7 @@ export default function EnterpriseOnboardingPage() {
                 {topicCount < MIN_TOPICS ? "escolha ao menos 2 setores" : isMaxTopics ? "radar cheio" : "setores no radar"}
               </span>
               <div className="ento-actions">
-                <button type="button" className="ento-back" onClick={() => setStep("empresa")}>
+                <button type="button" className="ento-back" onClick={() => setStep("concorrentes")}>
                   voltar
                 </button>
                 <button
@@ -301,7 +448,7 @@ export default function EnterpriseOnboardingPage() {
 
         {step === "convidar" && (
           <>
-            <span className="ento-eyebrow">passo 3 de 4</span>
+            <span className="ento-eyebrow">passo 4 de 5</span>
             <h1 className="ento-h1">Convide o time</h1>
             <p className="ento-sub">
               Todo mundo convidado vê o mesmo radar e as mesmas conexões — dá pra convidar depois
@@ -363,7 +510,7 @@ export default function EnterpriseOnboardingPage() {
 
         {step === "revelacao" && (
           <>
-            <span className="ento-eyebrow">passo 4 de 4</span>
+            <span className="ento-eyebrow">passo 5 de 5</span>
             <h1 className="ento-h1">{revealed ? "O primeiro sinal do time" : "Montando o radar do workspace"}</h1>
             <p className="ento-sub">
               {revealed
@@ -383,7 +530,8 @@ export default function EnterpriseOnboardingPage() {
               ) : (
                 <div className="ento-signal">
                   <div className="ento-signal-tags">
-                    <span className="ento-signal-tag warn">⚠ ameaça</span>
+                    <span className="ento-signal-tag warn">⚠ ameaça / risco competitivo</span>
+                    <span className="ento-signal-tag prio">prioridade alta</span>
                     <span className="ento-signal-tag">
                       <span className="d" style={{ background: "#5ec8d8" }} /> {a} × {b}
                     </span>

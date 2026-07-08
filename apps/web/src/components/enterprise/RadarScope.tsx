@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { INSIGHT_COLORS, topicColor } from "@/lib/graph";
 import { diamondPath, innerGlyphPath } from "@/lib/shapes";
-import type { EnterpriseRadar } from "@/lib/enterpriseMock";
+import { PRIORITY_INFO, computePriority, type EnterpriseRadar } from "@/lib/enterpriseMock";
 
 const CX = 220;
 const CY = 220;
@@ -83,7 +83,8 @@ export function RadarScope({ radar, selectedId, onSelect }: RadarScopeProps) {
         {insightPositions.map(({ insight, x, y }) => {
           const color = INSIGHT_COLORS[insight.type];
           const selected = insight.id === selectedId;
-          const isThreat = insight.tags.includes("ameaça");
+          const isThreat = insight.threat;
+          const priority = computePriority(insight, radar);
           const r = 15;
           return (
             <g key={insight.id}>
@@ -106,7 +107,7 @@ export function RadarScope({ radar, selectedId, onSelect }: RadarScopeProps) {
                 role="button"
                 tabIndex={0}
                 aria-pressed={selected}
-                aria-label={insight.title}
+                aria-label={`${insight.title} — prioridade ${PRIORITY_INFO[priority.level].label.toLowerCase()}`}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") onSelect(insight.id);
                 }}
@@ -130,6 +131,18 @@ export function RadarScope({ radar, selectedId, onSelect }: RadarScopeProps) {
                 />
                 <path d={diamondPath(r)} fill={color} fillOpacity={selected ? 0.32 : 0.16} stroke={color} strokeWidth={selected ? 2 : 1.5} />
                 <path d={innerGlyphPath(insight.type, r)} fill={color} fillOpacity={0.95} />
+                {/* farol de prioridade alta: pequeno o bastante pra não competir com o glifo */}
+                {priority.level === "alta" && (
+                  <circle
+                    className="scope-node-prio"
+                    cx={r * 0.95}
+                    cy={-r * 0.95}
+                    r={3.4}
+                    fill={PRIORITY_INFO.alta.color}
+                    stroke="rgba(6, 12, 22, 0.7)"
+                    strokeWidth={1}
+                  />
+                )}
               </g>
             </g>
           );

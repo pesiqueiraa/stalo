@@ -2,19 +2,82 @@
 // existem no cliente, pra visualizar a UI — nenhum destes tipos ou dados é
 // persistido, nem se conecta ao backend real (`packages/server`). Não confundir
 // com `lib/workspace.ts`/`workspaceCookie.ts`, que são do workspace anônimo real.
-import type { Insight, NewsItem, Topic } from "@stalo/shared";
+import type { Insight, InsightType, NewsItem, Topic } from "@stalo/shared";
+import { INSIGHT_COLORS } from "@/lib/graph";
 
-// Tags aditivas do tier enterprise: não substituem a taxonomia universal
-// (tendência/gap/oportunidade, `InsightType` em @stalo/shared) — só marcam um
-// recorte extra que o público B2B valoriza (ameaça competitiva, movimento de
-// mercado, sinal regulatório).
-export type EnterpriseTag = "ameaça" | "movimento competitivo" | "sinal regulatório";
+// A taxonomia enterprise trabalha em DUAS camadas, em vez das tags soltas da
+// primeira versão ("movimento competitivo" etc., que misturavam fato e leitura):
+//
+// Camada 1 — TIPO DE EVENTO: o que a notícia realmente relata. Concreto,
+// citável, extraível da própria matéria — nunca interpretação. Espelha os
+// business events de Contify/Owler e o grupo Strategic Moves do Feedly
+// ("incidente" vem do Feedly, que cobre cyberattacks — necessário pro radar de
+// segurança).
+//
+// Camada 2 — LEITURA ESTRATÉGICA: a interpretação Stalo sobre esses eventos —
+// o que se vende. Deriva da taxonomia universal (tendência/gap/oportunidade,
+// `InsightType` em @stalo/shared), com rótulo enterprise, mais "ameaça/risco
+// competitivo" como leitura aditiva. Regra: whitespace/lacuna só existe quando
+// derivada de padrão agregado (≥2 fontes) — nunca de uma única aresta.
 
-export const ENTERPRISE_TAG_INFO: Record<EnterpriseTag, { label: string; color: string }> = {
-  ameaça: { label: "Ameaça", color: "#ff6b6b" },
-  "movimento competitivo": { label: "Movimento competitivo", color: "#5ec8d8" },
-  "sinal regulatório": { label: "Sinal regulatório", color: "#a68bff" },
+export type EventType =
+  | "lancamento"
+  | "parceria"
+  | "funding"
+  | "ma"
+  | "lideranca"
+  | "expansao"
+  | "preco"
+  | "regulatorio"
+  | "layoffs"
+  | "resultado"
+  | "incidente";
+
+// `label` completo pro detalhe; `short` pros chips densos (lista/feed).
+export const EVENT_TYPE_INFO: Record<EventType, { label: string; short: string }> = {
+  lancamento: { label: "Lançamento de produto", short: "Lançamento" },
+  parceria: { label: "Parceria", short: "Parceria" },
+  funding: { label: "Funding / Investimento", short: "Funding" },
+  ma: { label: "M&A / Aquisição", short: "M&A" },
+  lideranca: { label: "Mudança de liderança", short: "Liderança" },
+  expansao: { label: "Expansão (geográfica/capacidade)", short: "Expansão" },
+  preco: { label: "Mudança de preço", short: "Preço" },
+  regulatorio: { label: "Regulatório / Legal", short: "Regulatório" },
+  layoffs: { label: "Layoffs / Reestruturação", short: "Layoffs" },
+  resultado: { label: "Resultado financeiro", short: "Resultado" },
+  incidente: { label: "Incidente de segurança", short: "Incidente" },
 };
+
+// No tier enterprise, toda notícia chega classificada pelo evento que relata.
+export interface EnterpriseNewsItem extends NewsItem {
+  eventType: EventType;
+}
+
+export type StrategicReading = "oportunidade" | "tendencia" | "whitespace" | "ameaca";
+
+// Cores das leituras primárias vêm de INSIGHT_COLORS (mesmo glifo, mesma cor);
+// "ameaça" reusa o vermelho do anel de ameaça do RadarScope. `label` completo
+// pro detalhe; `short` pros chips densos (lista/feed).
+export const READING_INFO: Record<StrategicReading, { label: string; short: string; color: string }> = {
+  oportunidade: { label: "Oportunidade de mercado", short: "Oportunidade", color: INSIGHT_COLORS.oportunidade },
+  tendencia: { label: "Tendência (movimento)", short: "Tendência", color: INSIGHT_COLORS.tendencia },
+  whitespace: { label: "Whitespace / Lacuna", short: "Whitespace", color: INSIGHT_COLORS.gap },
+  ameaca: { label: "Ameaça / Risco competitivo", short: "Ameaça", color: "#ff6b6b" },
+};
+
+export const READING_FOR_TYPE: Record<InsightType, StrategicReading> = {
+  oportunidade: "oportunidade",
+  tendencia: "tendencia",
+  gap: "whitespace",
+};
+
+// A leitura primária deriva do tipo universal (não é armazenada, pra não poder
+// divergir dele); "ameaça" entra por cima quando o insight está marcado.
+export function readingsFor(insight: EnterpriseInsight): StrategicReading[] {
+  const readings: StrategicReading[] = [READING_FOR_TYPE[insight.type]];
+  if (insight.threat) readings.push("ameaca");
+  return readings;
+}
 
 // O que de fato importa pra quem decide num negócio: receita, custo, clientes,
 // qualidade. Sempre em ordem de grandeza/direção — nunca número inventado como
@@ -36,7 +99,7 @@ export const IMPACT_LABELS: Record<keyof EnterpriseImpact, string> = {
 };
 
 export interface EnterpriseInsight extends Insight {
-  tags: EnterpriseTag[];
+  threat: boolean; // leitura aditiva "ameaça/risco competitivo" (camada 2) — as demais derivam do `type`
   flaggedBy: string; // quem do time sinalizou esse insight primeiro
   impact: EnterpriseImpact;
   detectedAt: string; // ISO — quando essa tese apareceu pela 1ª vez numa varredura
@@ -57,9 +120,95 @@ export interface EnterpriseRadar {
   id: string;
   name: string;
   topics: Topic[];
-  items: NewsItem[];
+  items: EnterpriseNewsItem[];
   insights: EnterpriseInsight[];
   scans: EnterpriseScanRun[]; // ordem cronológica ascendente (mais antiga primeiro)
+}
+
+// ---- priorização (alta/média/baixa) ----
+// Antídoto ao ruído: heurística, sem ML — fontes corroborando, reforço entre
+// varreduras, recência e amplitude (quantos temas o sinal cruza, proxy do nº de
+// players envolvidos). Segue o padrão Crayon de destacar pouca coisa como
+// "alta" (~3% em escala real; aqui, ~1 por radar): se tudo é prioridade, nada é.
+export type Priority = "alta" | "media" | "baixa";
+
+export const PRIORITY_INFO: Record<Priority, { label: string; color: string }> = {
+  alta: { label: "Alta", color: "#ff6b6b" },
+  media: { label: "Média", color: "#e8a23d" },
+  baixa: { label: "Baixa", color: "#7a8aa5" },
+};
+
+// Prioridade não é armazenada — é derivada, e devolve os motivos junto, pra UI
+// sempre poder responder "por que isso é alta?" (prioridade sem justificativa
+// vira caixa-preta e o time para de confiar).
+export interface PriorityCall {
+  level: Priority;
+  score: number;
+  reasons: string[];
+}
+
+const HOUR_MS = 3_600_000;
+
+export function computePriority(insight: EnterpriseInsight, radar: EnterpriseRadar): PriorityCall {
+  let score = 0;
+  const reasons: string[] = [];
+
+  // corroboração: quantas fontes sustentam a tese
+  const sources = insight.related_items.length;
+  score += Math.min(3, sources);
+  if (sources > 1) reasons.push(`${sources} fontes corroboram`);
+
+  // reforço: a mesma tese reapareceu em varreduras seguidas
+  score += Math.min(3, insight.recurrence - 1);
+  if (insight.recurrence > 1) reasons.push(`reforçada em ${insight.recurrence} varreduras`);
+
+  // recência: medida contra a última varredura do radar (determinístico — não
+  // depende do relógio de quem renderiza)
+  const lastScanAt = radar.scans[radar.scans.length - 1]?.at ?? insight.detectedAt;
+  const ageHours = (new Date(lastScanAt).getTime() - new Date(insight.detectedAt).getTime()) / HOUR_MS;
+  if (ageHours <= 24) {
+    score += 2;
+    reasons.push("detectada nas últimas 24h");
+  } else if (ageHours <= 48) {
+    score += 1;
+  }
+
+  // amplitude: um sinal que cruza mais temas envolve mais players
+  const byId = new Map(radar.items.map((item) => [item.id, item]));
+  const crossedTopics = new Set(
+    insight.related_items.map((id) => byId.get(id)?.topic).filter(Boolean),
+  ).size;
+  if (crossedTopics >= 2) {
+    score += crossedTopics >= 3 ? 2 : 1;
+    reasons.push(`cruza ${crossedTopics} temas`);
+  }
+
+  // risco é assimétrico: uma ameaça custa mais caro ignorar que uma
+  // oportunidade — pesa um degrau a mais
+  if (insight.threat) {
+    score += 1;
+    reasons.push("leitura de ameaça");
+  }
+
+  const level: Priority = score >= 7 ? "alta" : score >= 5 ? "media" : "baixa";
+  return { level, score, reasons };
+}
+
+// Agrega os tipos de evento (camada 1) das fontes de um insight — mais
+// frequente primeiro. É o resumo factual que sustenta a leitura estratégica.
+export function eventMix(
+  insight: EnterpriseInsight,
+  radar: EnterpriseRadar,
+): { type: EventType; count: number }[] {
+  const byId = new Map(radar.items.map((item) => [item.id, item]));
+  const counts = new Map<EventType, number>();
+  for (const id of insight.related_items) {
+    const item = byId.get(id);
+    if (item) counts.set(item.eventType, (counts.get(item.eventType) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 export interface TeamMember {
@@ -73,6 +222,8 @@ export interface TeamMember {
 export interface EnterpriseCompany {
   name: string;
   sector: string;
+  competitors: string[]; // concorrentes monitorados (input estruturado do onboarding)
+  products: string[]; // produtos/teses que o time acompanha
   plan: "Team" | "Business";
   seats: { used: number; total: number };
   scans: { used: number; limit: number };
@@ -81,10 +232,51 @@ export interface EnterpriseCompany {
 export const MOCK_COMPANY: EnterpriseCompany = {
   name: "Norte Capital",
   sector: "Venture Capital",
+  competitors: ["Kaszek", "monashees", "Canary", "Valor Capital"],
+  products: ["Crédito embarcado", "Infra de agentes financeiros"],
   plan: "Business",
   seats: { used: 6, total: 10 },
   scans: { used: 148, limit: 400 },
 };
+
+// Sugestões de concorrentes por setor (onboarding): mata a "página em branco" —
+// o usuário ajusta uma lista pré-preenchida em vez de lembrar nomes do zero.
+// Matching por palavra-chave porque o campo de setor é texto livre.
+const COMPETITOR_SUGGESTIONS: { keywords: string[]; competitors: string[] }[] = [
+  {
+    keywords: ["venture", "capital", "invest", "fundo", "vc"],
+    competitors: ["Kaszek", "monashees", "Canary", "Valor Capital", "Astella", "Maya Capital"],
+  },
+  {
+    keywords: ["fintech", "banco", "pagamento", "crédito", "credito"],
+    competitors: ["Nubank", "Stone", "PagBank", "C6 Bank", "Creditas", "Neon"],
+  },
+  {
+    keywords: ["consult"],
+    competitors: ["McKinsey", "BCG", "Bain", "Accenture", "Deloitte"],
+  },
+  {
+    keywords: ["varejo", "commerce", "loja"],
+    competitors: ["Mercado Livre", "Amazon", "Shopee", "Magalu", "Americanas"],
+  },
+  {
+    keywords: ["saúde", "saude", "health", "clínica", "clinica"],
+    competitors: ["Dasa", "Rede D'Or", "Hapvida", "Alice", "Sami"],
+  },
+  {
+    keywords: ["software", "saas", "tecnologia", "startup"],
+    competitors: ["TOTVS", "Linx", "VTEX", "Sankhya", "Omie"],
+  },
+];
+
+export function suggestCompetitors(sector: string): string[] {
+  const normalized = sector.trim().toLowerCase();
+  if (!normalized) return [];
+  const hit = COMPETITOR_SUGGESTIONS.find((s) =>
+    s.keywords.some((k) => normalized.includes(k)),
+  );
+  return hit?.competitors ?? [];
+}
 
 export const MOCK_TEAM: TeamMember[] = [
   { id: "u1", name: "Marina Prado", email: "marina@nortecapital.vc", role: "admin", status: "ativo" },
@@ -130,9 +322,10 @@ const growthTopics: Topic[] = [
   { id: "mobilidade", name: "Mobilidade" },
 ];
 
-const growthItems: NewsItem[] = [
+const growthItems: EnterpriseNewsItem[] = [
   {
     id: "n1",
+    eventType: "expansao",
     topic: "Fintech",
     title: "Bancos digitais latino-americanos ampliam crédito via modelos de IA generativa",
     summary: "Novos scores de crédito treinados com dados alternativos reduzem inadimplência em testes piloto.",
@@ -143,6 +336,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n2",
+    eventType: "lancamento",
     topic: "Inteligência Artificial",
     title: "Startups de IA agêntica automatizam back-office financeiro",
     summary: "Agentes autônomos assumem conciliação e análise de risco em fundos de médio porte.",
@@ -153,6 +347,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n3",
+    eventType: "lancamento",
     topic: "Mobilidade",
     title: "Aplicativos de mobilidade testam carteira embarcada para motoristas",
     summary: "Piloto integra pagamentos instantâneos e microcrédito direto no app do motorista parceiro.",
@@ -163,6 +358,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n4",
+    eventType: "regulatorio",
     topic: "Fintech",
     title: "Regulador sinaliza norma para crédito concedido por algoritmos",
     summary: "Consulta pública propõe exigências de explicabilidade para decisões automatizadas de crédito.",
@@ -173,6 +369,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n5",
+    eventType: "funding",
     topic: "Fintech",
     title: "Fundo especializado capta rodada para financiar frota de apps de entrega",
     summary: "Capital dedicado a frota digital cresce mais rápido que o crédito bancário tradicional pro setor.",
@@ -183,6 +380,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n6",
+    eventType: "lancamento",
     topic: "Inteligência Artificial",
     title: "Provedor de IA lança modelo especializado em score de risco financeiro",
     summary: "Modelo pronto para uso reduz a barreira técnica de quem quer lançar crédito baseado em risco.",
@@ -193,6 +391,7 @@ const growthItems: NewsItem[] = [
   },
   {
     id: "n7",
+    eventType: "parceria",
     topic: "Mobilidade",
     title: "Grandes apps de mobilidade discutem padrão comum de identidade do motorista",
     summary: "Sem histórico portável, cada app reconstrói do zero a reputação de crédito do motorista.",
@@ -215,7 +414,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "Piloto de carteira embarcada já rodando; regulação ainda em consulta pública, não em vigor.",
     soWhat: "Janela de 6-9 meses para entrar antes que os grandes players de mobilidade internalizem isso.",
     related_items: ["n1", "n2", "n3"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Marina Prado",
     impact: {
       revenue: "Nova linha B2B2C via parceria com apps de mobilidade — ainda sem cliente-piloto fechado",
@@ -235,7 +434,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "Consulta pública aberta agora — quem antecipar a norma vira o fornecedor de referência quando ela virar lei.",
     soWhat: "Categoria B2B nova: compliance-as-a-service para crédito algorítmico.",
     related_items: ["n4", "n1"],
-    tags: ["sinal regulatório"],
+    threat: false,
     flaggedBy: "Diego Lacerda",
     impact: {
       revenue: "Receita recorrente por assinatura — categoria nova, ainda sem preço de referência no mercado",
@@ -254,7 +453,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "Adoção em fundos de médio porte é o estágio anterior à adoção em bancos grandes.",
     soWhat: "Fornecedores de infraestrutura de agentes para o setor financeiro viram tese de investimento própria.",
     related_items: ["n2"],
-    tags: ["movimento competitivo", "ameaça"],
+    threat: true,
     flaggedBy: "Ana Beatriz Souza",
     impact: {
       cost: "Reduz headcount de back-office em quem adota — pressão de custo sobre quem não adotar",
@@ -274,7 +473,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "Modelo acabou de ficar disponível como serviço — janela de vantagem pra quem monta produto antes da concorrência perceber.",
     soWhat: "Baixa o custo de entrada pra qualquer app de mobilidade lançar crédito embarcado em semanas, não meses.",
     related_items: ["n6", "n1"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Felipe Nunes",
     impact: {
       cost: "Reduz custo de P&D de modelo de risco frente a construir do zero",
@@ -294,7 +493,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "A discussão do padrão comum começou agora, mas nenhum player assumiu a liderança técnica ainda.",
     soWhat: "Quem construir o registro de identidade/reputação portável vira infraestrutura que todo mundo depende.",
     related_items: ["n7", "n3"],
-    tags: ["movimento competitivo", "sinal regulatório"],
+    threat: false,
     flaggedBy: "Ana Beatriz Souza",
     impact: {
       customers: "Vira ponto de retenção: apps que integram o padrão reduzem atrito de onboarding de motoristas",
@@ -313,7 +512,7 @@ const growthInsights: EnterpriseInsight[] = [
     whyNow: "Rodada acabou de fechar — capital especializado está entrando no setor agora, antes do banco tradicional se mexer.",
     soWhat: "Parcerias com esses fundos podem ficar mais baratas e rápidas que crédito bancário tradicional pro setor.",
     related_items: ["n5"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Marina Prado",
     impact: {
       cost: "Custo de capital pra financiar frota pode cair frente ao crédito bancário tradicional",
@@ -330,9 +529,10 @@ const securityTopics: Topic[] = [
   { id: "regulacao", name: "Regulação" },
 ];
 
-const securityItems: NewsItem[] = [
+const securityItems: EnterpriseNewsItem[] = [
   {
     id: "s1",
+    eventType: "incidente",
     topic: "Cibersegurança",
     title: "Ataques a cadeias de fornecedores de IA generativa crescem 40% no trimestre",
     summary: "Modelos de terceiros embarcados em produtos financeiros viram vetor preferido de invasão.",
@@ -343,6 +543,7 @@ const securityItems: NewsItem[] = [
   },
   {
     id: "s2",
+    eventType: "lancamento",
     topic: "Cloud",
     title: "Provedores de nuvem lançam certificação própria para agentes de IA financeiros",
     summary: "Selo busca virar pré-requisito de compliance para bancos que rodam agentes em produção.",
@@ -353,6 +554,7 @@ const securityItems: NewsItem[] = [
   },
   {
     id: "s3",
+    eventType: "regulatorio",
     topic: "Regulação",
     title: "Banco central estuda exigir auditoria de terceiros para modelos de crédito",
     summary: "Proposta mira especificamente fornecedores externos de score e decisão automatizada.",
@@ -363,6 +565,7 @@ const securityItems: NewsItem[] = [
   },
   {
     id: "s4",
+    eventType: "preco",
     topic: "Cibersegurança",
     title: "Seguradoras passam a exigir auditoria de IA para apólice de cyber risk",
     summary: "Sem laudo de auditoria dos agentes em produção, prêmio de seguro sobe ou cobertura é negada.",
@@ -373,6 +576,7 @@ const securityItems: NewsItem[] = [
   },
   {
     id: "s5",
+    eventType: "lancamento",
     topic: "Cloud",
     title: "Hyperscaler lança marketplace de agentes de IA pré-auditados",
     summary: "Categoria financeira, mais regulada, ainda ficou de fora do marketplace no lançamento.",
@@ -383,6 +587,7 @@ const securityItems: NewsItem[] = [
   },
   {
     id: "s6",
+    eventType: "regulatorio",
     topic: "Regulação",
     title: "União Europeia propõe rótulo de risco para agentes autônomos financeiros",
     summary: "Proposta espelha o que o banco central local já vinha sinalizando, em jurisdição diferente.",
@@ -405,7 +610,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "Duas iniciativas (cloud e banco central) miram o mesmo espaço em paralelo, sem se cruzar ainda.",
     soWhat: "Quem construir a camada de auditoria de comportamento vira o pré-requisito de todo mundo depois.",
     related_items: ["s2", "s3"],
-    tags: ["sinal regulatório"],
+    threat: false,
     flaggedBy: "Felipe Nunes",
     impact: {
       revenue: "Quem virar o selo de referência cobra por certificação recorrente",
@@ -423,7 +628,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "Ataques cresceram antes de qualquer certificação ou auditoria existir — a janela de exposição é agora.",
     soWhat: "Devida diligência de fornecedor de IA deveria ser item obrigatório em qualquer investimento em fintech AI-first.",
     related_items: ["s1"],
-    tags: ["ameaça"],
+    threat: true,
     flaggedBy: "Marina Prado",
     impact: {
       cost: "Custo de responder a um incidente de supply chain supera em ordem de grandeza o custo de prevenção",
@@ -441,7 +646,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "As duas iniciativas foram anunciadas na mesma semana, sem nenhum player claramente posicionado no meio.",
     soWhat: "Startup de auditoria comportamental de agentes financeiros: tese investível hoje, categoria sem dono.",
     related_items: ["s2", "s3", "s1"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Rafaela Kim",
     impact: {
       revenue: "Tese investível com mercado ainda sem preço definido",
@@ -460,7 +665,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "Exigência é recente; ainda não existe fornecedor de referência que as seguradoras reconheçam.",
     soWhat: "Modelo de receita recorrente: laudo de auditoria vira pré-requisito anual, não venda única.",
     related_items: ["s4", "s1"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Diego Lacerda",
     impact: {
       revenue: "Receita recorrente anual por cliente auditado, ligada à renovação de apólice",
@@ -479,7 +684,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "O marketplace acabou de abrir — a vaga pra categoria financeira está literalmente esperando alguém preencher.",
     soWhat: "Ser o primeiro agente financeiro pré-auditado nesse marketplace vira canal de distribuição instantâneo.",
     related_items: ["s5", "s2"],
-    tags: ["movimento competitivo"],
+    threat: false,
     flaggedBy: "Rafaela Kim",
     impact: {
       revenue: "Distribuição via marketplace do hyperscaler reduz custo de aquisição de cliente",
@@ -497,7 +702,7 @@ const securityInsights: EnterpriseInsight[] = [
     whyNow: "A convergência entre jurisdições ainda está começando — dá tempo de se antecipar antes de virar exigência simultânea.",
     soWhat: "Quem construir auditoria compatível com múltiplas jurisdições de uma vez ganha escala internacional de saída.",
     related_items: ["s6", "s3"],
-    tags: ["sinal regulatório"],
+    threat: false,
     flaggedBy: "Ana Beatriz Souza",
     impact: {
       cost: "Evita retrabalho de compliance por país ao construir auditoria multi-jurisdição desde o início",
@@ -524,5 +729,316 @@ export const MOCK_RADARS: EnterpriseRadar[] = [
     items: securityItems,
     insights: securityInsights,
     scans: securityScans,
+  },
+];
+
+// ---- P0: detecção de mudança (histórico + delta semana a semana) ----
+// O que separa "scan sob demanda" (commodity) de "detecção de mudança"
+// (produto): snapshots por semana e o delta entre eles. No protótipo os
+// snapshots são fixos; no real, cada varredura persiste e o delta é derivado.
+export type DeltaKind = "novo" | "reforcado" | "subiu" | "esfriou";
+
+export const DELTA_KIND_INFO: Record<DeltaKind, { label: string; color: string }> = {
+  novo: { label: "Novo", color: "#5ec8d8" },
+  reforcado: { label: "Reforçado", color: "#63d29b" },
+  subiu: { label: "Prioridade subiu", color: "#ff6b6b" },
+  esfriou: { label: "Esfriou", color: "#7a8aa5" },
+};
+
+export interface DeltaEntry {
+  kind: DeltaKind;
+  insightId?: string; // presente quando o sinal segue ativo no radar (clicável na UI)
+  title: string;
+  note: string; // o que mudou, em uma linha
+}
+
+export interface WeeklySnapshot {
+  id: string;
+  label: string; // intervalo humano da semana
+  scans: number; // varreduras rodadas na semana
+  entries: DeltaEntry[];
+}
+
+// por radar, mais recente primeiro
+export const MOCK_WEEKLY_DELTAS: Record<string, WeeklySnapshot[]> = {
+  growth: [
+    {
+      id: "gw-atual",
+      label: "6 – 12 jul (semana atual)",
+      scans: 4,
+      entries: [
+        {
+          kind: "subiu",
+          insightId: "gi1",
+          title: "Crédito embarcado em apps de mobilidade via agentes de IA",
+          note: "média → alta: ganhou a 3ª fonte e agora cruza 3 temas",
+        },
+        {
+          kind: "novo",
+          insightId: "gi6",
+          title: "Capital de crédito migrando pra fundo especializado em frota digital",
+          note: "detectado na varredura de 7 jul, 1 fonte — ainda baixa prioridade",
+        },
+        {
+          kind: "novo",
+          insightId: "gi4",
+          title: "Score de risco especializado vira insumo comprável",
+          note: "detectado em 6 jul; já reapareceu na varredura seguinte",
+        },
+        {
+          kind: "novo",
+          insightId: "gi5",
+          title: "Identidade do motorista ainda não é portável entre apps",
+          note: "detectado em 6 jul, 2 fontes de mobilidade",
+        },
+        {
+          kind: "reforcado",
+          insightId: "gi2",
+          title: "Ninguém oferece explicabilidade de crédito algorítmico como serviço",
+          note: "4ª varredura seguida em que a tese reaparece",
+        },
+        {
+          kind: "esfriou",
+          title: "Superapps asiáticos entrando em crédito na América Latina",
+          note: "sem fonte nova há 2 varreduras — saiu do radar ativo",
+        },
+      ],
+    },
+    {
+      id: "gw-anterior",
+      label: "29 jun – 5 jul",
+      scans: 5,
+      entries: [
+        {
+          kind: "novo",
+          insightId: "gi1",
+          title: "Crédito embarcado em apps de mobilidade via agentes de IA",
+          note: "entrou com 2 fontes; prioridade média",
+        },
+        {
+          kind: "novo",
+          insightId: "gi2",
+          title: "Ninguém oferece explicabilidade de crédito algorítmico como serviço",
+          note: "derivado da consulta pública do regulador",
+        },
+        {
+          kind: "novo",
+          title: "Superapps asiáticos entrando em crédito na América Latina",
+          note: "1 fonte — entrou em observação",
+        },
+      ],
+    },
+  ],
+  seguranca: [
+    {
+      id: "sw-atual",
+      label: "6 – 12 jul (semana atual)",
+      scans: 4,
+      entries: [
+        {
+          kind: "subiu",
+          insightId: "si3",
+          title: "Certificação de comportamento de agente como categoria própria",
+          note: "média → alta: 3ª fonte fechou o triângulo cloud × regulação × ataque",
+        },
+        {
+          kind: "novo",
+          insightId: "si6",
+          title: "Rotulagem de risco de agentes vira padrão global",
+          note: "proposta da UE espelha o banco central — convergência regulatória",
+        },
+        {
+          kind: "novo",
+          insightId: "si4",
+          title: "Seguro cyber vira porta de entrada pra vender auditoria",
+          note: "exigência de laudo detectada em 6 jul",
+        },
+        {
+          kind: "reforcado",
+          insightId: "si2",
+          title: "Ataques a fornecedores de modelo viram o novo phishing corporativo",
+          note: "4ª varredura seguida — leitura de ameaça mantida",
+        },
+        {
+          kind: "esfriou",
+          title: "Escassez de GPU travando agentes em produção",
+          note: "nenhuma fonte nova desde 28 jun — arquivado",
+        },
+      ],
+    },
+    {
+      id: "sw-anterior",
+      label: "29 jun – 5 jul",
+      scans: 5,
+      entries: [
+        {
+          kind: "novo",
+          insightId: "si1",
+          title: "Falta um selo de segurança específico para agentes financeiros",
+          note: "entrou cruzando certificação de cloud com auditoria do BC",
+        },
+        {
+          kind: "novo",
+          insightId: "si2",
+          title: "Ataques a fornecedores de modelo viram o novo phishing corporativo",
+          note: "crescimento de 40% no trimestre — marcado como ameaça",
+        },
+        {
+          kind: "novo",
+          title: "Escassez de GPU travando agentes em produção",
+          note: "1 fonte — entrou em observação",
+        },
+      ],
+    },
+  ],
+};
+
+// ---- P0: digest semanal por e-mail ----
+// A entrega enterprise mais universal (Crayon, Klue, Feedly e Owler têm todas):
+// os sinais de alta prioridade da semana + leitura estratégica + fontes, por
+// setor/concorrente, na caixa de entrada do time. O conteúdo do preview é
+// GERADO dos dados reais do radar (computePriority etc.), não redigitado aqui.
+export interface DigestSettings {
+  day: string;
+  hour: string;
+  recipients: string[]; // e-mails do time que recebem
+  radarIds: string[];
+}
+
+export const MOCK_DIGEST: DigestSettings = {
+  day: "segunda",
+  hour: "08:00",
+  recipients: MOCK_TEAM.filter((m) => m.status === "ativo").map((m) => m.email),
+  radarIds: ["growth", "seguranca"],
+};
+
+// ---- P1: alertas de mudança ----
+// Dispara quando surge evento que casa com a regra (tipo de evento × prioridade
+// mínima). Começa por e-mail; Slack/Teams ficam visíveis como "em breve" pra
+// vender a direção sem prometer data.
+export interface AlertRule {
+  id: string;
+  label: string;
+  description: string;
+  eventTypes: EventType[]; // vazio = qualquer evento
+  minPriority: Priority;
+  enabled: boolean;
+}
+
+export const MOCK_ALERT_RULES: AlertRule[] = [
+  {
+    id: "r1",
+    label: "Mudança de preço de concorrente",
+    description: "Qualquer evento de preço nos temas monitorados",
+    eventTypes: ["preco"],
+    minPriority: "baixa",
+    enabled: true,
+  },
+  {
+    id: "r2",
+    label: "Novo entrante / movimento de capital",
+    description: "Funding ou M&A que toca os produtos monitorados",
+    eventTypes: ["funding", "ma"],
+    minPriority: "media",
+    enabled: true,
+  },
+  {
+    id: "r3",
+    label: "Regulatório em tema monitorado",
+    description: "Norma, consulta pública ou decisão que muda a regra do jogo",
+    eventTypes: ["regulatorio"],
+    minPriority: "media",
+    enabled: true,
+  },
+  {
+    id: "r4",
+    label: "Qualquer sinal de alta prioridade",
+    description: "Rede de segurança: nada de alta passa sem aviso",
+    eventTypes: [],
+    minPriority: "alta",
+    enabled: true,
+  },
+];
+
+export interface AlertLogEntry {
+  id: string;
+  at: string; // ISO
+  radarId: string;
+  insightId?: string;
+  title: string;
+  trigger: string; // qual regra disparou e por quê
+}
+
+export const MOCK_ALERT_LOG: AlertLogEntry[] = [
+  {
+    id: "a1",
+    at: "2026-07-07T14:24:00",
+    radarId: "seguranca",
+    insightId: "si6",
+    title: "UE propõe rótulo de risco para agentes autônomos financeiros",
+    trigger: "Regulatório em tema monitorado · evento Regulatório/Legal",
+  },
+  {
+    id: "a2",
+    at: "2026-07-07T14:21:00",
+    radarId: "growth",
+    insightId: "gi1",
+    title: "Crédito embarcado em apps de mobilidade subiu pra alta prioridade",
+    trigger: "Qualquer sinal de alta prioridade · 3 fontes, 3 temas",
+  },
+  {
+    id: "a3",
+    at: "2026-07-06T02:37:00",
+    radarId: "seguranca",
+    insightId: "si4",
+    title: "Seguradoras passam a exigir auditoria de IA para apólice cyber",
+    trigger: "Mudança de preço de concorrente · evento Mudança de preço",
+  },
+  {
+    id: "a4",
+    at: "2026-07-05T14:12:00",
+    radarId: "growth",
+    insightId: "gi6",
+    title: "Fundo especializado capta rodada para financiar frota de apps",
+    trigger: "Novo entrante / movimento de capital · evento Funding",
+  },
+];
+
+// ---- P2: colaboração leve (boards compartilhados) ----
+// O que separa workspace de time do uso solo: sinais salvos viram boards com
+// dono e audiência, não abas de navegador de cada analista.
+export interface SharedBoard {
+  id: string;
+  name: string;
+  radarId: string;
+  members: string[]; // nomes (subset do MOCK_TEAM)
+  signals: number; // sinais salvos no board
+  updatedAt: string; // ISO
+}
+
+export const MOCK_BOARDS: SharedBoard[] = [
+  {
+    id: "b1",
+    name: "Tese: crédito embarcado",
+    radarId: "growth",
+    members: ["Marina Prado", "Diego Lacerda", "Felipe Nunes"],
+    signals: 4,
+    updatedAt: "2026-07-07T18:40:00",
+  },
+  {
+    id: "b2",
+    name: "Auditoria de agentes — categoria sem dono",
+    radarId: "seguranca",
+    members: ["Rafaela Kim", "Ana Beatriz Souza"],
+    signals: 3,
+    updatedAt: "2026-07-06T11:15:00",
+  },
+  {
+    id: "b3",
+    name: "Digest interno de segunda",
+    radarId: "growth",
+    members: ["Marina Prado", "Ana Beatriz Souza", "Diego Lacerda", "Felipe Nunes"],
+    signals: 6,
+    updatedAt: "2026-07-06T08:05:00",
   },
 ];

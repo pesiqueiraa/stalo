@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { InsightGlyph } from "@/components/InsightGlyph";
-import { ENTERPRISE_TAG_INFO, type EnterpriseRadar } from "@/lib/enterpriseMock";
+import {
+  PRIORITY_INFO,
+  READING_INFO,
+  computePriority,
+  type EnterpriseRadar,
+} from "@/lib/enterpriseMock";
 
 function relativeLabel(ms: number) {
   const minutes = Math.max(0, Math.round(ms / 60000));
@@ -22,17 +27,21 @@ interface AlertWireProps {
 // Feed ao vivo, estilo terminal de mercado: mais recente primeiro, por
 // `detectedAt` real do mock (o mesmo histórico que alimenta o ScanTimeline —
 // não é mais um hack de "index * minutos"). Seleção é bidirecional com o
-// RadarScope: clicar aqui ou lá acende os dois. Insights com `recurrence > 1`
-// ganham um selo — a mesma tese sinalizada de novo em varreduras seguintes.
+// RadarScope: clicar aqui ou lá acende os dois. Cada linha carrega a prioridade
+// heurística e a leitura de ameaça; insights com `recurrence > 1` ganham um
+// selo — a mesma tese sinalizada de novo em varreduras seguintes.
 export function AlertWire({ radar, selectedId, onSelect }: AlertWireProps) {
   const [now] = useState(() => Date.now());
 
   const ranked = useMemo(
     () =>
-      [...radar.insights].sort(
-        (a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime(),
-      ),
-    [radar.insights],
+      radar.insights
+        .map((insight) => ({ insight, priority: computePriority(insight, radar) }))
+        .sort(
+          (a, b) =>
+            new Date(b.insight.detectedAt).getTime() - new Date(a.insight.detectedAt).getTime(),
+        ),
+    [radar],
   );
 
   return (
@@ -46,15 +55,14 @@ export function AlertWire({ radar, selectedId, onSelect }: AlertWireProps) {
       </div>
 
       <div className="ent-wire-list">
-        {ranked.map((insight) => {
+        {ranked.map(({ insight, priority }) => {
           const selected = insight.id === selectedId;
-          const isThreat = insight.tags.includes("ameaça");
           const elapsed = now - new Date(insight.detectedAt).getTime();
           return (
             <button
               key={insight.id}
               type="button"
-              className={`ent-wire-row${selected ? " active" : ""}${isThreat ? " threat" : ""}`}
+              className={`ent-wire-row${selected ? " active" : ""}${insight.threat ? " threat" : ""}`}
               onClick={() => onSelect(insight.id)}
             >
               <span className="ent-wire-time">{relativeLabel(elapsed)}</span>
@@ -62,11 +70,17 @@ export function AlertWire({ radar, selectedId, onSelect }: AlertWireProps) {
               <span className="ent-wire-body">
                 <span className="ent-wire-title">{insight.title}</span>
                 <span className="ent-wire-meta">
-                  {insight.tags.map((tag) => (
-                    <span key={tag} className="ent-wire-tag" style={{ color: ENTERPRISE_TAG_INFO[tag].color }}>
-                      {ENTERPRISE_TAG_INFO[tag].label}
+                  <span
+                    className={`ent-prio ${priority.level}`}
+                    title={priority.reasons.join(" · ") || undefined}
+                  >
+                    {PRIORITY_INFO[priority.level].label}
+                  </span>
+                  {insight.threat && (
+                    <span className="ent-wire-tag" style={{ color: READING_INFO.ameaca.color }}>
+                      {READING_INFO.ameaca.short}
                     </span>
-                  ))}
+                  )}
                   {insight.recurrence > 1 && (
                     <span className="ent-wire-recurrence">visto {insight.recurrence}x</span>
                   )}

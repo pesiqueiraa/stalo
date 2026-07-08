@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import type { NewsItem } from "@stalo/shared";
-import type { EnterpriseRadar } from "@/lib/enterpriseMock";
+import { computePriority, type EnterpriseNewsItem, type EnterpriseRadar } from "@/lib/enterpriseMock";
 import { EnterpriseBriefCard } from "./EnterpriseBrief";
 import { useDismiss } from "@/lib/useDismiss";
 
@@ -24,9 +23,11 @@ export function SignalDrawer({ radar, selectedId, onClose }: SignalDrawerProps) 
 
   const sources = useMemo(() => {
     if (!insight) return [];
-    const byId = new Map<string, NewsItem>();
+    const byId = new Map<string, EnterpriseNewsItem>();
     for (const item of radar.items) byId.set(item.id, item);
-    return insight.related_items.map((id) => byId.get(id)).filter((n): n is NewsItem => Boolean(n));
+    return insight.related_items
+      .map((id) => byId.get(id))
+      .filter((n): n is EnterpriseNewsItem => Boolean(n));
   }, [insight, radar.items]);
 
   return (
@@ -36,7 +37,12 @@ export function SignalDrawer({ radar, selectedId, onClose }: SignalDrawerProps) 
           <button type="button" className="ent-drawer-close" onClick={onClose} aria-label="Fechar detalhe">
             ✕
           </button>
-          <EnterpriseBriefCard insight={insight} sources={sources} topics={topics} />
+          <EnterpriseBriefCard
+            insight={insight}
+            sources={sources}
+            topics={topics}
+            priority={computePriority(insight, radar)}
+          />
         </>
       )}
     </div>
