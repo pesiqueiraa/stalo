@@ -14,6 +14,10 @@ const DAYS_OPTIONS = [30, 60, 90];
 
 interface TopicsPanelProps {
   topics: Topic[];
+  // notícias que cada tema gerou no scan atual (chave = nome do tema); null =
+  // ainda não há scan pra contar. É atividade DESTE scan, não "tendência" —
+  // rótulo de tendência exigiria histórico de scans, que ainda não existe.
+  newsCounts: Record<string, number> | null;
   onAddTopic: (name: string) => void;
   onRemoveTopic: (id: string) => void;
   onScan: () => void;
@@ -37,6 +41,7 @@ const SETTING_OPTIONS: { key: BoolSettingKey; label: string }[] = [
 
 export function TopicsPanel({
   topics,
+  newsCounts,
   onAddTopic,
   onRemoveTopic,
   onScan,
@@ -59,19 +64,33 @@ export function TopicsPanel({
     <div className="panel" id="panel-topics">
       <h2>Temas monitorados</h2>
       <div id="topics-list">
-        {topics.map((topic, idx) => (
-          <span className="topic-chip" key={topic.id}>
-            <span
-              className="dot"
-              style={{ background: TOPIC_COLORS[idx % TOPIC_COLORS.length] }}
-            />
-            {topic.name}
-            <button title="Remover tema" onClick={() => onRemoveTopic(topic.id)}>
-              ×
-            </button>
-          </span>
-        ))}
+        {topics.map((topic, idx) => {
+          const count = newsCounts?.[topic.name];
+          return (
+            <span className="topic-chip" key={topic.id}>
+              <span
+                className="dot"
+                style={{ background: TOPIC_COLORS[idx % TOPIC_COLORS.length] }}
+              />
+              {topic.name}
+              {count !== undefined && (
+                <span
+                  className="chip-count"
+                  title={`${count} ${count === 1 ? "notícia" : "notícias"} neste scan`}
+                >
+                  {count}
+                </span>
+              )}
+              <button title="Remover tema" onClick={() => onRemoveTopic(topic.id)}>
+                ×
+              </button>
+            </span>
+          );
+        })}
       </div>
+      {newsCounts && topics.length > 0 && (
+        <div className="topic-count">nº ao lado do tema = notícias neste scan</div>
+      )}
       <div className="topic-count">
         {topics.length}/{MAX_TOPICS} temas · até {MAX_TOPICS} por vez, para manter a análise
         focada

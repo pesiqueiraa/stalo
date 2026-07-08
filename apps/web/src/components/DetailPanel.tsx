@@ -1,60 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
-import type { GraphNode, InsightNode } from "@stalo/shared";
-import { formatShortDate, labelForType } from "@/lib/ui";
+import { useRef } from "react";
+import type { GraphNode, NewsNode } from "@stalo/shared";
+import { formatShortDate } from "@/lib/ui";
 import { useDismiss } from "@/lib/useDismiss";
+import { InsightStory } from "./InsightStory";
 
 interface DetailPanelProps {
   node: GraphNode | null;
+  newsNodes: NewsNode[]; // notícias do scan, para resolver as relacionadas do insight
   alreadySaved: boolean;
   onSave: (node: GraphNode, notes: string) => void;
   onClose: () => void;
 }
 
-// Detalhe de um insight, com o campo de nota do usuário. Componente próprio pra
-// o texto da nota ser estado local — o pai o remonta via key={node.id}, então a
-// nota zera ao trocar de insight sem precisar de effect.
-function InsightDetail({
-  node,
-  alreadySaved,
-  onSave,
-  onClose,
-}: {
-  node: InsightNode;
-  alreadySaved: boolean;
-  onSave: (node: GraphNode, notes: string) => void;
-  onClose: () => void;
-}) {
-  const [notes, setNotes] = useState("");
-  return (
-    <>
-      <span className={`detail-type detail-${node.insightType}`}>
-        {labelForType(node.insightType)}
-      </span>
-      <h3>{node.title}</h3>
-      <p>{node.description}</p>
-      {!alreadySaved && (
-        <textarea
-          className="detail-note"
-          placeholder="Sua nota (opcional): por que isso importa, o que investigar…"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          maxLength={500}
-        />
-      )}
-      <button className="btn-save" disabled={alreadySaved} onClick={() => onSave(node, notes.trim())}>
-        {alreadySaved ? "Já salva" : "Salvar ideia"}
-      </button>
-      <button className="btn-close" onClick={onClose}>
-        Fechar
-      </button>
-    </>
-  );
-}
-
-export function DetailPanel({ node, alreadySaved, onSave, onClose }: DetailPanelProps) {
+export function DetailPanel({ node, newsNodes, alreadySaved, onSave, onClose }: DetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   // fecha ao clicar/tocar fora da box (grafo vazio, laterais, header…) ou Esc.
   // ignora `.node`: clicar noutro nó apenas troca o conteúdo, sem fechar/reabrir.
@@ -63,13 +23,18 @@ export function DetailPanel({ node, alreadySaved, onSave, onClose }: DetailPanel
   return (
     <div ref={panelRef} className={`detail-panel${node ? " open" : ""}`}>
       {node && node.kind === "insight" && (
-        <InsightDetail
-          key={node.id}
-          node={node}
-          alreadySaved={alreadySaved}
-          onSave={onSave}
-          onClose={onClose}
-        />
+        // key={node.id} remonta ao trocar de insight: nota e revelação zeram
+        <div key={node.id}>
+          <InsightStory
+            node={node}
+            sources={newsNodes.filter((n) => node.related.includes(n.id))}
+            saved={alreadySaved}
+            onSave={onSave}
+          />
+          <button className="btn-close" style={{ marginTop: 10 }} onClick={onClose}>
+            Fechar
+          </button>
+        </div>
       )}
       {node && node.kind === "news" && (
         <>
