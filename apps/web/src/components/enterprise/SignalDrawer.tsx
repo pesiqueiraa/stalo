@@ -9,12 +9,13 @@ interface SignalDrawerProps {
   radar: EnterpriseRadar;
   selectedId: string | null;
   onClose: () => void;
+  onAddComment: (insightId: string, text: string) => void;
 }
 
 // Painel de detalhe da sala de situação: abre quando um glifo do RadarScope ou
 // uma linha do AlertWire é selecionado. Reaproveita o mesmo card do modo Lista
 // (EnterpriseBriefCard) — um único lugar de verdade pro conteúdo do insight.
-export function SignalDrawer({ radar, selectedId, onClose }: SignalDrawerProps) {
+export function SignalDrawer({ radar, selectedId, onClose, onAddComment }: SignalDrawerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   useDismiss(ref, onClose, Boolean(selectedId), ".scope-node, .ent-wire-row");
 
@@ -42,6 +43,7 @@ export function SignalDrawer({ radar, selectedId, onClose }: SignalDrawerProps) 
             sources={sources}
             topics={topics}
             priority={computePriority(insight, radar)}
+            onAddComment={(text) => onAddComment(insight.id, text)}
           />
         </>
       )}

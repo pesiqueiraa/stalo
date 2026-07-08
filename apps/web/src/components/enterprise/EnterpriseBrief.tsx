@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   EVENT_TYPE_INFO,
   IMPACT_LABELS,
@@ -15,6 +16,73 @@ import { topicColor } from "@/lib/graph";
 
 const IMPACT_KEYS = Object.keys(IMPACT_LABELS) as (keyof EnterpriseImpact)[];
 
+function formatCommentAt(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Thread de notas do time: uma lista de comentários com autor e data, não um
+// campo único sobrescrito — pra um grupo, o que importa é o histórico de quem
+// já validou ou descartou a tese, não só a opinião mais recente.
+function CommentThread({
+  insight,
+  onAddComment,
+}: {
+  insight: EnterpriseInsight;
+  onAddComment: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function submit() {
+    if (!draft.trim()) return;
+    onAddComment(draft);
+    setDraft("");
+  }
+
+  return (
+    <div className="detail-section ent-comments">
+      <div className="detail-section-label">Notas do time</div>
+      {insight.comments.length > 0 ? (
+        <ul className="ent-comment-list">
+          {insight.comments.map((c) => (
+            <li key={c.id} className="ent-comment">
+              <div className="ent-comment-head">
+                <span className="ent-comment-author">{c.author}</span>
+                <span className="ent-comment-at">{formatCommentAt(c.at)}</span>
+              </div>
+              <p className="ent-comment-text">{c.text}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="ent-comment-empty">Ninguém do time comentou essa tese ainda.</p>
+      )}
+      <form
+        className="ent-comment-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <textarea
+          className="ent-comment-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Adicionar nota: já validou, quer descartar, quer investigar…"
+          rows={2}
+        />
+        <button type="submit" className="ent-comment-submit" disabled={!draft.trim()}>
+          Comentar
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // Card completo de um insight: usado no SignalDrawer (Sala e Lista abrem o
 // mesmo painel de detalhe ao clicar um sinal). Mesma linguagem visual do
 // Brief.tsx pessoal (reaproveita .brief-card/.detail-type/.detail-section de
@@ -26,11 +94,13 @@ export function EnterpriseBriefCard({
   sources,
   topics,
   priority,
+  onAddComment,
 }: {
   insight: EnterpriseInsight;
   sources: EnterpriseNewsItem[];
   topics: string[];
   priority: PriorityCall;
+  onAddComment: (text: string) => void;
 }) {
   return (
     <article className="brief-card">
@@ -114,6 +184,8 @@ export function EnterpriseBriefCard({
       <div className="ent-flagged-by">
         sinalizado por <b>{insight.flaggedBy}</b>
       </div>
+
+      <CommentThread insight={insight} onAddComment={onAddComment} />
     </article>
   );
 }

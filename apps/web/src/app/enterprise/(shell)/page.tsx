@@ -9,12 +9,12 @@ import { SignalDrawer } from "@/components/enterprise/SignalDrawer";
 import { SignalList } from "@/components/enterprise/SignalList";
 import { ScopeStats } from "@/components/enterprise/ScopeStats";
 import { ScanTimeline } from "@/components/enterprise/ScanTimeline";
-import { TopicLegend } from "@/components/enterprise/TopicLegend";
+import { TrendingTopics } from "@/components/enterprise/TrendingTopics";
 
 type ViewMode = "sala" | "lista";
 
 export default function EnterpriseDashboardPage() {
-  const { activeRadar } = useEnterpriseWorkspace();
+  const { activeRadar, addComment } = useEnterpriseWorkspace();
   const [view, setView] = useState<ViewMode>("sala");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [onlyHigh, setOnlyHigh] = useState(false);
@@ -101,7 +101,7 @@ export default function EnterpriseDashboardPage() {
                 <p className="ent-scope-caption">
                   Anéis = evidência: quanto mais perto do centro, mais fontes sustentam a tese.
                 </p>
-                <TopicLegend topics={activeRadar.topics} />
+                <TrendingTopics radar={activeRadar} />
               </div>
               <AlertWire radar={viewRadar} selectedId={selectedId} onSelect={toggleSelect} />
             </div>
@@ -109,7 +109,12 @@ export default function EnterpriseDashboardPage() {
         ) : (
           <SignalList radar={viewRadar} selectedId={selectedId} onSelect={toggleSelect} />
         )}
-        <SignalDrawer radar={activeRadar} selectedId={selectedId} onClose={() => setSelectedId(null)} />
+        <SignalDrawer
+          radar={activeRadar}
+          selectedId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onAddComment={addComment}
+        />
       </div>
     </>
   );

@@ -59,6 +59,71 @@ function toMarkdown(idea: SavedIdea): string {
   return lines.join("\n");
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// monta o mesmo relatório em HTML — pra "Copiar para o Docs": o Google Docs
+// (e o Word) interpretam text/html colado da área de transferência como texto
+// rico, então colar aqui já chega formatado, sem exportação de arquivo.
+function toHtml(idea: SavedIdea): string {
+  const dive = idea.deepDive;
+  const p = (text: string) => `<p>${escapeHtml(text)}</p>`;
+  const h2 = (text: string) => `<h2>${escapeHtml(text)}</h2>`;
+  const parts: string[] = [];
+  parts.push(`<h1>${escapeHtml(idea.title)}</h1>`);
+  parts.push(`<p><em>${escapeHtml(labelForType(idea.type))} · ${escapeHtml(idea.description)}</em></p>`);
+  if (dive?.panorama) parts.push(h2("Panorama"), p(dive.panorama));
+  if (idea.relatedItems.length) {
+    parts.push(h2("O que cruza"));
+    parts.push(
+      "<ul>" +
+        idea.relatedItems
+          .map(
+            (it) =>
+              `<li><strong>${escapeHtml(it.topic)}</strong> — ${escapeHtml(it.title)}${
+                it.source ? ` (${escapeHtml(it.source)})` : ""
+              }</li>`,
+          )
+          .join("") +
+        "</ul>",
+    );
+  }
+  if (idea.rationale) parts.push(h2("Por que conecta"), p(idea.rationale));
+  if (dive?.porQueAgora) parts.push(h2("Por que agora"), p(dive.porQueAgora));
+  if (idea.soWhat) parts.push(h2("E daí?"), p(idea.soWhat));
+  if (dive?.proximosPassos.length) {
+    parts.push(h2("Próximos passos"));
+    parts.push("<ol>" + dive.proximosPassos.map((s) => `<li>${escapeHtml(s)}</li>`).join("") + "</ol>");
+  }
+  if (dive?.sinais.length) {
+    parts.push(h2("Sinais a observar"));
+    parts.push(
+      "<ul>" +
+        dive.sinais
+          .map((s) => `<li><strong>${s.kind === "risco" ? "Risco" : "A favor"}:</strong> ${escapeHtml(s.text)}</li>`)
+          .join("") +
+        "</ul>",
+    );
+  }
+  if (idea.notes) parts.push(h2("Sua nota"), p(idea.notes));
+  const f = idea.financials;
+  if (f) {
+    parts.push("<hr/>", "<h1>Análise financeira</h1>");
+    parts.push(h2("Mercado"), p(f.mercado));
+    parts.push(h2("Monetização"), p(f.monetizacao));
+    if (f.premissas.length) {
+      parts.push(h2("O que precisa ser verdade"));
+      parts.push("<ul>" + f.premissas.map((pr) => `<li>${escapeHtml(pr)}</li>`).join("") + "</ul>");
+    }
+    parts.push(h2("Custo de validar"), p(f.custoValidar));
+  }
+  return parts.join("\n");
+}
+
 export function DeepDiveView({
   idea,
   topics,
@@ -67,6 +132,7 @@ export function DeepDiveView({
   onClose,
 }: DeepDiveViewProps) {
   const [copied, setCopied] = useState(false);
+  const [docsCopied, setDocsCopied] = useState(false);
   const [closing, setClosing] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   // fecha ao clicar no fundo (fora da folha) ou apertar Esc, além do "← voltar".
@@ -105,6 +171,36 @@ export function DeepDiveView({
       },
       () => setCopied(false),
     );
+  }
+
+  // Copia como texto rico (text/html), com fallback pro texto plano — colar
+  // num Google Doc (ou Word) já chega formatado, sem precisar de exportação
+  // de arquivo nem integração com a API do Docs.
+  function copyForDocs() {
+    const html = toHtml(idea);
+    const text = toMarkdown(idea);
+    const onDone = () => {
+      setDocsCopied(true);
+      setTimeout(() => setDocsCopied(false), 2000);
+    };
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      });
+      navigator.clipboard.write([item]).then(onDone, () => {
+        navigator.clipboard?.writeText(text).then(onDone, () => setDocsCopied(false));
+      });
+    } else {
+      navigator.clipboard?.writeText(text).then(onDone, () => setDocsCopied(false));
+    }
+  }
+
+  // Sem lib de PDF: usa o diálogo nativo de impressão do navegador ("Salvar
+  // como PDF"), com CSS de impressão dedicado (globals.css) que isola só a
+  // folha do mergulho. Portável, sem dependência nova, sem key/servidor.
+  function downloadPdf() {
+    window.print();
   }
 
   let secNum = 0;
@@ -310,6 +406,12 @@ export function DeepDiveView({
           <span className="dive-actions-label">Exportar</span>
           <button className="dive-chip" onClick={copyMarkdown}>
             {copied ? "Copiado" : "Copiar como Markdown"}
+          </button>
+          <button className="dive-chip" onClick={copyForDocs}>
+            {docsCopied ? "Copiado" : "Copiar para o Docs"}
+          </button>
+          <button className="dive-chip" onClick={downloadPdf}>
+            Baixar PDF
           </button>
         </div>
       </div>

@@ -98,12 +98,23 @@ export const IMPACT_LABELS: Record<keyof EnterpriseImpact, string> = {
   quality: "Qualidade",
 };
 
+// Uma nota de time é sempre um comentário datado e assinado — nunca um campo
+// único sobrescrito, porque o valor pra um grupo é o histórico de quem já
+// validou/descartou a tese, não só a opinião mais recente.
+export interface InsightComment {
+  id: string;
+  author: string; // nome do membro do time (subset de MOCK_TEAM)
+  at: string; // ISO
+  text: string;
+}
+
 export interface EnterpriseInsight extends Insight {
   threat: boolean; // leitura aditiva "ameaça/risco competitivo" (camada 2) — as demais derivam do `type`
   flaggedBy: string; // quem do time sinalizou esse insight primeiro
   impact: EnterpriseImpact;
   detectedAt: string; // ISO — quando essa tese apareceu pela 1ª vez numa varredura
   recurrence: number; // em quantas varreduras seguidas ela reapareceu (1 = só essa vez)
+  comments: InsightComment[]; // thread de notas do time, mais antiga primeiro
 }
 
 // Uma rodada de coleta periódica (ver roadmap "Scan agendado"). O protótipo
@@ -211,6 +222,40 @@ export function eventMix(
     .sort((a, b) => b.count - a.count);
 }
 
+export interface TopicActivity {
+  topic: string;
+  count: number; // quantas teses ativas tocam esse tema (não conta notícia solta)
+  hot: boolean; // pelo menos uma tese nova detectada na última varredura
+}
+
+// Ranking "temas em alta": reaproveita os mesmos related_items já usados por
+// eventMix/computePriority, só que agregado por tema em vez de por insight —
+// nenhum dado novo, é outra leitura do que já existe no radar.
+export function topicMix(radar: EnterpriseRadar): TopicActivity[] {
+  const byId = new Map(radar.items.map((item) => [item.id, item]));
+  const lastScanAt = radar.scans[radar.scans.length - 1]?.at;
+  const base = new Map<string, { count: number; hot: boolean }>();
+  for (const topic of radar.topics) base.set(topic.name, { count: 0, hot: false });
+
+  for (const insight of radar.insights) {
+    const touched = new Set<string>();
+    for (const id of insight.related_items) {
+      const item = byId.get(id);
+      if (item) touched.add(item.topic);
+    }
+    for (const topicName of touched) {
+      const entry = base.get(topicName) ?? { count: 0, hot: false };
+      entry.count += 1;
+      if (lastScanAt && insight.detectedAt === lastScanAt) entry.hot = true;
+      base.set(topicName, entry);
+    }
+  }
+
+  return radar.topics
+    .map((t) => ({ topic: t.name, ...(base.get(t.name) ?? { count: 0, hot: false }) }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -285,6 +330,10 @@ export const MOCK_TEAM: TeamMember[] = [
   { id: "u4", name: "Felipe Nunes", email: "felipe@nortecapital.vc", role: "membro", status: "ativo" },
   { id: "u5", name: "Rafaela Kim", email: "rafaela@nortecapital.vc", role: "membro", status: "convite pendente" },
 ];
+
+// Autor das notas adicionadas ao vivo no protótipo (sem login real ainda —
+// ver regra 2 do CLAUDE.md, isso não vira auth de verdade aqui).
+export const CURRENT_USER: TeamMember = MOCK_TEAM[0];
 
 // Cadência de coleta mockada: uma varredura a cada ~12h, últimos 3 dias. As
 // duas mesmas 6 marcações de tempo servem os dois radares (mesma empresa, mesma
@@ -422,6 +471,20 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[0],
     recurrence: 5,
+    comments: [
+      {
+        id: "gi1-c1",
+        author: "Ana Beatriz Souza",
+        at: "2026-07-06T11:20:00",
+        text: "Já conversei com 2 pessoas do setor, parece real — mobilidade tá mesmo de olho em crédito embarcado.",
+      },
+      {
+        id: "gi1-c2",
+        author: "Felipe Nunes",
+        at: "2026-07-06T16:05:00",
+        text: "Concordo, mas o ciclo de decisão desses apps costuma ser lento. Vale confirmar prazo antes de priorizar.",
+      },
+    ],
   },
   {
     id: "gi2",
@@ -442,6 +505,7 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[1],
     recurrence: 4,
+    comments: [],
   },
   {
     id: "gi3",
@@ -461,6 +525,7 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[2],
     recurrence: 3,
+    comments: [],
   },
   {
     id: "gi4",
@@ -481,6 +546,7 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[3],
     recurrence: 2,
+    comments: [],
   },
   {
     id: "gi5",
@@ -501,6 +567,7 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[3],
     recurrence: 2,
+    comments: [],
   },
   {
     id: "gi6",
@@ -520,6 +587,7 @@ const growthInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[5],
     recurrence: 1,
+    comments: [],
   },
 ];
 
@@ -618,6 +686,7 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[0],
     recurrence: 4,
+    comments: [],
   },
   {
     id: "si2",
@@ -636,6 +705,20 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[1],
     recurrence: 4,
+    comments: [
+      {
+        id: "si2-c1",
+        author: "Diego Lacerda",
+        at: "2026-07-05T09:40:00",
+        text: "Descartar como tese nova — já vi esse padrão de ataque a supply chain de modelo no Q3, não é novidade pro nosso portfólio.",
+      },
+      {
+        id: "si2-c2",
+        author: "Rafaela Kim",
+        at: "2026-07-05T14:12:00",
+        text: "O padrão não é novo, mas o crescimento de 40% no trimestre é — acho que vale manter no radar como sinal de intensidade, não de novidade.",
+      },
+    ],
   },
   {
     id: "si3",
@@ -654,6 +737,7 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[2],
     recurrence: 3,
+    comments: [],
   },
   {
     id: "si4",
@@ -673,6 +757,7 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[3],
     recurrence: 2,
+    comments: [],
   },
   {
     id: "si5",
@@ -692,6 +777,7 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[3],
     recurrence: 2,
+    comments: [],
   },
   {
     id: "si6",
@@ -710,6 +796,7 @@ const securityInsights: EnterpriseInsight[] = [
     },
     detectedAt: SCAN_TIMES[5],
     recurrence: 1,
+    comments: [],
   },
 ];
 

@@ -1488,6 +1488,51 @@ header {
   }
 }
 
+/* ---- "Baixar PDF": isola a folha do mergulho pro diálogo de impressão do
+   navegador, força fundo claro/texto escuro (o tema é escuro na tela) e
+   esconde o que só faz sentido em tela (voltar, fundo decorativo, exportar,
+   CTA de aprofundar ainda não gerado). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .dive-sheet,
+  .dive-sheet * {
+    visibility: visible;
+  }
+  .dive-sheet {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+    background: #fff !important;
+    color: #1a1a2e !important;
+    padding: 24px;
+  }
+  .dive-sheet * {
+    color: #1a1a2e !important;
+    background: transparent !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  .dive-signal-tag.risco {
+    color: #b3261e !important;
+  }
+  .dive-signal-tag.favor {
+    color: #0f7a4d !important;
+  }
+  .dive-ambient,
+  .dive-topbar,
+  .dive-actions,
+  .dive-deepen {
+    display: none !important;
+  }
+}
+
 /* ---- Coluna central: toggle Brief/Mapa + corpo ---- */
 /* brief-first (produto.md §3): o memo é a tela principal, o grafo é secundário.
    A coluna central vira uma flex-column: barra de toggle + corpo que alterna. */

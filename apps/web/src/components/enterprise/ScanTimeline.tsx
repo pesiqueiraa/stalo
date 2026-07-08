@@ -20,10 +20,11 @@ interface ScanTimelineProps {
   scans: EnterpriseScanRun[]; // ordem cronológica ascendente
 }
 
-// Visualiza a coleta periódica de verdade: cada tick é uma varredura já
-// rodada (mock, mas com timestamps e contagens reais), e a contagem regressiva
-// no fim mostra quando a próxima entra — a cadência (roadmap "Scan agendado")
-// deixa de ser um conceito abstrato e vira algo visível e ao vivo na tela.
+// Visualiza a coleta periódica de verdade: cada barra é uma varredura já
+// rodada (mock, mas com timestamps e contagens reais), empilhada em novos ×
+// reforçados — e a contagem regressiva no fim mostra quando a próxima entra.
+// A cadência (roadmap "Scan agendado") deixa de ser um conceito abstrato e
+// vira algo visível, comparável entre varreduras e ao vivo na tela.
 export function ScanTimeline({ scans }: ScanTimelineProps) {
   const [now, setNow] = useState<number | null>(null);
 
@@ -44,18 +45,60 @@ export function ScanTimeline({ scans }: ScanTimelineProps) {
 
   return (
     <div className="ent-timeline">
+      <div className="ent-timeline-head">
+        <span className="ent-timeline-title">Atividade por varredura</span>
+        <span className="ent-timeline-legend">
+          <span className="ent-timeline-legend-item">
+            <span className="ent-timeline-legend-swatch novo" /> novos
+          </span>
+          <span className="ent-timeline-legend-item">
+            <span className="ent-timeline-legend-swatch reforcado" /> reforçados
+          </span>
+        </span>
+      </div>
       <div className="ent-timeline-ticks">
         {scans.map((scan, i) => {
-          const activity = scan.newInsights + scan.reinforced;
-          const heightPct = 22 + (activity / maxActivity) * 78;
+          const total = scan.newInsights + scan.reinforced;
+          const totalPct = total > 0 ? Math.max(12, (total / maxActivity) * 100) : 6;
           const isLast = i === scans.length - 1;
           return (
             <div
               key={scan.id}
-              className={`ent-timeline-tick${isLast ? " latest" : ""}`}
-              style={{ ["--h" as string]: `${heightPct}%` }}
-              title={`${formatWhen(scan.at)} — ${scan.newInsights} ${scan.newInsights === 1 ? "novo" : "novos"}, ${scan.reinforced} ${scan.reinforced === 1 ? "reforçado" : "reforçados"}`}
-            />
+              className="ent-bar-group"
+              tabIndex={0}
+              role="group"
+              aria-label={`${formatWhen(scan.at)}: ${scan.newInsights} ${scan.newInsights === 1 ? "novo" : "novos"}, ${scan.reinforced} ${scan.reinforced === 1 ? "reforçado" : "reforçados"}`}
+            >
+              {isLast && total > 0 && <span className="ent-bar-value">+{total}</span>}
+              <div className="ent-bar-stack" style={{ height: `${totalPct}%` }}>
+                {total === 0 ? (
+                  <div className="ent-bar-seg empty" style={{ flexGrow: 1 }} />
+                ) : (
+                  <>
+                    {scan.reinforced > 0 && (
+                      <div className="ent-bar-seg reforcado" style={{ flexGrow: scan.reinforced }} />
+                    )}
+                    {scan.newInsights > 0 && (
+                      <div
+                        className={`ent-bar-seg novo${isLast ? " latest" : ""}`}
+                        style={{ flexGrow: scan.newInsights }}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="ent-bar-tip">
+                <div className="ent-bar-tip-when">{formatWhen(scan.at)}</div>
+                <div className="ent-bar-tip-row">
+                  <span className="ent-bar-tip-swatch novo" />
+                  <b>{scan.newInsights}</b> novos
+                </div>
+                <div className="ent-bar-tip-row">
+                  <span className="ent-bar-tip-swatch reforcado" />
+                  <b>{scan.reinforced}</b> reforçados
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
