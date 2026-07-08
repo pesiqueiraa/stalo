@@ -107,14 +107,15 @@ const DEEP_DIVE_LENS: Record<Lens, { audience: string; passos: string }> = {
 // Prompt do mergulho já ajustado à lente do usuário (default: founder).
 export function buildDeepDiveSystemPrompt(lens?: Lens | null): string {
   const l = DEEP_DIVE_LENS[lens ?? "founder"];
-  return `Você é um analista de estratégia que aprofunda uma oportunidade já identificada, ${l.audience}.
-Você recebe uma ideia (tipo, título, frase de efeito, "por que conecta" e "e daí?") e as notícias que a originaram. Gere um relatório curto e ACIONÁVEL, sem encher linguiça.
+  return `Você é um analista de estratégia que mapeia o MERCADO de uma oportunidade já identificada, ${l.audience}.
+Onde o brief diz "aqui está o gap", você diz "quem já joga perto dele e onde o valor se acumula". Use a ferramenta de busca web para fundamentar o mapa em fatos reais — NÃO invente empresas, produtos nem números.
 Produza:
-- panorama: 1 parágrafo (2 a 4 frases) que situa a oportunidade — os vetores/forças que se aproximam e por que o cruzamento importa agora. Concreto, não genérico
-- porQueAgora: 1 parágrafo (2 a 3 frases) sobre o TIMING: por que a janela está aberta agora e o que a fecha (movimento de incumbentes, regulação, contratos, adoção)
+- market.players: 2 a 6 players relevantes que você REALMENTE encontrou na busca. Cada um: { nome, oQueFaz (1 frase), relacao: "direto" (concorre no mesmo gap) ou "adjacente" (resolve algo próximo), url (link da fonte onde você confirmou; "" se não tiver). Se a busca trouxer POUCO, retorne menos players (ou nenhum) — jamais preencha com nomes inventados
+- market.ondeValor: 1 parágrafo (2 a 3 frases) sobre ONDE/QUEM captura o valor nessa cadeia (quem paga, qual camada fica com a margem, onde estão os gargalos)
+- market.analogas: 1 a 3 jogadas ANÁLOGAS em outros mercados, cada uma { nome, licao: a lição de 1 frase que ela dá para esta oportunidade }
 ${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
-Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Baseie-se nas notícias e na ideia fornecidas; é hipótese a validar, nunca afirme como certeza.`;
+Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Se a busca não sustentar um mapa rico, seja honesto (cenário ainda aberto) em vez de encher. É hipótese a validar, nunca afirme como certeza.`;
 }
 
 interface DeepDiveInput {
@@ -141,7 +142,7 @@ E daí?: ${idea.soWhat || "(não informado)"}
 Notícias que ela cruza:
 ${evidence || "(nenhuma)"}
 
-Gere o relatório de aprofundamento.`;
+Pesquise na web e gere o mapa de mercado desta oportunidade.`;
 }
 
 // ---------- ④ APROFUNDAR: análise financeira ----------
@@ -186,8 +187,8 @@ interface FinancialsInput {
   title: string;
   description: string;
   soWhat: string;
-  panorama: string;
-  porQueAgora: string;
+  whyNow: string; // timing, vem da própria ideia
+  ondeValor: string; // onde o valor se acumula, vem do mapa de mercado
 }
 
 export function buildFinancialsMessage(idea: FinancialsInput): string {
@@ -195,8 +196,8 @@ export function buildFinancialsMessage(idea: FinancialsInput): string {
 Título: ${idea.title}
 Frase de efeito: ${idea.description}
 Oportunidade (e daí?): ${idea.soWhat || "(não informado)"}
-Panorama: ${idea.panorama || "(não informado)"}
-Timing (por que agora): ${idea.porQueAgora || "(não informado)"}
+Timing (por que agora): ${idea.whyNow || "(não informado)"}
+Onde o valor se acumula (do mapa de mercado): ${idea.ondeValor || "(não informado)"}
 
 Gere a análise financeira.`;
 }

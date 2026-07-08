@@ -463,7 +463,6 @@ export default function Home() {
       {openDiveIdea && (
         <DeepDiveView
           idea={openDiveIdea}
-          topics={topics}
           financingId={financingId}
           onDeepenFinancials={deepenFinancials}
           onClose={() => setOpenDiveId(null)}

@@ -39,7 +39,7 @@ import type {
 // Coletor PRECISA de um modelo que suporte a tool web_search; Analista não.
 const COLLECT_MODEL = "gpt-4.1-mini"; // barato + suporta web_search
 const ANALYZE_MODEL = "gpt-5.4"; // síntese melhor, sem busca
-const DEEP_DIVE_MODEL = "gpt-5.4"; // raciocínio bom para o relatório fundo
+const DEEP_DIVE_MODEL = "gpt-4.1-mini"; // mapa de mercado PRECISA de web_search (como o Coletor)
 const FINANCIALS_MODEL = "gpt-5.4"; // análise financeira (2º nível)
 
 const MAX_ITEMS = 15;
@@ -85,9 +85,22 @@ const InsightSchema = z.object({
 });
 const AnalyzeSchema = z.object({ insights: z.array(InsightSchema) });
 
+const MarketPlayerSchema = z.object({
+  nome: z.string(),
+  oQueFaz: z.string(),
+  relacao: z.enum(["direto", "adjacente"]),
+  url: z.string(),
+});
+const MarketAnalogueSchema = z.object({
+  nome: z.string(),
+  licao: z.string(),
+});
 const DeepDiveSchema = z.object({
-  panorama: z.string(),
-  porQueAgora: z.string(),
+  market: z.object({
+    players: z.array(MarketPlayerSchema),
+    ondeValor: z.string(),
+    analogas: z.array(MarketAnalogueSchema),
+  }),
   proximosPassos: z.array(z.string()),
   sinais: z.array(
     z.object({
@@ -214,12 +227,13 @@ export async function runScan(topics: string[], days: number | null): Promise<Sc
   return result;
 }
 
-// ③ MERGULHAR — aprofunda uma ideia salva num relatório (sem busca web). Gera só
-// as seções novas (panorama, timing, passos, sinais); rationale/soWhat já estão
-// na ideia. SERVER-ONLY, mesma regra da key.
+// ③ MERGULHAR — mapa de mercado da ideia salva, fundamentado em BUSCA WEB (quem
+// já joga, onde o valor se acumula, jogadas análogas) + passos e sinais. A tese
+// (rationale/soWhat/whyNow) já está na ideia; aqui é o andar novo. SERVER-ONLY.
 export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
   const res = await client.responses.parse({
     model: DEEP_DIVE_MODEL,
+    tools: [{ type: "web_search" }], // o mapa é fundamentado em busca real (anti-alucinação no prompt)
     max_output_tokens: DEEP_DIVE_MAX_TOKENS,
     input: [
       { role: "system", content: buildDeepDiveSystemPrompt(lens) },
@@ -246,8 +260,20 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
   const dive = res.output_parsed;
   if (!dive) throw new Error("Mergulho: resposta vazia da IA");
   return {
-    panorama: stripNul(dive.panorama),
-    porQueAgora: stripNul(dive.porQueAgora),
+    market: {
+      players: dive.market.players
+        .map((p) => ({
+          nome: stripNul(p.nome),
+          oQueFaz: stripNul(p.oQueFaz),
+          relacao: p.relacao,
+          url: stripNul(p.url),
+        }))
+        .filter((p) => p.nome.trim()),
+      ondeValor: stripNul(dive.market.ondeValor),
+      analogas: dive.market.analogas
+        .map((a) => ({ nome: stripNul(a.nome), licao: stripNul(a.licao) }))
+        .filter((a) => a.nome.trim()),
+    },
     proximosPassos: dive.proximosPassos.map(stripNul).filter((s) => s.trim()),
     sinais: dive.sinais
       .map((s) => ({ kind: s.kind, text: stripNul(s.text) }))
@@ -256,7 +282,8 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
 }
 
 // ④ APROFUNDAR — análise financeira (2º nível), por cima do deep dive. Exige que
-// a ideia já tenha sido mergulhada (usa panorama/porQueAgora como contexto).
+// a ideia já tenha sido mergulhada (usa o timing da ideia + "onde o valor se
+// acumula" do mapa de mercado como contexto).
 export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promise<Financials> {
   const res = await client.responses.parse({
     model: FINANCIALS_MODEL,
@@ -270,8 +297,8 @@ export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promis
           title: idea.title,
           description: idea.description,
           soWhat: idea.soWhat,
-          panorama: idea.deepDive?.panorama ?? "",
-          porQueAgora: idea.deepDive?.porQueAgora ?? "",
+          whyNow: idea.whyNow,
+          ondeValor: idea.deepDive?.market?.ondeValor ?? "",
         }),
       },
     ],

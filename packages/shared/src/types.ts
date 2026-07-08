@@ -71,17 +71,44 @@ export interface Graph {
 }
 
 // "Mergulhar" (deep dive): o relatório fundo gerado pela IA a partir da ideia
-// salva. Só a parte GERADA vive aqui — panorama, timing, passos e sinais. O
-// "por que conecta" (rationale) e o "e daí?" (soWhat) já estão na própria ideia.
+// salva. Reinventado como MAPA DE MERCADO — onde o brief diz "aqui está o gap",
+// o mergulho diz "quem já joga perto dele e onde o valor se acumula". O "por que
+// conecta" (rationale) e o "e daí?" (soWhat) já estão na própria ideia.
 export interface DeepDiveSignal {
   kind: "risco" | "favor";
   text: string;
 }
+
+// Um player do mercado, fundamentado em busca web (com fonte quando houver).
+export interface MarketPlayer {
+  nome: string;
+  oQueFaz: string; // 1 linha do que fazem
+  relacao: "direto" | "adjacente"; // concorrente direto vs. play adjacente
+  url: string; // fonte/rastreabilidade; "" quando não houver
+}
+
+// Uma jogada análoga em outro mercado, com a lição que ela dá.
+export interface MarketAnalogue {
+  nome: string;
+  licao: string;
+}
+
+// O mapa de mercado gerado com busca web: quem joga, onde o valor se acumula,
+// jogadas análogas. Anti-alucinação vive no prompt (só nomear o que encontrou).
+export interface MarketMap {
+  players: MarketPlayer[];
+  ondeValor: string; // onde/quem captura valor na cadeia
+  analogas: MarketAnalogue[];
+}
+
 export interface DeepDive {
-  panorama: string; // o setup: os vetores que se aproximam
-  porQueAgora: string; // timing / urgência
+  market: MarketMap | null; // o mapa de mercado (protagonista do novo mergulho)
   proximosPassos: string[]; // passos concretos de validação
   sinais: DeepDiveSignal[]; // riscos e sinais a favor
+  // Campos do mergulho antigo — não são mais renderizados, ficam opcionais só
+  // pra não quebrar JSON de mergulhos salvos antes do redesenho.
+  panorama?: string;
+  porQueAgora?: string;
 }
 
 // Segundo nível do mergulho: a análise financeira dedicada, gerada sob demanda

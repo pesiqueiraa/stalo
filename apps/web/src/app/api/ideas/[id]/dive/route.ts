@@ -14,8 +14,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!idea) {
       return NextResponse.json({ error: "Ideia não encontrada." }, { status: 404 });
     }
-    // se já foi mergulhada, devolve o que está salvo (cache — não re-gasta a IA)
-    if (idea.deepDive) {
+    // se já tem o mergulho NOVO (mapa de mercado), devolve o cache — não re-gasta
+    // a IA. Mergulhos salvos antes do redesenho (sem `market`) caem fora e re-geram.
+    if (idea.deepDive?.market) {
       return NextResponse.json(idea);
     }
     // rate limit só quando vai de fato gerar (cache acima não consome cota)
