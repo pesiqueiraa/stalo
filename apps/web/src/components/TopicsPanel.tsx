@@ -88,9 +88,6 @@ export function TopicsPanel({
           );
         })}
       </div>
-      {newsCounts && topics.length > 0 && (
-        <div className="topic-count">nº ao lado do tema = notícias neste scan</div>
-      )}
       <div className="topic-count">
         {topics.length}/{MAX_TOPICS} temas · até {MAX_TOPICS} por vez, para manter a análise
         focada

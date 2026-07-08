@@ -47,30 +47,7 @@ export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps
     steps.push({
       key: "padrao",
       label: "O padrão",
-      content: (
-        <>
-          <NewsTimeline items={chronological} />
-          <ul className="reason-chain">
-            {chronological.map((item) => (
-              <li key={item.id}>
-                <span className="reason-dot" style={{ background: item.color }} title={item.topic} />
-                <span>
-                  {item.url ? (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer">
-                      {item.title}
-                    </a>
-                  ) : (
-                    <span>{item.title}</span>
-                  )}
-                  {item.publishedAt && (
-                    <span className="reason-date">{formatShortDate(item.publishedAt)}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ),
+      content: <NewsTimeline items={chronological} />,
     });
   }
   if (node.rationale) {
@@ -115,6 +92,33 @@ export function InsightStory({ node, sources, saved, onSave }: InsightStoryProps
       </>
     ),
   });
+  if (chronological.length > 0) {
+    steps.push({
+      key: "noticias",
+      label: "Notícias",
+      content: (
+        <ul className="reason-chain">
+          {chronological.map((item) => (
+            <li key={item.id}>
+              <span className="reason-dot" style={{ background: item.color }} title={item.topic} />
+              <span>
+                {item.url ? (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                    {item.title}
+                  </a>
+                ) : (
+                  <span>{item.title}</span>
+                )}
+                {item.publishedAt && (
+                  <span className="reason-date">{formatShortDate(item.publishedAt)}</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
 
   return (
     <>
