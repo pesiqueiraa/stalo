@@ -44,7 +44,7 @@ import type {
 
 const MAX_TOPICS = 5;
 const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
-type View = "brief" | "mapa";
+type View = "rede" | "brief";
 
 export default function Home() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -56,7 +56,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30); // janela de recência do scan (30/60/90 ou null = sem limite)
-  const [view, setView] = useState<View>("brief"); // brief-first: memo é a tela principal, grafo é secundário
+  const [view, setView] = useState<View>("rede"); // rede-first: o usuário vê primeiro o mapa das conexões, depois o brief
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [highlightedIdeaId, setHighlightedIdeaId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null);
@@ -363,32 +363,23 @@ export default function Home() {
           <div className="view-toggle" role="tablist" aria-label="Modo de visualização">
             <button
               role="tab"
+              aria-selected={view === "rede"}
+              className={`view-tab${view === "rede" ? " active" : ""}`}
+              onClick={() => setView("rede")}
+            >
+              Rede
+            </button>
+            <button
+              role="tab"
               aria-selected={view === "brief"}
               className={`view-tab${view === "brief" ? " active" : ""}`}
               onClick={() => setView("brief")}
             >
               Brief
             </button>
-            <button
-              role="tab"
-              aria-selected={view === "mapa"}
-              className={`view-tab${view === "mapa" ? " active" : ""}`}
-              onClick={() => setView("mapa")}
-            >
-              Mapa
-            </button>
           </div>
           <div className="center-body">
-            {view === "brief" ? (
-              <Brief
-                insights={insights}
-                newsNodes={newsNodes}
-                savedKeys={savedKeys}
-                hasScanned={lastUpdated !== null}
-                lens={lens}
-                onSave={saveIdea}
-              />
-            ) : (
+            {view === "rede" ? (
               <div className="graph-wrap">
                 <GraphCanvas
                   graph={graph}
@@ -429,6 +420,15 @@ export default function Home() {
                   onClose={() => setSelectedNode(null)}
                 />
               </div>
+            ) : (
+              <Brief
+                insights={insights}
+                newsNodes={newsNodes}
+                savedKeys={savedKeys}
+                hasScanned={lastUpdated !== null}
+                lens={lens}
+                onSave={saveIdea}
+              />
             )}
             {loading && <ScanLoader />}
           </div>

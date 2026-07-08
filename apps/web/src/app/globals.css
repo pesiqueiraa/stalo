@@ -1492,7 +1492,7 @@ header {
   }
 }
 
-/* ---- Coluna central: toggle Brief/Mapa + corpo ---- */
+/* ---- Coluna central: toggle Rede/Brief + corpo ---- */
 /* brief-first (produto.md §3): o memo é a tela principal, o grafo é secundário.
    A coluna central vira uma flex-column: barra de toggle + corpo que alterna. */
 .center-panel {
