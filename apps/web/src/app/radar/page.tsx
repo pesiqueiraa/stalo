@@ -323,6 +323,18 @@ export default function Home() {
   const newsNodes = graph.nodes.filter((n): n is NewsNode => n.kind === "news");
   const savedKeys = new Set(ideas.map((i) => insightKey(i.type, i.title)));
 
+  // atividade do scan atual: quantas notícias cada tema gerou NESTE scan.
+  // Contagem direta do último ScanResult — não é tendência (isso exigiria
+  // histórico de scans, ver roadmap). null antes do primeiro scan = sem badge.
+  const newsCounts = lastUpdated
+    ? Object.fromEntries(
+        topics.map((t) => [
+          t.name,
+          newsNodes.filter((n) => n.topic.toLowerCase() === t.name.toLowerCase()).length,
+        ]),
+      )
+    : null;
+
   const alreadySaved =
     selectedNode?.kind === "insight"
       ? ideas.some(
@@ -336,6 +348,7 @@ export default function Home() {
       <div className={`layout${ideasOpen ? "" : " ideas-collapsed"}`}>
         <TopicsPanel
           topics={topics}
+          newsCounts={newsCounts}
           onAddTopic={addTopic}
           onRemoveTopic={removeTopic}
           onScan={scan}
@@ -370,7 +383,6 @@ export default function Home() {
               <Brief
                 insights={insights}
                 newsNodes={newsNodes}
-                topics={topics.map((t) => t.name)}
                 savedKeys={savedKeys}
                 hasScanned={lastUpdated !== null}
                 lens={lens}
@@ -411,6 +423,7 @@ export default function Home() {
                 )}
                 <DetailPanel
                   node={selectedNode}
+                  newsNodes={newsNodes}
                   alreadySaved={alreadySaved}
                   onSave={saveIdea}
                   onClose={() => setSelectedNode(null)}

@@ -1,106 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { GraphNode, InsightNode, Lens, NewsNode } from "@stalo/shared";
-import { insightKey, labelForType, LENS_LEAD_CATEGORY } from "@/lib/ui";
-import { topicColor } from "@/lib/graph";
+import { insightKey, LENS_LEAD_CATEGORY } from "@/lib/ui";
+import { InsightStory } from "./InsightStory";
 
 interface BriefProps {
   insights: InsightNode[];
   newsNodes: NewsNode[]; // notícias do scan, para remontar as fontes de cada tese
-  topics: string[]; // ordem = cor por tema
   savedKeys: Set<string>; // insightKey das ideias já salvas
   hasScanned: boolean; // distingue "ainda não escaneou" de "escaneou sem conexões"
   lens: Lens | null; // lente do workspace: decide a categoria que lidera o brief
   onSave: (node: GraphNode, notes: string) => void;
 }
 
-// Um card do brief. Nota é estado local (como no DetailPanel): o pai remonta via
-// key={node.id}, então zera ao trocar sem effect.
-function BriefCard({
-  node,
-  sources,
-  topics,
-  saved,
-  onSave,
-}: {
-  node: InsightNode;
-  sources: NewsNode[];
-  topics: string[];
-  saved: boolean;
-  onSave: (node: GraphNode, notes: string) => void;
-}) {
-  const [notes, setNotes] = useState("");
-  return (
-    <article className="brief-card">
-      <div className="brief-card-head">
-        <span className={`detail-type detail-${node.insightType}`}>
-          {labelForType(node.insightType)}
-        </span>
-      </div>
-
-      <h3>{node.title}</h3>
-      {node.description && <p className="brief-lead">{node.description}</p>}
-
-      {node.whyNow && (
-        <div className="detail-section">
-          <div className="detail-section-label">Por que agora</div>
-          <p className="brief-para">{node.whyNow}</p>
-        </div>
-      )}
-
-      {node.soWhat && (
-        <div className="detail-section">
-          <div className="detail-section-label">E daí?</div>
-          <p className="brief-para">{node.soWhat}</p>
-        </div>
-      )}
-
-      {sources.length > 0 && (
-        <div className="detail-section">
-          <div className="detail-section-label">Fontes que sustentam</div>
-          <ul className="reason-chain">
-            {sources.map((item) => (
-              <li key={item.id}>
-                <span
-                  className="reason-dot"
-                  style={{ background: topicColor(item.topic, topics) }}
-                  title={item.topic}
-                />
-                {item.url ? (
-                  <a href={item.url} target="_blank" rel="noopener noreferrer">
-                    {item.title}
-                  </a>
-                ) : (
-                  <span>{item.title}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {!saved && (
-        <textarea
-          className="detail-note"
-          placeholder="Sua nota (opcional): por que isso importa, o que investigar…"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          maxLength={500}
-        />
-      )}
-      <button className="btn-save" disabled={saved} onClick={() => onSave(node, notes.trim())}>
-        {saved ? "Já salva" : "Salvar ideia"}
-      </button>
-    </article>
-  );
-}
-
 export function Brief({
   insights,
   newsNodes,
-  topics,
   savedKeys,
   hasScanned,
   lens,
@@ -146,17 +62,19 @@ export function Brief({
         </span>
       </div>
       <div className="brief-list">
+        {/* cada card é a tese + o caminho de raciocínio faseado (InsightStory);
+            key={node.id} remonta o card (nota e revelação zeram) ao trocar de scan */}
         {ranked.map((node) => (
-          <BriefCard
-            key={node.id}
-            node={node}
-            sources={node.related
-              .map((id) => newsById.get(id))
-              .filter((n): n is NewsNode => Boolean(n))}
-            topics={topics}
-            saved={savedKeys.has(insightKey(node.insightType, node.title))}
-            onSave={onSave}
-          />
+          <article className="brief-card" key={node.id}>
+            <InsightStory
+              node={node}
+              sources={node.related
+                .map((id) => newsById.get(id))
+                .filter((n): n is NewsNode => Boolean(n))}
+              saved={savedKeys.has(insightKey(node.insightType, node.title))}
+              onSave={onSave}
+            />
+          </article>
         ))}
       </div>
     </div>
