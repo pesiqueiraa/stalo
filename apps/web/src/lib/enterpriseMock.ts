@@ -1,0 +1,528 @@
+// Dados mockados do protótipo de workspace enterprise (rota /enterprise). Só
+// existem no cliente, pra visualizar a UI — nenhum destes tipos ou dados é
+// persistido, nem se conecta ao backend real (`packages/server`). Não confundir
+// com `lib/workspace.ts`/`workspaceCookie.ts`, que são do workspace anônimo real.
+import type { Insight, NewsItem, Topic } from "@stalo/shared";
+
+// Tags aditivas do tier enterprise: não substituem a taxonomia universal
+// (tendência/gap/oportunidade, `InsightType` em @stalo/shared) — só marcam um
+// recorte extra que o público B2B valoriza (ameaça competitiva, movimento de
+// mercado, sinal regulatório).
+export type EnterpriseTag = "ameaça" | "movimento competitivo" | "sinal regulatório";
+
+export const ENTERPRISE_TAG_INFO: Record<EnterpriseTag, { label: string; color: string }> = {
+  ameaça: { label: "Ameaça", color: "#ff6b6b" },
+  "movimento competitivo": { label: "Movimento competitivo", color: "#5ec8d8" },
+  "sinal regulatório": { label: "Sinal regulatório", color: "#a68bff" },
+};
+
+// O que de fato importa pra quem decide num negócio: receita, custo, clientes,
+// qualidade. Sempre em ordem de grandeza/direção — nunca número inventado como
+// se fosse exato (mesma regra já aplicada em `Financials`, packages/shared).
+// Todos os campos são opcionais: cada insight preenche só as dimensões em que
+// tem leitura real, não força as quatro por completude artificial.
+export interface EnterpriseImpact {
+  revenue?: string;
+  cost?: string;
+  customers?: string;
+  quality?: string;
+}
+
+export const IMPACT_LABELS: Record<keyof EnterpriseImpact, string> = {
+  revenue: "Receita",
+  cost: "Custo",
+  customers: "Clientes",
+  quality: "Qualidade",
+};
+
+export interface EnterpriseInsight extends Insight {
+  tags: EnterpriseTag[];
+  flaggedBy: string; // quem do time sinalizou esse insight primeiro
+  impact: EnterpriseImpact;
+  detectedAt: string; // ISO — quando essa tese apareceu pela 1ª vez numa varredura
+  recurrence: number; // em quantas varreduras seguidas ela reapareceu (1 = só essa vez)
+}
+
+// Uma rodada de coleta periódica (ver roadmap "Scan agendado"). O protótipo
+// mocka um histórico fixo pra dar contexto real ao "ao vivo" da sala de
+// situação — sem isso, o rótulo "AO VIVO" seria só decoração.
+export interface EnterpriseScanRun {
+  id: string;
+  at: string; // ISO
+  newInsights: number;
+  reinforced: number; // quantos insights já conhecidos reapareceram nessa rodada
+}
+
+export interface EnterpriseRadar {
+  id: string;
+  name: string;
+  topics: Topic[];
+  items: NewsItem[];
+  insights: EnterpriseInsight[];
+  scans: EnterpriseScanRun[]; // ordem cronológica ascendente (mais antiga primeiro)
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "membro";
+  status: "ativo" | "convite pendente";
+}
+
+export interface EnterpriseCompany {
+  name: string;
+  sector: string;
+  plan: "Team" | "Business";
+  seats: { used: number; total: number };
+  scans: { used: number; limit: number };
+}
+
+export const MOCK_COMPANY: EnterpriseCompany = {
+  name: "Norte Capital",
+  sector: "Venture Capital",
+  plan: "Business",
+  seats: { used: 6, total: 10 },
+  scans: { used: 148, limit: 400 },
+};
+
+export const MOCK_TEAM: TeamMember[] = [
+  { id: "u1", name: "Marina Prado", email: "marina@nortecapital.vc", role: "admin", status: "ativo" },
+  { id: "u2", name: "Diego Lacerda", email: "diego@nortecapital.vc", role: "membro", status: "ativo" },
+  { id: "u3", name: "Ana Beatriz Souza", email: "ana@nortecapital.vc", role: "membro", status: "ativo" },
+  { id: "u4", name: "Felipe Nunes", email: "felipe@nortecapital.vc", role: "membro", status: "ativo" },
+  { id: "u5", name: "Rafaela Kim", email: "rafaela@nortecapital.vc", role: "membro", status: "convite pendente" },
+];
+
+// Cadência de coleta mockada: uma varredura a cada ~12h, últimos 3 dias. As
+// duas mesmas 6 marcações de tempo servem os dois radares (mesma empresa, mesma
+// cadência) — só o conteúdo detectado em cada uma muda.
+const SCAN_TIMES = [
+  "2026-07-05T02:00:00",
+  "2026-07-05T14:00:00",
+  "2026-07-06T02:00:00",
+  "2026-07-06T14:00:00",
+  "2026-07-07T02:00:00",
+  "2026-07-07T14:00:00",
+];
+
+const growthScans: EnterpriseScanRun[] = [
+  { id: "gs1", at: SCAN_TIMES[0], newInsights: 1, reinforced: 0 },
+  { id: "gs2", at: SCAN_TIMES[1], newInsights: 1, reinforced: 0 },
+  { id: "gs3", at: SCAN_TIMES[2], newInsights: 1, reinforced: 0 },
+  { id: "gs4", at: SCAN_TIMES[3], newInsights: 2, reinforced: 1 },
+  { id: "gs5", at: SCAN_TIMES[4], newInsights: 0, reinforced: 2 },
+  { id: "gs6", at: SCAN_TIMES[5], newInsights: 1, reinforced: 2 },
+];
+
+const securityScans: EnterpriseScanRun[] = [
+  { id: "ss1", at: SCAN_TIMES[0], newInsights: 1, reinforced: 0 },
+  { id: "ss2", at: SCAN_TIMES[1], newInsights: 1, reinforced: 0 },
+  { id: "ss3", at: SCAN_TIMES[2], newInsights: 1, reinforced: 0 },
+  { id: "ss4", at: SCAN_TIMES[3], newInsights: 2, reinforced: 1 },
+  { id: "ss5", at: SCAN_TIMES[4], newInsights: 0, reinforced: 1 },
+  { id: "ss6", at: SCAN_TIMES[5], newInsights: 1, reinforced: 2 },
+];
+
+const growthTopics: Topic[] = [
+  { id: "fintech", name: "Fintech" },
+  { id: "ia", name: "Inteligência Artificial" },
+  { id: "mobilidade", name: "Mobilidade" },
+];
+
+const growthItems: NewsItem[] = [
+  {
+    id: "n1",
+    topic: "Fintech",
+    title: "Bancos digitais latino-americanos ampliam crédito via modelos de IA generativa",
+    summary: "Novos scores de crédito treinados com dados alternativos reduzem inadimplência em testes piloto.",
+    source: "Valor Econômico",
+    url: "https://example.com/fintech-ia-credito",
+    entities: ["crédito", "IA generativa", "score alternativo"],
+    publishedAt: "2026-06-18",
+  },
+  {
+    id: "n2",
+    topic: "Inteligência Artificial",
+    title: "Startups de IA agêntica automatizam back-office financeiro",
+    summary: "Agentes autônomos assumem conciliação e análise de risco em fundos de médio porte.",
+    source: "TechCrunch",
+    url: "https://example.com/agentes-back-office",
+    entities: ["agentes autônomos", "back-office", "risco"],
+    publishedAt: "2026-06-22",
+  },
+  {
+    id: "n3",
+    topic: "Mobilidade",
+    title: "Aplicativos de mobilidade testam carteira embarcada para motoristas",
+    summary: "Piloto integra pagamentos instantâneos e microcrédito direto no app do motorista parceiro.",
+    source: "NeoFeed",
+    url: "https://example.com/mobilidade-carteira",
+    entities: ["carteira digital", "microcrédito", "motoristas"],
+    publishedAt: "2026-06-25",
+  },
+  {
+    id: "n4",
+    topic: "Fintech",
+    title: "Regulador sinaliza norma para crédito concedido por algoritmos",
+    summary: "Consulta pública propõe exigências de explicabilidade para decisões automatizadas de crédito.",
+    source: "Reuters",
+    url: "https://example.com/regulacao-credito-algoritmo",
+    entities: ["regulação", "explicabilidade", "crédito"],
+    publishedAt: "2026-06-27",
+  },
+  {
+    id: "n5",
+    topic: "Fintech",
+    title: "Fundo especializado capta rodada para financiar frota de apps de entrega",
+    summary: "Capital dedicado a frota digital cresce mais rápido que o crédito bancário tradicional pro setor.",
+    source: "Brazil Journal",
+    url: "https://example.com/fundo-frota-digital",
+    entities: ["crédito", "frota digital", "fundo especializado"],
+    publishedAt: "2026-07-01",
+  },
+  {
+    id: "n6",
+    topic: "Inteligência Artificial",
+    title: "Provedor de IA lança modelo especializado em score de risco financeiro",
+    summary: "Modelo pronto para uso reduz a barreira técnica de quem quer lançar crédito baseado em risco.",
+    source: "TechCrunch",
+    url: "https://example.com/modelo-score-risco",
+    entities: ["modelo especializado", "score de risco"],
+    publishedAt: "2026-07-03",
+  },
+  {
+    id: "n7",
+    topic: "Mobilidade",
+    title: "Grandes apps de mobilidade discutem padrão comum de identidade do motorista",
+    summary: "Sem histórico portável, cada app reconstrói do zero a reputação de crédito do motorista.",
+    source: "NeoFeed",
+    url: "https://example.com/identidade-motorista",
+    entities: ["identidade", "padrão comum", "motoristas"],
+    publishedAt: "2026-07-06",
+  },
+];
+
+const growthInsights: EnterpriseInsight[] = [
+  {
+    id: "gi1",
+    type: "oportunidade",
+    title: "Crédito embarcado em apps de mobilidade via agentes de IA",
+    description:
+      "Mobilidade e fintech convergem num produto de crédito instantâneo operado por agentes autônomos, sem equipe de risco dedicada.",
+    rationale:
+      "O mesmo padrão de agente autônomo que hoje faz conciliação em fundos está migrando para decisão de crédito em tempo real, e apps de mobilidade já têm a base de motoristas para embarcar isso.",
+    whyNow: "Piloto de carteira embarcada já rodando; regulação ainda em consulta pública, não em vigor.",
+    soWhat: "Janela de 6-9 meses para entrar antes que os grandes players de mobilidade internalizem isso.",
+    related_items: ["n1", "n2", "n3"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Marina Prado",
+    impact: {
+      revenue: "Nova linha B2B2C via parceria com apps de mobilidade — ainda sem cliente-piloto fechado",
+      customers: "Motoristas parceiros ganham crédito que hoje não têm, reduz evasão pra concorrentes",
+    },
+    detectedAt: SCAN_TIMES[0],
+    recurrence: 5,
+  },
+  {
+    id: "gi2",
+    type: "gap",
+    title: "Ninguém oferece explicabilidade de crédito algorítmico como serviço",
+    description:
+      "A exigência regulatória que está vindo cria demanda por uma camada de auditoria/explicabilidade que hoje nenhuma fintech oferece pronta.",
+    rationale:
+      "A consulta pública do regulador aponta pra explicabilidade obrigatória, mas os motores de score atuais (incluindo os de IA generativa) não nasceram auditáveis.",
+    whyNow: "Consulta pública aberta agora — quem antecipar a norma vira o fornecedor de referência quando ela virar lei.",
+    soWhat: "Categoria B2B nova: compliance-as-a-service para crédito algorítmico.",
+    related_items: ["n4", "n1"],
+    tags: ["sinal regulatório"],
+    flaggedBy: "Diego Lacerda",
+    impact: {
+      revenue: "Receita recorrente por assinatura — categoria nova, ainda sem preço de referência no mercado",
+      cost: "Reduz o custo de compliance manual das fintechs clientes",
+    },
+    detectedAt: SCAN_TIMES[1],
+    recurrence: 4,
+  },
+  {
+    id: "gi3",
+    type: "tendencia",
+    title: "Agentes autônomos substituindo camadas inteiras de back-office financeiro",
+    description:
+      "Não é mais copiloto: agentes de IA estão assumindo processos ponta a ponta em fundos de médio porte.",
+    rationale: "Múltiplos sinais (conciliação, risco, agora crédito) mostram o mesmo padrão se replicando.",
+    whyNow: "Adoção em fundos de médio porte é o estágio anterior à adoção em bancos grandes.",
+    soWhat: "Fornecedores de infraestrutura de agentes para o setor financeiro viram tese de investimento própria.",
+    related_items: ["n2"],
+    tags: ["movimento competitivo", "ameaça"],
+    flaggedBy: "Ana Beatriz Souza",
+    impact: {
+      cost: "Reduz headcount de back-office em quem adota — pressão de custo sobre quem não adotar",
+      quality: "Decisões de risco mais consistentes, menos erro humano no processo",
+    },
+    detectedAt: SCAN_TIMES[2],
+    recurrence: 3,
+  },
+  {
+    id: "gi4",
+    type: "oportunidade",
+    title: "Score de risco especializado vira insumo comprável, não precisa treinar do zero",
+    description:
+      "Squads de crédito embarcado não precisam mais construir modelo de risco próprio — dá pra comprar o motor e focar na distribuição.",
+    rationale:
+      "O lançamento de um modelo especializado em score financeiro reduz a barreira técnica que hoje segura quem quer entrar em crédito embarcado.",
+    whyNow: "Modelo acabou de ficar disponível como serviço — janela de vantagem pra quem monta produto antes da concorrência perceber.",
+    soWhat: "Baixa o custo de entrada pra qualquer app de mobilidade lançar crédito embarcado em semanas, não meses.",
+    related_items: ["n6", "n1"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Felipe Nunes",
+    impact: {
+      cost: "Reduz custo de P&D de modelo de risco frente a construir do zero",
+      revenue: "Acelera o time-to-market de uma nova linha de receita em meses",
+    },
+    detectedAt: SCAN_TIMES[3],
+    recurrence: 2,
+  },
+  {
+    id: "gi5",
+    type: "gap",
+    title: "Identidade do motorista ainda não é portável entre apps",
+    description:
+      "Discussão de padrão comum de identidade abre espaço pra quem resolver isso primeiro virar a camada de confiança de todo o setor.",
+    rationale:
+      "Sem identidade portável, cada app reconstrói o histórico de crédito/risco do motorista do zero — motorista bom num app é desconhecido no outro.",
+    whyNow: "A discussão do padrão comum começou agora, mas nenhum player assumiu a liderança técnica ainda.",
+    soWhat: "Quem construir o registro de identidade/reputação portável vira infraestrutura que todo mundo depende.",
+    related_items: ["n7", "n3"],
+    tags: ["movimento competitivo", "sinal regulatório"],
+    flaggedBy: "Ana Beatriz Souza",
+    impact: {
+      customers: "Vira ponto de retenção: apps que integram o padrão reduzem atrito de onboarding de motoristas",
+      quality: "Melhora a precisão do score de risco ao herdar histórico de outros apps",
+    },
+    detectedAt: SCAN_TIMES[3],
+    recurrence: 2,
+  },
+  {
+    id: "gi6",
+    type: "tendencia",
+    title: "Capital de crédito migrando de banco tradicional pra fundo especializado em frota digital",
+    description:
+      "Fundos dedicados a financiar frotas de apps de entrega/mobilidade estão captando rodadas maiores que os bancos tradicionais oferecem pro setor.",
+    rationale: "A captação recente de um fundo especializado mostra que investidores já enxergam frota digital como classe de ativo própria.",
+    whyNow: "Rodada acabou de fechar — capital especializado está entrando no setor agora, antes do banco tradicional se mexer.",
+    soWhat: "Parcerias com esses fundos podem ficar mais baratas e rápidas que crédito bancário tradicional pro setor.",
+    related_items: ["n5"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Marina Prado",
+    impact: {
+      cost: "Custo de capital pra financiar frota pode cair frente ao crédito bancário tradicional",
+      revenue: "Abre uma tese de coinvestimento nesses fundos especializados",
+    },
+    detectedAt: SCAN_TIMES[5],
+    recurrence: 1,
+  },
+];
+
+const securityTopics: Topic[] = [
+  { id: "ciberseguranca", name: "Cibersegurança" },
+  { id: "cloud", name: "Cloud" },
+  { id: "regulacao", name: "Regulação" },
+];
+
+const securityItems: NewsItem[] = [
+  {
+    id: "s1",
+    topic: "Cibersegurança",
+    title: "Ataques a cadeias de fornecedores de IA generativa crescem 40% no trimestre",
+    summary: "Modelos de terceiros embarcados em produtos financeiros viram vetor preferido de invasão.",
+    source: "Dark Reading",
+    url: "https://example.com/supply-chain-ia",
+    entities: ["supply chain", "IA generativa", "vetor de ataque"],
+    publishedAt: "2026-06-15",
+  },
+  {
+    id: "s2",
+    topic: "Cloud",
+    title: "Provedores de nuvem lançam certificação própria para agentes de IA financeiros",
+    summary: "Selo busca virar pré-requisito de compliance para bancos que rodam agentes em produção.",
+    source: "The Information",
+    url: "https://example.com/certificacao-agentes",
+    entities: ["certificação", "cloud", "compliance"],
+    publishedAt: "2026-06-20",
+  },
+  {
+    id: "s3",
+    topic: "Regulação",
+    title: "Banco central estuda exigir auditoria de terceiros para modelos de crédito",
+    summary: "Proposta mira especificamente fornecedores externos de score e decisão automatizada.",
+    source: "Bloomberg",
+    url: "https://example.com/auditoria-terceiros",
+    entities: ["auditoria", "terceiros", "banco central"],
+    publishedAt: "2026-06-24",
+  },
+  {
+    id: "s4",
+    topic: "Cibersegurança",
+    title: "Seguradoras passam a exigir auditoria de IA para apólice de cyber risk",
+    summary: "Sem laudo de auditoria dos agentes em produção, prêmio de seguro sobe ou cobertura é negada.",
+    source: "Reuters",
+    url: "https://example.com/seguro-auditoria-ia",
+    entities: ["seguradoras", "cyber risk", "auditoria"],
+    publishedAt: "2026-07-01",
+  },
+  {
+    id: "s5",
+    topic: "Cloud",
+    title: "Hyperscaler lança marketplace de agentes de IA pré-auditados",
+    summary: "Categoria financeira, mais regulada, ainda ficou de fora do marketplace no lançamento.",
+    source: "The Information",
+    url: "https://example.com/marketplace-agentes-auditados",
+    entities: ["marketplace", "agentes pré-auditados", "cloud"],
+    publishedAt: "2026-07-03",
+  },
+  {
+    id: "s6",
+    topic: "Regulação",
+    title: "União Europeia propõe rótulo de risco para agentes autônomos financeiros",
+    summary: "Proposta espelha o que o banco central local já vinha sinalizando, em jurisdição diferente.",
+    source: "Politico",
+    url: "https://example.com/ue-rotulo-risco-agentes",
+    entities: ["União Europeia", "rótulo de risco", "regulação"],
+    publishedAt: "2026-07-06",
+  },
+];
+
+const securityInsights: EnterpriseInsight[] = [
+  {
+    id: "si1",
+    type: "gap",
+    title: "Falta um selo de segurança específico para agentes de IA financeiros",
+    description:
+      "Certificações de cloud cobrem infraestrutura, não o comportamento do agente em decisões de crédito — ninguém audita isso ainda.",
+    rationale:
+      "A certificação de cloud recém-lançada é sobre onde o agente roda, não sobre como ele decide — e é exatamente isso que o banco central quer auditar.",
+    whyNow: "Duas iniciativas (cloud e banco central) miram o mesmo espaço em paralelo, sem se cruzar ainda.",
+    soWhat: "Quem construir a camada de auditoria de comportamento vira o pré-requisito de todo mundo depois.",
+    related_items: ["s2", "s3"],
+    tags: ["sinal regulatório"],
+    flaggedBy: "Felipe Nunes",
+    impact: {
+      revenue: "Quem virar o selo de referência cobra por certificação recorrente",
+      cost: "Reduz o custo de devida diligência manual que bancos hoje fazem caso a caso",
+    },
+    detectedAt: SCAN_TIMES[0],
+    recurrence: 4,
+  },
+  {
+    id: "si2",
+    type: "tendencia",
+    title: "Ataques a fornecedores de modelo viram o novo phishing corporativo",
+    description: "Supply chain de IA é hoje o vetor de entrada mais explorado contra empresas financeiras.",
+    rationale: "O crescimento de 40% no trimestre acompanha a adoção acelerada de modelos de terceiros embarcados.",
+    whyNow: "Ataques cresceram antes de qualquer certificação ou auditoria existir — a janela de exposição é agora.",
+    soWhat: "Devida diligência de fornecedor de IA deveria ser item obrigatório em qualquer investimento em fintech AI-first.",
+    related_items: ["s1"],
+    tags: ["ameaça"],
+    flaggedBy: "Marina Prado",
+    impact: {
+      cost: "Custo de responder a um incidente de supply chain supera em ordem de grandeza o custo de prevenção",
+      quality: "Reduz o risco de uma decisão de crédito comprometida por modelo de terceiro violado",
+    },
+    detectedAt: SCAN_TIMES[1],
+    recurrence: 4,
+  },
+  {
+    id: "si3",
+    type: "oportunidade",
+    title: "Certificação de comportamento de agente como categoria própria",
+    description: "Espaço aberto entre a certificação de infraestrutura (cloud) e a auditoria regulatória (banco central).",
+    rationale: "Nenhum dos dois movimentos cobre a decisão do agente em si — o meio do funil está livre.",
+    whyNow: "As duas iniciativas foram anunciadas na mesma semana, sem nenhum player claramente posicionado no meio.",
+    soWhat: "Startup de auditoria comportamental de agentes financeiros: tese investível hoje, categoria sem dono.",
+    related_items: ["s2", "s3", "s1"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Rafaela Kim",
+    impact: {
+      revenue: "Tese investível com mercado ainda sem preço definido",
+      customers: "Bancos médios adotam mais rápido que grandes bancos — segmento de entrada claro",
+    },
+    detectedAt: SCAN_TIMES[2],
+    recurrence: 3,
+  },
+  {
+    id: "si4",
+    type: "oportunidade",
+    title: "Seguro cyber vira porta de entrada pra vender auditoria de agentes",
+    description:
+      "Seguradoras exigindo auditoria de IA criam demanda cativa: quem oferecer o laudo vira pré-requisito pra contratar apólice.",
+    rationale: "A exigência da seguradora não é opcional pro cliente — cria demanda garantida que hoje ninguém atende de forma especializada.",
+    whyNow: "Exigência é recente; ainda não existe fornecedor de referência que as seguradoras reconheçam.",
+    soWhat: "Modelo de receita recorrente: laudo de auditoria vira pré-requisito anual, não venda única.",
+    related_items: ["s4", "s1"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Diego Lacerda",
+    impact: {
+      revenue: "Receita recorrente anual por cliente auditado, ligada à renovação de apólice",
+      customers: "Seguradoras e fintechs auditadas viram canal de distribuição uma pra outra",
+    },
+    detectedAt: SCAN_TIMES[3],
+    recurrence: 2,
+  },
+  {
+    id: "si5",
+    type: "gap",
+    title: "Marketplace de agentes pré-auditados ainda não cobre agentes financeiros",
+    description:
+      "O hyperscaler abriu um marketplace de agentes auditados, mas a categoria financeira ficou de fora — ninguém quis assumir o risco de auditar isso ainda.",
+    rationale: "Categorias mais simples já têm agente pré-auditado; financeiro é o vazio mais valioso do marketplace.",
+    whyNow: "O marketplace acabou de abrir — a vaga pra categoria financeira está literalmente esperando alguém preencher.",
+    soWhat: "Ser o primeiro agente financeiro pré-auditado nesse marketplace vira canal de distribuição instantâneo.",
+    related_items: ["s5", "s2"],
+    tags: ["movimento competitivo"],
+    flaggedBy: "Rafaela Kim",
+    impact: {
+      revenue: "Distribuição via marketplace do hyperscaler reduz custo de aquisição de cliente",
+      quality: "Selo do marketplace funciona como prova social de qualidade/segurança",
+    },
+    detectedAt: SCAN_TIMES[3],
+    recurrence: 2,
+  },
+  {
+    id: "si6",
+    type: "tendencia",
+    title: "Rotulagem de risco de agentes financeiros vira padrão global, não só nacional",
+    description: "A proposta europeia de rótulo de risco espelha o que o banco central local já sinalizou — a regulação está convergindo.",
+    rationale: "Duas jurisdições diferentes miram o mesmo tipo de exigência quase ao mesmo tempo — não é coincidência, é tendência regulatória.",
+    whyNow: "A convergência entre jurisdições ainda está começando — dá tempo de se antecipar antes de virar exigência simultânea.",
+    soWhat: "Quem construir auditoria compatível com múltiplas jurisdições de uma vez ganha escala internacional de saída.",
+    related_items: ["s6", "s3"],
+    tags: ["sinal regulatório"],
+    flaggedBy: "Ana Beatriz Souza",
+    impact: {
+      cost: "Evita retrabalho de compliance por país ao construir auditoria multi-jurisdição desde o início",
+      revenue: "Abre mercado de exportação do serviço de auditoria pra clientes fora do Brasil",
+    },
+    detectedAt: SCAN_TIMES[5],
+    recurrence: 1,
+  },
+];
+
+export const MOCK_RADARS: EnterpriseRadar[] = [
+  {
+    id: "growth",
+    name: "Radar de Growth",
+    topics: growthTopics,
+    items: growthItems,
+    insights: growthInsights,
+    scans: growthScans,
+  },
+  {
+    id: "seguranca",
+    name: "Radar de Segurança",
+    topics: securityTopics,
+    items: securityItems,
+    insights: securityInsights,
+    scans: securityScans,
+  },
+];

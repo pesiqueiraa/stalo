@@ -1,0 +1,284 @@
+/* Onboarding enterprise (rota /enterprise/onboarding). Estrutura e mecânica
+   copiadas de app/onboarding/onboarding.css (radar que se preenche, chips,
+   passos), só trocando o acento âmbar (pessoal) por um acento frio
+   (--accent: #5ec8d8), coerente com o restante do protótipo enterprise
+   (ver enterprise.css). Escopado sob .ento pra não colidir com .onb. */
+
+.ento {
+  --void: #070b14;
+  --void-2: #0a1020;
+  --line: rgba(122, 152, 194, 0.13);
+  --line-2: rgba(122, 152, 194, 0.26);
+  --accent: #5ec8d8;
+  --text: #eef2fa;
+  --dim: #97a7c2;
+  --dimmer: #63748f;
+  --sans: var(--font-body), system-ui, sans-serif;
+  --display: var(--font-display), var(--font-body), sans-serif;
+  --mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 620px at 50% -8%, rgba(94, 200, 216, 0.08), transparent 60%),
+    radial-gradient(760px 560px at 12% 110%, rgba(94, 200, 216, 0.05), transparent 55%),
+    var(--void);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+.ento *,
+.ento *::before,
+.ento *::after { box-sizing: border-box; }
+.ento :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.ento ::selection { background: rgba(94, 200, 216, 0.28); color: #fff; }
+
+.ento-top { padding: 0.9rem clamp(1.1rem, 4vw, 2.4rem); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ento-logo { height: 24px; width: auto; display: block; }
+.ento-badge {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.24em 0.6em;
+  border-radius: 5px;
+  background: rgba(94, 200, 216, 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(94, 200, 216, 0.35);
+  margin-left: 0.6em;
+}
+.ento-brand { display: flex; align-items: center; }
+
+.ento-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0.5rem clamp(1.1rem, 4vw, 2.4rem) 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  animation: ento-in 0.5s ease both;
+}
+@keyframes ento-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.ento-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ento-h1 {
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  font-weight: 660;
+  margin: 0.5rem 0 0;
+  text-wrap: balance;
+}
+.ento-sub { color: var(--dim); margin: 0.5rem auto 0; max-width: 46ch; font-size: 0.98rem; }
+
+/* ---------- passo "empresa": form simples ---------- */
+.ento-form { width: 100%; max-width: 420px; margin-top: 1.8rem; display: flex; flex-direction: column; gap: 1rem; text-align: left; }
+.ento-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.ento-field label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dimmer); }
+.ento-field input {
+  background: var(--void-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 0.7rem 0.95rem;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.96rem;
+}
+.ento-field input::placeholder { color: var(--dimmer); }
+.ento-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94, 200, 216, 0.15); }
+
+/* ---------- radar que se preenche (mesma mecânica do onboarding pessoal) ---------- */
+.ento-radar { position: relative; width: min(340px, 72vw, 34vh); aspect-ratio: 1; margin: clamp(0.6rem, 1.8vh, 1.2rem) auto 0; }
+.ento-sweep {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(94, 200, 216, 0.22), rgba(94, 200, 216, 0) 72deg, transparent 360deg);
+  animation: ento-sweep 4.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes ento-sweep { to { transform: rotate(360deg); } }
+.ento-radar-svg { position: relative; width: 100%; height: 100%; display: block; overflow: visible; }
+
+.ento-hub-glow { animation: ento-hub 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ento-hub { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.4; } }
+
+.ento-node { transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ento-node-glow {
+  transform-box: fill-box; transform-origin: center;
+  opacity: 0.32;
+  animation: ento-glow 2.6s ease-in-out infinite;
+}
+@keyframes ento-glow { 0%, 100% { opacity: 0.24; } 50% { opacity: 0.42; } }
+.ento-node-core {
+  transform-box: fill-box; transform-origin: center;
+  animation: ento-pop 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes ento-pop { from { transform: scale(0); } to { transform: scale(1); } }
+.ento-node-ping {
+  transform-box: fill-box; transform-origin: center;
+  animation: ento-ping 0.9s ease-out both;
+}
+@keyframes ento-ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(3.6); opacity: 0; } }
+
+/* ---------- banco de chips (setores monitorados / e-mails do time) ---------- */
+.ento-bank { margin-top: clamp(0.8rem, 1.8vh, 1.3rem); width: 100%; max-width: 720px; }
+.ento-bank-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  margin-bottom: 0.6rem;
+}
+.ento-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.ento-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--void-2);
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, transform 0.1s ease;
+}
+.ento-chip:hover:not(:disabled) { color: var(--text); border-color: var(--dim); }
+.ento-chip:active:not(:disabled) { transform: scale(0.96); }
+.ento-chip:disabled { opacity: 0.4; cursor: default; }
+.ento-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.45; transition: opacity 0.18s ease; }
+.ento-chip.active { border-color: currentColor; background: color-mix(in oklab, currentColor 14%, var(--void-2)); }
+.ento-chip.active .chip-dot { opacity: 1; }
+.ento-chip.active .chip-x { opacity: 0.7; }
+.ento-chip .chip-x { font-size: 1.05em; line-height: 1; opacity: 0; margin-left: 0.1em; }
+
+.ento-custom { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.7rem; }
+.ento-custom input {
+  width: min(280px, 66vw);
+  background: var(--void-2);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 0.58rem 1.05rem;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}
+.ento-custom input::placeholder { color: var(--dimmer); }
+.ento-custom input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94, 200, 216, 0.15); }
+.ento-add {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--void-2);
+  color: var(--dim);
+  font-size: 1.25rem; line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ento-add:hover:not(:disabled) { color: var(--text); border-color: var(--dim); }
+.ento-add:disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- rodapé (contador + CTA) ---------- */
+.ento-foot { margin-top: clamp(0.8rem, 1.8vh, 1.4rem); display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+.ento-count { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; color: var(--dim); }
+.ento-count b { color: var(--accent); font-weight: 500; }
+.ento-actions { display: flex; align-items: center; gap: 1.2rem; }
+.ento-skip { background: none; border: none; color: var(--dimmer); font-family: var(--sans); font-size: 0.9rem; cursor: pointer; }
+.ento-skip:hover { color: var(--dim); text-decoration: underline; }
+.ento-cta {
+  display: inline-flex; align-items: center; gap: 0.5em;
+  background: var(--accent); color: #04262c;
+  border: none; border-radius: 10px;
+  padding: 0.82rem 1.5rem;
+  font-weight: 600; font-size: 0.98rem; font-family: var(--sans);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.ento-cta:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+.ento-cta:active:not(:disabled) { transform: translateY(0) scale(0.985); }
+.ento-cta:disabled { opacity: 0.45; cursor: default; }
+.ento-cta .arrow { transition: transform 0.2s ease; }
+.ento-cta:hover:not(:disabled) .arrow { transform: translateX(3px); }
+.ento-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(4, 38, 44, 0.3); border-top-color: #04262c;
+  animation: ento-spin 0.7s linear infinite;
+}
+@keyframes ento-spin { to { transform: rotate(360deg); } }
+
+.ento-radar.compact { width: min(240px, 60vw, 26vh); margin-top: clamp(0.5rem, 1.4vh, 1rem); }
+
+/* ---------- indicador de passos ---------- */
+.ento-steps { display: flex; gap: 0.5rem; }
+.ento-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; }
+.ento-dot.done { background: var(--dim); }
+.ento-dot.now { background: var(--accent); transform: scale(1.3); box-shadow: 0 0 8px var(--accent); }
+
+.ento-back { background: none; border: none; color: var(--dimmer); font-family: var(--sans); font-size: 0.9rem; cursor: pointer; }
+.ento-back:hover { color: var(--dim); text-decoration: underline; }
+
+/* ---------- passo da revelação ---------- */
+.ento-reveal { width: 100%; max-width: 560px; margin-top: 0.5rem; display: flex; flex-direction: column; align-items: center; }
+.ento-scanning { font-family: var(--mono); font-size: 0.82rem; letter-spacing: 0.05em; color: var(--dim); margin-top: 0.4rem; }
+.ento-scanning .live { color: var(--accent); }
+.ento-scan-dots::after { content: ""; animation: ento-dots 1.4s steps(4, end) infinite; }
+@keyframes ento-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+
+.ento-signal {
+  width: 100%;
+  margin-top: 1.4rem;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  padding: 1.3rem 1.35rem;
+  text-align: left;
+  background: linear-gradient(180deg, rgba(94, 200, 216, 0.09), var(--void-2));
+  animation: ento-signal-in 0.6s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+@keyframes ento-signal-in { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: none; } }
+.ento-signal-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+.ento-signal-tag {
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.26em 0.65em; border: 1px solid var(--line-2); border-radius: 8px; color: var(--dim);
+  display: inline-flex; align-items: center; gap: 0.45em;
+}
+.ento-signal-tag.warn { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.4); }
+.ento-signal-tag .d { width: 6px; height: 6px; border-radius: 50%; }
+.ento-signal h3 {
+  font-family: var(--display); font-size: 1.2rem; line-height: 1.3; letter-spacing: -0.02em;
+  margin: 0 0 0.9rem; font-weight: 620; text-wrap: balance;
+}
+.ento-signal-payoff { border-top: 1px solid var(--line); padding-top: 0.85rem; font-size: 0.96rem; line-height: 1.55; color: var(--text); }
+.ento-signal-payoff b { font-weight: 600; }
+.ento-signal-note { margin-top: 0.9rem; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.03em; color: var(--dimmer); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ento-main { animation: none; }
+  .ento-sweep,
+  .ento-hub-glow,
+  .ento-node-glow,
+  .ento-node-ping,
+  .ento-node-core,
+  .ento-signal,
+  .ento-scan-dots::after { animation: none; }
+  .ento-node { transition: none; }
+  .ento-node-glow { opacity: 0.34; }
+}
