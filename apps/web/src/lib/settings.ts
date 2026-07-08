@@ -6,14 +6,19 @@ export interface GraphSettings {
   showLinks: boolean; // todas as linhas (mestre)
   showEntityLinks: boolean; // só as arestas notícia↔notícia (as que não tocam insights)
   showLabels: boolean; // títulos ao lado dos nós de notícia
-  spread: number; // espaçamento do grafo: <1 junta, >1 separa (default 1)
+  spread: number; // espaçamento do grafo: <1 junta, >1 separa
 }
+
+// limites do espaçamento — fonte única, consumida pelo slider (TopicsPanel) e
+// pelo default abaixo. O grafo nasce no máximo (nós mais separados por padrão).
+export const SPREAD_MIN = 0.5;
+export const SPREAD_MAX = 1.8;
 
 export const DEFAULT_SETTINGS: GraphSettings = {
   showLinks: true,
   showEntityLinks: true,
   showLabels: true,
-  spread: 1,
+  spread: SPREAD_MAX,
 };
 
 const STORAGE_KEY = "stalo:graph-settings";

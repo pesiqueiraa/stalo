@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TOPIC_COLORS } from "@/lib/graph";
 import type { InsightType, Topic } from "@stalo/shared";
 import { labelForType } from "@/lib/ui";
-import type { GraphSettings } from "@/lib/settings";
+import { SPREAD_MAX, SPREAD_MIN, type GraphSettings } from "@/lib/settings";
 import { InsightGlyph } from "./InsightGlyph";
 
 const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
@@ -173,8 +173,8 @@ export function TopicsPanel({
           <div className="setting-slider-label">Espaçamento</div>
           <input
             type="range"
-            min={0.5}
-            max={1.8}
+            min={SPREAD_MIN}
+            max={SPREAD_MAX}
             step={0.1}
             value={settings.spread}
             aria-label="Espaçamento do grafo"
