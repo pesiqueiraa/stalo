@@ -324,6 +324,7 @@ export default function Landing() {
             <a href="#pra-quem">Pra quem</a>
             <a href="#como">Como funciona</a>
             <a href="#evidencia">Evidência</a>
+            <a href="#precos">Preços</a>
           </div>
           <div className="nav-cta">
             <Link className="btn btn-ghost" href="/login">
@@ -636,6 +637,72 @@ export default function Landing() {
               <span className="date">há 11 dias</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ---------- preços ---------- */}
+      <section className="band reveal" id="precos">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow">comece grátis</span>
+            <h2>Um radar por perfil de uso.</h2>
+            <p>
+              Hoje o Stalo é grátis, sem login. Pro e Enterprise estão em validação — veja pra onde
+              o produto está indo.
+            </p>
+          </div>
+
+          <div className="plans">
+            <article className="plan free">
+              <span className="plan-name">Grátis</span>
+              <div className="plan-price">R$0</div>
+              <p className="plan-desc">Pra validar a primeira ideia, sem compromisso.</p>
+              <ul>
+                <li>Scan manual, sob demanda</li>
+                <li>Até 3 temas monitorados</li>
+                <li>Brief + grafo de conexões</li>
+                <li>Lista de ideias salvas</li>
+              </ul>
+              <Link className="btn btn-primary" href="/signup">
+                Criar conta grátis
+              </Link>
+            </article>
+
+            <article className="plan pro">
+              <span className="plan-badge">em validação</span>
+              <span className="plan-name">Pro</span>
+              <div className="plan-price">Sob consulta</div>
+              <p className="plan-desc">Pra quem usa o radar como ferramenta de trabalho.</p>
+              <ul>
+                <li>Scan agendado + teto alto de scans</li>
+                <li>Mais temas monitorados</li>
+                <li>Brief com scoring por recorrência</li>
+                <li>Mergulho + análise financeira por ideia</li>
+                <li>Notificações e exportação</li>
+              </ul>
+              <a className="btn btn-ghost" href="#comecar">
+                Entrar na lista de espera
+              </a>
+            </article>
+
+            <article className="plan enterprise">
+              <span className="plan-badge">protótipo</span>
+              <span className="plan-name">Enterprise</span>
+              <div className="plan-price">Sob consulta</div>
+              <p className="plan-desc">Radar compartilhado por todo o time, com múltiplas áreas.</p>
+              <ul>
+                <li>Radar compartilhado por time</li>
+                <li>Vários radares internos por empresa</li>
+                <li>Gestão de membros e seats</li>
+                <li>Cobrança centralizada</li>
+              </ul>
+              <Link className="btn btn-ghost" href="/enterprise">
+                Ver workspace enterprise →
+              </Link>
+            </article>
+          </div>
+
+          <p className="plans-note">Pro e Enterprise: preços e recursos ainda em definição.</p>
         </div>
       </section>
 

@@ -315,6 +315,39 @@
 .lp .ev-src .txt { color: var(--dim); }
 .lp .ev-src .date { font-family: var(--mono); font-size: 0.68rem; color: var(--dimmer); margin-left: auto; white-space: nowrap; }
 
+/* ---------- preços ---------- */
+.lp .plans { margin-top: 2.6rem; display: grid; grid-template-columns: 1fr; gap: 1.1rem; }
+@media (min-width: 900px) { .lp .plans { grid-template-columns: repeat(3, 1fr); } }
+.lp .plan {
+  --h: var(--dim);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.6rem 1.5rem 1.5rem;
+  background: linear-gradient(180deg, var(--panel), var(--void-2));
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.lp .plan::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--h); opacity: 0.55; border-radius: 16px 16px 0 0; }
+.lp .plan:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--h) 40%, var(--line-2)); }
+.lp .plan.pro { --h: var(--amber); }
+.lp .plan.enterprise { --h: var(--cyan); }
+.lp .plan-badge {
+  position: absolute; top: 1.2rem; right: 1.2rem;
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--h); border: 1px solid color-mix(in oklab, var(--h) 45%, var(--line-2));
+  padding: 0.24em 0.6em; border-radius: 999px;
+}
+.lp .plan-name { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--h); }
+.lp .plan-price { font-family: var(--display); font-size: 1.9rem; font-weight: 660; letter-spacing: -0.02em; margin: 0.6rem 0 0; color: var(--lp-text); }
+.lp .plan-desc { color: var(--dim); font-size: 0.9rem; margin: 0.5rem 0 1.3rem; }
+.lp .plan ul { list-style: none; margin: 0 0 1.4rem; padding: 0; display: grid; gap: 0.55rem; flex: 1; }
+.lp .plan li { font-size: 0.88rem; color: #cdd6e8; padding-left: 1.15rem; position: relative; line-height: 1.45; }
+.lp .plan li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--h); opacity: 0.8; }
+.lp .plan .btn { width: 100%; justify-content: center; }
+.lp .plans-note { margin-top: 1.6rem; font-family: var(--mono); font-size: 0.72rem; color: var(--dimmer); text-align: center; }
+
 /* ---------- cta final ---------- */
 .lp .final { text-align: center; }
 .lp .final h2 { font-family: var(--display); font-size: clamp(1.9rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -0.035em; font-weight: 660; margin: 1rem auto 0; max-width: 20ch; text-wrap: balance; }
