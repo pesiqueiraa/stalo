@@ -595,6 +595,10 @@ header {
   right: 16px;
   bottom: 16px;
   width: min(320px, calc(100% - 32px));
+  /* o caminho do insight (InsightStory) pode passar da altura do grafo —
+     trava no espaço disponível e rola por dentro */
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1227,77 +1231,177 @@ header {
   color: #d3d9e8;
   margin: 0;
 }
-.dive-cross {
-  display: grid;
-  gap: 14px;
+/* cabeçalho de tese enxuto: timing em destaque + "relembrar a tese" recolhível */
+.dive-thesis {
+  margin: 0 0 30px;
 }
-@media (min-width: 560px) {
-  .dive-cross {
-    grid-template-columns: 1fr 1fr;
-  }
+.dive-thesis-now {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #d3d9e8;
+  margin: 0 0 10px;
 }
-.dive-cross-group {
-  background: rgba(15, 23, 41, 0.6);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-}
-.dive-cross-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.dive-thesis-tag {
+  display: inline-block;
   font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+  color: var(--amber);
+  margin-right: 10px;
+}
+.dive-thesis-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
   color: var(--text-dim);
-  margin-bottom: 12px;
 }
-.dive-ev {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-.dive-ev:first-of-type {
-  border-top: none;
-  padding-top: 0;
-}
-.dive-ev-title {
-  display: block;
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--text);
-}
-.dive-ev:hover .dive-ev-title {
+.dive-thesis-toggle:hover {
   color: var(--amber);
 }
-.dive-ev-meta {
-  display: block;
+.dive-thesis-body {
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
+}
+.dive-thesis-body p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+}
+.dive-thesis-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* gráfico de cobertura (histograma honesto das notícias que sustentam a ideia) */
+.coverage {
+  margin: 2px 0 4px;
+}
+.coverage-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 72px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.coverage-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.coverage-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--amber), var(--amber-dim));
+}
+.coverage-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
   font-family: var(--font-mono), monospace;
   font-size: 10.5px;
   color: var(--text-dim);
-  margin-top: 4px;
 }
-.dive-payoff {
-  background: linear-gradient(180deg, rgba(232, 162, 61, 0.14), rgba(232, 162, 61, 0.04));
-  border: 1px solid var(--amber-dim);
-  border-radius: 16px;
-  padding: 22px 24px;
-  box-shadow: 0 0 40px rgba(232, 162, 61, 0.08);
+.coverage-caption {
+  text-align: center;
 }
-.dive-payoff .dive-sec-label {
+
+/* "quem já joga aqui" — players do mapa de mercado, rastreáveis por fonte */
+.dive-players {
+  display: grid;
+  gap: 10px;
+}
+.dive-player {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(15, 23, 41, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+a.dive-player:hover {
+  border-color: var(--amber-dim);
+}
+.dive-player-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.dive-player-name {
+  font-size: 15px;
+  color: var(--text);
+}
+a.dive-player:hover .dive-player-name {
   color: var(--amber);
 }
-.dive-payoff .dive-sec-label::after {
-  background: var(--amber-dim);
+.dive-player-rel {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--panel-alt);
+  color: var(--text-dim);
 }
-.dive-payoff p {
-  font-size: 16.5px;
-  line-height: 1.6;
-  color: var(--text);
-  margin: 0;
+.dive-player-rel.direto {
+  color: #ff8f6b;
+}
+.dive-player-rel.adjacente {
+  color: #9b8fe0;
+}
+.dive-player-what {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.dive-player-src {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+a.dive-player:hover .dive-player-src {
+  color: var(--amber);
+}
+
+/* "jogadas análogas" — plays de outros mercados e a lição de cada um */
+.dive-analogas {
+  display: grid;
+  gap: 12px;
+}
+.dive-analoga {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 14px;
+  align-items: baseline;
+}
+.dive-analoga-name {
+  font-size: 14px;
+  color: var(--amber);
+}
+.dive-analoga-lesson {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.dive-empty-market {
+  color: var(--text-dim);
+  font-style: italic;
 }
 .dive-steps {
   display: grid;
@@ -1488,7 +1592,7 @@ header {
   }
 }
 
-/* ---- Coluna central: toggle Brief/Mapa + corpo ---- */
+/* ---- Coluna central: toggle Rede/Brief + corpo ---- */
 /* brief-first (produto.md §3): o memo é a tela principal, o grafo é secundário.
    A coluna central vira uma flex-column: barra de toggle + corpo que alterna. */
 .center-panel {
@@ -1602,19 +1706,149 @@ header {
   margin: 0 0 8px;
   color: var(--text);
 }
-.brief-lead {
+/* no brief o botão salvar não precisa da largura cheia do DetailPanel */
+.brief-card .btn-save {
+  margin-top: 4px;
+}
+
+/* ---- Caminho do insight (InsightStory) ----
+   O detalhe do insight vira etapas numeradas (padrão → por que conecta → por
+   que agora → e daí? → notícias → ação), no mesmo desenho das seções numeradas
+   do mergulho (.dive-sec-label). Accordion independente: cada etapa abre e
+   fecha por conta própria. Usado no brief e no DetailPanel do grafo. */
+p.story-lead {
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--text-dim);
   margin: 0 0 4px;
 }
-.brief-para {
+p.story-para {
   font-size: 13px;
   line-height: 1.55;
   color: var(--text);
   margin: 0;
 }
-/* no brief o botão salvar não precisa da largura cheia do DetailPanel */
-.brief-card .btn-save {
-  margin-top: 4px;
+.story-steps {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.story-step {
+  border-top: 1px solid var(--border);
+}
+.story-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 11px 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.story-step-num {
+  color: var(--amber-dim);
+}
+.story-step.open .story-step-num {
+  color: var(--amber);
+}
+.story-step-head:hover {
+  color: var(--text);
+}
+.story-step-head:hover .story-step-num {
+  color: var(--amber);
+}
+.story-step-plus {
+  margin-left: auto;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+.story-step-head:hover .story-step-plus {
+  color: var(--amber);
+}
+/* etapas fechadas ficam mais discretas; a aberta ganha destaque */
+.story-step:not(.open) .story-step-head {
+  opacity: 0.6;
+}
+.story-step:not(.open) .story-step-head:hover {
+  opacity: 1;
+}
+.story-step-body {
+  padding-bottom: 12px;
+  animation: story-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes story-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-step-body {
+    animation: none;
+  }
+}
+/* data de publicação ao lado de cada notícia do padrão */
+.reason-chain span.reason-date {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 7px;
+  white-space: nowrap;
+}
+
+/* ---- Mini-timeline das notícias relacionadas (NewsTimeline) ----
+   pontos por published_at num eixo horizontal: evento isolado vs. sequência */
+.mini-timeline {
+  margin: 2px 0 12px;
+}
+.mini-timeline-track {
+  position: relative;
+  height: 30px;
+}
+.mini-timeline-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+.mini-timeline-dot {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.mini-timeline-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.mini-timeline-caption {
+  text-align: center;
+}
+
+/* contagem de notícias do tema NESTE scan (atividade, não tendência) */
+.chip-count {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-dim);
 }
