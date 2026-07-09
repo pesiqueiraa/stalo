@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { NewsItem, SavedIdea, Topic } from "@stalo/shared";
+import type { SavedIdea } from "@stalo/shared";
 import { labelForType } from "@/lib/ui";
-import { topicColor } from "@/lib/graph";
 import { useDismiss } from "@/lib/useDismiss";
+import { CoverageChart } from "./CoverageChart";
 
 interface DeepDiveViewProps {
   idea: SavedIdea;
-  topics: Topic[];
   financingId: string | null; // id com análise financeira em andamento
   onDeepenFinancials: (id: string) => void;
   onClose: () => void;
@@ -17,20 +16,26 @@ interface DeepDiveViewProps {
 // monta o relatório em Markdown, para exportar (copiar) — texto puro, portável
 function toMarkdown(idea: SavedIdea): string {
   const dive = idea.deepDive;
+  const market = dive?.market;
   const lines: string[] = [];
   lines.push(`# ${idea.title}`, "");
   lines.push(`_${labelForType(idea.type)} · ${idea.description}_`, "");
-  if (dive?.panorama) lines.push(`## Panorama`, dive.panorama, "");
-  if (idea.relatedItems.length) {
-    lines.push(`## O que cruza`);
-    idea.relatedItems.forEach((it) =>
-      lines.push(`- **${it.topic}** — ${it.title}${it.source ? ` (${it.source})` : ""}`),
+  if (idea.whyNow) lines.push(`**Por que agora:** ${idea.whyNow}`, "");
+  if (market && market.players.length) {
+    lines.push(`## Quem já joga aqui`);
+    market.players.forEach((p) =>
+      lines.push(
+        `- **${p.nome}** (${p.relacao}) — ${p.oQueFaz}${p.url ? ` [fonte](${p.url})` : ""}`,
+      ),
     );
     lines.push("");
   }
-  if (idea.rationale) lines.push(`## Por que conecta`, idea.rationale, "");
-  if (dive?.porQueAgora) lines.push(`## Por que agora`, dive.porQueAgora, "");
-  if (idea.soWhat) lines.push(`## E daí?`, idea.soWhat, "");
+  if (market?.ondeValor) lines.push(`## Onde o valor se acumula`, market.ondeValor, "");
+  if (market && market.analogas.length) {
+    lines.push(`## Jogadas análogas`);
+    market.analogas.forEach((a) => lines.push(`- **${a.nome}** — ${a.licao}`));
+    lines.push("");
+  }
   if (dive?.proximosPassos.length) {
     lines.push(`## Próximos passos`);
     dive.proximosPassos.forEach((p, i) => lines.push(`${i + 1}. ${p}`));
@@ -61,13 +66,13 @@ function toMarkdown(idea: SavedIdea): string {
 
 export function DeepDiveView({
   idea,
-  topics,
   financingId,
   onDeepenFinancials,
   onClose,
 }: DeepDiveViewProps) {
   const [copied, setCopied] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [thesisOpen, setThesisOpen] = useState(false); // "relembrar a tese" recolhível
   const sheetRef = useRef<HTMLDivElement>(null);
   // fecha ao clicar no fundo (fora da folha) ou apertar Esc, além do "← voltar".
   // toca a animação de saída antes de desmontar (o pai só desmonta no onClose).
@@ -84,18 +89,9 @@ export function DeepDiveView({
   }, [onClose]);
   useDismiss(sheetRef, requestClose, true);
   const dive = idea.deepDive;
+  const market = dive?.market ?? null;
   const fin = idea.financials;
   const financing = financingId === idea.id;
-  const topicNames = topics.map((t) => t.name);
-
-  // agrupa as notícias por setor para a seção "O que cruza"
-  const groups = new Map<string, NewsItem[]>();
-  idea.relatedItems.forEach((it) => {
-    const arr = groups.get(it.topic) ?? [];
-    arr.push(it);
-    groups.set(it.topic, arr);
-  });
-  const sectors = [...groups.keys()];
 
   function copyMarkdown() {
     navigator.clipboard?.writeText(toMarkdown(idea)).then(
@@ -129,7 +125,7 @@ export function DeepDiveView({
 
       <div className="dive-sheet" ref={sheetRef}>
         <div className="dive-topbar">
-          <span className="dive-eyebrow">Mergulhar · deep dive</span>
+          <span className="dive-eyebrow">Mergulhar · mapa de mercado</span>
           <button className="dive-back" onClick={requestClose}>
             ← voltar ao radar
           </button>
@@ -139,73 +135,123 @@ export function DeepDiveView({
         <h1 className="dive-title">{idea.title}</h1>
         <p className="dive-punch dive-punch--divider">{idea.description}</p>
 
-        {dive?.panorama && (
+        {/* cabeçalho de tese enxuto: o timing em destaque + "relembrar a tese"
+            recolhível (rationale/soWhat que já vêm da ideia, sem regenerar) */}
+        {(idea.rationale || idea.soWhat || idea.whyNow) && (
+          <div className="dive-thesis">
+            {idea.whyNow && (
+              <p className="dive-thesis-now">
+                <span className="dive-thesis-tag">Por que agora</span>
+                {idea.whyNow}
+              </p>
+            )}
+            {(idea.rationale || idea.soWhat) && (
+              <>
+                <button
+                  className="dive-thesis-toggle"
+                  aria-expanded={thesisOpen}
+                  onClick={() => setThesisOpen((v) => !v)}
+                >
+                  {thesisOpen ? "− relembrar a tese" : "+ relembrar a tese"}
+                </button>
+                {thesisOpen && (
+                  <div className="dive-thesis-body">
+                    {idea.rationale && (
+                      <p>
+                        <span className="dive-thesis-tag">Por que conecta</span>
+                        {idea.rationale}
+                      </p>
+                    )}
+                    {idea.soWhat && (
+                      <p>
+                        <span className="dive-thesis-tag">E daí?</span>
+                        {idea.soWhat}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {idea.relatedItems.length > 0 && (
           <section className="dive-sec">
             <div className="dive-sec-label">
-              <span className="dive-sec-num">{num()}</span> Panorama
+              <span className="dive-sec-num">{num()}</span> Cobertura ao longo do tempo
             </div>
-            <p className="dive-prose">{dive.panorama}</p>
+            <CoverageChart items={idea.relatedItems} />
           </section>
         )}
 
-        {sectors.length > 0 && (
+        {market && market.players.length > 0 && (
           <section className="dive-sec">
             <div className="dive-sec-label">
-              <span className="dive-sec-num">{num()}</span> O que cruza
+              <span className="dive-sec-num">{num()}</span> Quem já joga aqui
             </div>
-            <div className="dive-cross">
-              {sectors.map((sector) => (
-                <div className="dive-cross-group" key={sector}>
-                  <div className="dive-cross-head">
-                    <span
-                      className="reason-dot"
-                      style={{ background: topicColor(sector, topicNames) }}
-                    />
-                    {sector}
+            <div className="dive-players">
+              {market.players.map((p, i) => {
+                const body = (
+                  <>
+                    <span className="dive-player-head">
+                      <span className="dive-player-name">{p.nome}</span>
+                      <span className={`dive-player-rel ${p.relacao}`}>{p.relacao}</span>
+                    </span>
+                    <span className="dive-player-what">{p.oQueFaz}</span>
+                    {p.url && <span className="dive-player-src">fonte ↗</span>}
+                  </>
+                );
+                return p.url ? (
+                  <a className="dive-player" key={i} href={p.url} target="_blank" rel="noopener noreferrer">
+                    {body}
+                  </a>
+                ) : (
+                  <div className="dive-player" key={i}>
+                    {body}
                   </div>
-                  {groups.get(sector)!.map((it) =>
-                    it.url ? (
-                      <a className="dive-ev" key={it.id} href={it.url} target="_blank" rel="noopener noreferrer">
-                        <span className="dive-ev-title">{it.title}</span>
-                        <span className="dive-ev-meta">{it.source || "fonte"} ↗</span>
-                      </a>
-                    ) : (
-                      <div className="dive-ev" key={it.id}>
-                        <span className="dive-ev-title">{it.title}</span>
-                        {it.source && <span className="dive-ev-meta">{it.source}</span>}
-                      </div>
-                    ),
-                  )}
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {market?.ondeValor && (
+          <section className="dive-sec">
+            <div className="dive-sec-label">
+              <span className="dive-sec-num">{num()}</span> Onde o valor se acumula
+            </div>
+            <p className="dive-prose">{market.ondeValor}</p>
+          </section>
+        )}
+
+        {market && market.analogas.length > 0 && (
+          <section className="dive-sec">
+            <div className="dive-sec-label">
+              <span className="dive-sec-num">{num()}</span> Jogadas análogas
+            </div>
+            <div className="dive-analogas">
+              {market.analogas.map((a, i) => (
+                <div className="dive-analoga" key={i}>
+                  <span className="dive-analoga-name">{a.nome}</span>
+                  <span className="dive-analoga-lesson">{a.licao}</span>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {idea.rationale && (
-          <section className="dive-sec">
-            <div className="dive-sec-label">
-              <span className="dive-sec-num">{num()}</span> Por que conecta
-            </div>
-            <p className="dive-prose">{idea.rationale}</p>
-          </section>
-        )}
-
-        {dive?.porQueAgora && (
-          <section className="dive-sec">
-            <div className="dive-sec-label">
-              <span className="dive-sec-num">{num()}</span> Por que agora
-            </div>
-            <p className="dive-prose">{dive.porQueAgora}</p>
-          </section>
-        )}
-
-        {idea.soWhat && (
-          <section className="dive-sec dive-payoff">
-            <div className="dive-sec-label">E daí?</div>
-            <p>{idea.soWhat}</p>
-          </section>
-        )}
+        {/* quando a busca não sustentou um mapa, é honesto dizer em vez de vazio */}
+        {market &&
+          market.players.length === 0 &&
+          !market.ondeValor &&
+          market.analogas.length === 0 && (
+            <section className="dive-sec">
+              <p className="dive-prose dive-empty-market">
+                A busca não encontrou players ou movimentos claros ainda — cenário em aberto. Vale
+                acompanhar os sinais abaixo e revisitar num próximo mergulho.
+              </p>
+            </section>
+          )}
 
         {dive && dive.proximosPassos.length > 0 && (
           <section className="dive-sec">
