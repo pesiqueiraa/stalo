@@ -101,12 +101,36 @@ export interface MarketMap {
   analogas: MarketAnalogue[];
 }
 
+// Análise específica de cada TIPO de insight — o que muda a pergunta central do
+// mergulho. Discriminada por `kind` (= o tipo do insight), pra a UI renderizar o
+// bloco certo. A taxonomia continua universal (arquiteturad §7); isto é o eixo
+// "tipo decide quais perguntas", separado do eixo "lente decide o tom".
+export interface TrendAnalysis {
+  kind: "tendencia";
+  estagio: string; // emergente/acelerando/consolidando + 1 frase — LEITURA QUALITATIVA da IA, não medida
+  aceleradores: string[]; // forças que empurram a tendência
+  freios: string[]; // forças que a seguram
+}
+export interface GapAnalysis {
+  kind: "gap";
+  porqueAberto: string; // a barreira que manteve o vão aberto
+  cemiterio: string; // quem tentou e por que falhou (ou "sem tentativas conhecidas")
+  aPonte: string; // o que faria a ponte entre os dois lados
+}
+export interface OppAnalysis {
+  kind: "oportunidade";
+  beachhead: string; // o primeiro alvo/cunha concreto
+  menorTeste: string; // o menor teste que confirma a hipótese
+}
+export type TypeAnalysis = TrendAnalysis | GapAnalysis | OppAnalysis;
+
 export interface DeepDive {
-  market: MarketMap | null; // o mapa de mercado (protagonista do novo mergulho)
+  typeAnalysis: TypeAnalysis | null; // a análise específica do tipo (o eixo novo)
+  market: MarketMap | null; // o mapa de mercado (espinha comum aos três tipos)
   proximosPassos: string[]; // passos concretos de validação
   sinais: DeepDiveSignal[]; // riscos e sinais a favor
-  // Campos do mergulho antigo — não são mais renderizados, ficam opcionais só
-  // pra não quebrar JSON de mergulhos salvos antes do redesenho.
+  // Campos de mergulhos antigos — não renderizados, opcionais só pra não quebrar
+  // JSON salvo antes dos redesenhos (pré-mapa e mapa-sem-typeAnalysis).
   panorama?: string;
   porQueAgora?: string;
 }

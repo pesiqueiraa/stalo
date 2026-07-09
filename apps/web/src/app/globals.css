@@ -1086,10 +1086,11 @@ header {
   inset: 0;
   z-index: 100;
   overflow-y: auto;
-  background:
-    radial-gradient(1100px 600px at 80% -8%, rgba(232, 162, 61, 0.09), transparent 60%),
-    radial-gradient(900px 700px at 10% 110%, rgba(94, 200, 216, 0.06), transparent 55%),
-    #090d18;
+  /* acento por tipo herdado por toda a árvore do mergulho (nuvens + folha).
+     default âmbar; as classes .dive-accent-* trocam. */
+  --accent: var(--amber);
+  --accent-dim: var(--amber-dim);
+  background: #090d18; /* base escura; a cor vem das nuvens (.dive-aurora) */
   animation: dive-fade 0.2s ease;
 }
 @keyframes dive-fade {
@@ -1851,4 +1852,287 @@ p.story-para {
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--text-dim);
+}
+
+/* ==== Mergulho diferenciado por tipo (arquiteturad §7: cada tipo tem sua cor,
+   herói e análise próprios; a espinha e a taxonomia seguem universais) ==== */
+
+/* acento por tipo: --accent (definido em .dive-overlay) troca por classe; os
+   botões de ação (Aprofundar/copiar) seguem âmbar de propósito — um CTA
+   vermelho leria como "perigo". */
+.dive-accent-tendencia {
+  --accent: #3ddc97;
+  --accent-dim: rgba(61, 220, 151, 0.35);
+}
+.dive-accent-gap {
+  --accent: #ff6b6b;
+  --accent-dim: rgba(255, 107, 107, 0.35);
+}
+.dive-accent-oportunidade {
+  --accent: #ffb13d;
+  --accent-dim: rgba(255, 177, 61, 0.35);
+}
+/* textos/números que assumem a cor do tipo (especificidade vence a base âmbar) */
+.dive-sheet .dive-eyebrow,
+.dive-sheet .dive-sec-num,
+.dive-sheet .dive-thesis-tag,
+.dive-sheet .dive-analoga-name,
+.dive-sheet .dive-fin-head,
+.dive-sheet .dive-step::before {
+  color: var(--accent);
+}
+.dive-sheet .dive-thesis-toggle:hover,
+.dive-sheet a.dive-player:hover .dive-player-name,
+.dive-sheet a.dive-player:hover .dive-player-src {
+  color: var(--accent);
+}
+/* bordas de acento acompanham o tipo (players, passos, nota, financeiro) */
+.dive-sheet a.dive-player:hover,
+.dive-sheet .dive-step::before,
+.dive-sheet .dive-note,
+.dive-sheet .dive-deepen,
+.dive-sheet .dive-fin {
+  border-color: var(--accent-dim);
+}
+.dive-sheet .coverage-bar {
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+}
+
+/* nuvens de fundo na cor do tipo — aurora, como nas telas de acesso. Blobs
+   desfocados nas quinas (o centro fica limpo pro texto), vagueando devagar. */
+.dive-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dive-blob {
+  position: absolute;
+  width: clamp(320px, 44vw, 620px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(80px);
+  background: radial-gradient(circle at 50% 50%, var(--accent), transparent 68%);
+  will-change: transform;
+}
+.dive-blob.db1 {
+  top: -16%;
+  left: -10%;
+  opacity: 0.38;
+  animation: dive-drift-1 32s ease-in-out infinite;
+}
+.dive-blob.db2 {
+  bottom: -18%;
+  right: -12%;
+  opacity: 0.3;
+  animation: dive-drift-2 40s ease-in-out infinite;
+}
+.dive-blob.db3 {
+  top: 32%;
+  left: 64%;
+  opacity: 0.18;
+  animation: dive-drift-3 36s ease-in-out infinite;
+}
+@keyframes dive-drift-1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(8%, 11%) scale(1.12);
+  }
+}
+@keyframes dive-drift-2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-10%, -7%) scale(1.08);
+  }
+}
+@keyframes dive-drift-3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-7%, 9%) scale(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dive-blob {
+    animation: none;
+  }
+}
+
+/* herói animado (masthead por tipo) */
+.dive-hero {
+  margin: 4px 0 30px;
+  padding: 6px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.dive-hero svg {
+  display: block;
+}
+/* ▲ tendência: a curva se desenha subindo, com o pulso "você está aqui" */
+.dive-hero-trend {
+  stroke-dasharray: 640;
+  stroke-dashoffset: 640;
+  animation: hero-trend-draw 3.6s ease-in-out infinite;
+}
+@keyframes hero-trend-draw {
+  0% {
+    stroke-dashoffset: 640;
+  }
+  55% {
+    stroke-dashoffset: 0;
+  }
+  85% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.2;
+  }
+}
+.dive-hero-pulse {
+  animation: hero-pulse 1.8s ease-in-out infinite;
+}
+@keyframes hero-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+/* ◆ gap: a ponte tracejada tenta cruzar o vão; o vão respira */
+.dive-hero-bridge {
+  stroke-dasharray: 7 6;
+  animation: hero-bridge 3s ease-in-out infinite;
+}
+@keyframes hero-bridge {
+  0% {
+    stroke-dashoffset: 220;
+    opacity: 0.2;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -220;
+    opacity: 0.2;
+  }
+}
+.dive-hero-void {
+  animation: hero-void 2.6s ease-in-out infinite;
+}
+@keyframes hero-void {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+/* ★ oportunidade: a cunha avança até o alvo (beachhead) */
+.dive-hero-wedge {
+  animation: hero-wedge 3s cubic-bezier(0.4, 0, 0.3, 1) infinite;
+}
+@keyframes hero-wedge {
+  0% {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dive-hero-trend,
+  .dive-hero-pulse,
+  .dive-hero-bridge,
+  .dive-hero-void,
+  .dive-hero-wedge {
+    animation: none;
+  }
+  .dive-hero-trend {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ▲ tendência: estágio + forças (acelera/segura) */
+.dive-stage {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+}
+.dive-forces {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 560px) {
+  .dive-forces {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.dive-force {
+  background: rgba(15, 23, 41, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.dive-force-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.dive-force-head.accel {
+  color: #3ddc97;
+}
+.dive-force-head.brake {
+  color: #ff6b6b;
+}
+.dive-force ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 6px;
+}
+.dive-force li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* ◆ gap / ★ oportunidade: sub-blocos rotulados dentro da seção do tipo */
+.dive-subsec {
+  margin-top: 14px;
+}
+.dive-subsec-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 7px;
 }

@@ -95,7 +95,8 @@ const MarketAnalogueSchema = z.object({
   nome: z.string(),
   licao: z.string(),
 });
-const DeepDiveSchema = z.object({
+// espinha comum aos três tipos: mapa + passos + sinais
+const diveSpine = {
   market: z.object({
     players: z.array(MarketPlayerSchema),
     ondeValor: z.string(),
@@ -108,7 +109,41 @@ const DeepDiveSchema = z.object({
       text: z.string(),
     }),
   ),
+};
+
+// um schema por tipo: a espinha + o bloco de análise específico (typeAnalysis).
+// Schema focado por tipo (em vez de campos opcionais vazios) = prompt mais nítido.
+const TrendDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("tendencia"),
+    estagio: z.string(),
+    aceleradores: z.array(z.string()),
+    freios: z.array(z.string()),
+  }),
 });
+const GapDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("gap"),
+    porqueAberto: z.string(),
+    cemiterio: z.string(),
+    aPonte: z.string(),
+  }),
+});
+const OppDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("oportunidade"),
+    beachhead: z.string(),
+    menorTeste: z.string(),
+  }),
+});
+const DIVE_SCHEMA_BY_TYPE = {
+  tendencia: TrendDiveSchema,
+  gap: GapDiveSchema,
+  oportunidade: OppDiveSchema,
+} as const;
 
 const FinancialsSchema = z.object({
   mercado: z.string(),
@@ -230,13 +265,42 @@ export async function runScan(topics: string[], days: number | null): Promise<Sc
 // ③ MERGULHAR — mapa de mercado da ideia salva, fundamentado em BUSCA WEB (quem
 // já joga, onde o valor se acumula, jogadas análogas) + passos e sinais. A tese
 // (rationale/soWhat/whyNow) já está na ideia; aqui é o andar novo. SERVER-ONLY.
+// limpa o bloco de análise específico do tipo, preservando a discriminação `kind`
+function cleanTypeAnalysis(
+  ta:
+    | { kind: "tendencia"; estagio: string; aceleradores: string[]; freios: string[] }
+    | { kind: "gap"; porqueAberto: string; cemiterio: string; aPonte: string }
+    | { kind: "oportunidade"; beachhead: string; menorTeste: string },
+): DeepDive["typeAnalysis"] {
+  if (ta.kind === "tendencia") {
+    return {
+      kind: "tendencia",
+      estagio: stripNul(ta.estagio),
+      aceleradores: ta.aceleradores.map(stripNul).filter((s) => s.trim()),
+      freios: ta.freios.map(stripNul).filter((s) => s.trim()),
+    };
+  }
+  if (ta.kind === "gap") {
+    return {
+      kind: "gap",
+      porqueAberto: stripNul(ta.porqueAberto),
+      cemiterio: stripNul(ta.cemiterio),
+      aPonte: stripNul(ta.aPonte),
+    };
+  }
+  return { kind: "oportunidade", beachhead: stripNul(ta.beachhead), menorTeste: stripNul(ta.menorTeste) };
+}
+
 export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
+  // o tipo do insight escolhe o schema E o bloco do prompt (eixo "tipo decide
+  // quais perguntas"); a lente segue temperando o tom (eixo "lente decide o tom").
+  const schema = DIVE_SCHEMA_BY_TYPE[idea.type];
   const res = await client.responses.parse({
     model: DEEP_DIVE_MODEL,
     tools: [{ type: "web_search" }], // o mapa é fundamentado em busca real (anti-alucinação no prompt)
     max_output_tokens: DEEP_DIVE_MAX_TOKENS,
     input: [
-      { role: "system", content: buildDeepDiveSystemPrompt(lens) },
+      { role: "system", content: buildDeepDiveSystemPrompt(idea.type, lens) },
       {
         role: "user",
         content: buildDeepDiveMessage({
@@ -255,11 +319,12 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
         }),
       },
     ],
-    text: { format: zodTextFormat(DeepDiveSchema, "deep_dive") },
+    text: { format: zodTextFormat(schema, "deep_dive") },
   });
   const dive = res.output_parsed;
   if (!dive) throw new Error("Mergulho: resposta vazia da IA");
   return {
+    typeAnalysis: cleanTypeAnalysis(dive.typeAnalysis),
     market: {
       players: dive.market.players
         .map((p) => ({

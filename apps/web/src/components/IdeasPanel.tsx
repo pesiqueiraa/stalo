@@ -31,9 +31,9 @@ export function IdeasPanel({
   const [tab, setTab] = useState<Tab>("salvas");
   const topicNames = topics.map((t) => t.name);
 
-  // "mergulhada" = tem o mergulho NOVO (mapa de mercado). Mergulhos salvos antes
-  // do redesenho não têm `market`; contam como não-mergulhados e re-geram.
-  const dived = ideas.filter((i) => i.deepDive?.market);
+  // "mergulhada" = tem o mergulho NOVO com análise por tipo. Mergulhos salvos
+  // antes do redesenho (sem `typeAnalysis`, inclusive os "só-mapa") re-geram.
+  const dived = ideas.filter((i) => i.deepDive?.typeAnalysis);
   const shown = tab === "Deep Dive" ? dived : ideas;
 
   return (
@@ -122,7 +122,7 @@ export function IdeasPanel({
               </div>
             )}
 
-            {idea.deepDive?.market ? (
+            {idea.deepDive?.typeAnalysis ? (
               <button className="btn-deepdive is-dived" onClick={() => onOpenDive(idea.id)}>
                 Ver mergulho ↗
               </button>

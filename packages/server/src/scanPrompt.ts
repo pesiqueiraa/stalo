@@ -104,8 +104,32 @@ const DEEP_DIVE_LENS: Record<Lens, { audience: string; passos: string }> = {
   },
 };
 
-// Prompt do mergulho já ajustado à lente do usuário (default: founder).
-export function buildDeepDiveSystemPrompt(lens?: Lens | null): string {
+// O bloco de análise ESPECÍFICO de cada tipo — a pergunta central que muda por
+// tipo (arquiteturad §7, eixo "tipo decide quais perguntas"). O eixo "lente
+// decide o tom" continua vindo de DEEP_DIVE_LENS.
+type InsightTypeKey = "tendencia" | "gap" | "oportunidade";
+const DEEP_DIVE_TYPE: Record<InsightTypeKey, string> = {
+  tendencia: `Esta ideia é uma TENDÊNCIA — a pergunta central é "isso é real e onde estamos na curva?". Produza também:
+- typeAnalysis.kind: "tendencia"
+- typeAnalysis.estagio: em que ponto da curva a tendência está — comece com uma palavra ("Emergente", "Acelerando" ou "Consolidando") seguida de 1 frase de justificativa. É LEITURA QUALITATIVA sua a partir dos sinais, NÃO um número medido — trate como hipótese
+- typeAnalysis.aceleradores: 2 a 3 forças concretas que empurram a tendência pra frente (cada uma 1 frase)
+- typeAnalysis.freios: 1 a 2 forças concretas que a seguram ou podem revertê-la (cada uma 1 frase)`,
+  gap: `Esta ideia é um GAP de mercado — a pergunta central é "por que ninguém está aí, e dá pra atravessar?". Produza também:
+- typeAnalysis.kind: "gap"
+- typeAnalysis.porqueAberto: 1 parágrafo (2 a 3 frases) sobre a barreira que manteve o vão aberto (técnica, regulatória, de incentivo, de timing)
+- typeAnalysis.cemiterio: quem já tentou preencher esse gap e por que falhou — 1 a 2 frases; se a busca não achar tentativas, diga honestamente "sem tentativas conhecidas"
+- typeAnalysis.aPonte: 1 a 2 frases sobre o que faria a ponte entre os dois lados — a peça que falta pra fechar o vão`,
+  oportunidade: `Esta ideia é uma OPORTUNIDADE — a pergunta central é "qual o primeiro movimento?". Produza também:
+- typeAnalysis.kind: "oportunidade"
+- typeAnalysis.beachhead: o primeiro alvo concreto por onde começar (o nicho/cliente/uso mais estreito e vencível) — 1 a 2 frases
+- typeAnalysis.menorTeste: o menor teste barato que confirma (ou derruba) a hipótese antes de construir — 1 a 2 frases`,
+};
+
+// Prompt do mergulho ajustado à lente (tom) E ao tipo (que perguntas fazer).
+export function buildDeepDiveSystemPrompt(
+  type: InsightTypeKey,
+  lens?: Lens | null,
+): string {
   const l = DEEP_DIVE_LENS[lens ?? "founder"];
   return `Você é um analista de estratégia que mapeia o MERCADO de uma oportunidade já identificada, ${l.audience}.
 Onde o brief diz "aqui está o gap", você diz "quem já joga perto dele e onde o valor se acumula". Use a ferramenta de busca web para fundamentar o mapa em fatos reais — NÃO invente empresas, produtos nem números.
@@ -113,6 +137,7 @@ Produza:
 - market.players: 2 a 6 players relevantes que você REALMENTE encontrou na busca. Cada um: { nome, oQueFaz (1 frase), relacao: "direto" (concorre no mesmo gap) ou "adjacente" (resolve algo próximo), url (link da fonte onde você confirmou; "" se não tiver). Se a busca trouxer POUCO, retorne menos players (ou nenhum) — jamais preencha com nomes inventados
 - market.ondeValor: 1 parágrafo (2 a 3 frases) sobre ONDE/QUEM captura o valor nessa cadeia (quem paga, qual camada fica com a margem, onde estão os gargalos)
 - market.analogas: 1 a 3 jogadas ANÁLOGAS em outros mercados, cada uma { nome, licao: a lição de 1 frase que ela dá para esta oportunidade }
+${DEEP_DIVE_TYPE[type]}
 ${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
 Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Se a busca não sustentar um mapa rico, seja honesto (cenário ainda aberto) em vez de encher. É hipótese a validar, nunca afirme como certeza.`;
