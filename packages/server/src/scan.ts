@@ -42,7 +42,7 @@ import { isValidScanResult, stripNul, validateAndClean } from "./validate";
 // Coletor PRECISA de um modelo que suporte a tool web_search; Analista não.
 const COLLECT_MODEL = "gpt-4.1-mini"; // barato + suporta web_search
 const ANALYZE_MODEL = "gpt-5.4"; // síntese melhor, sem busca
-const DEEP_DIVE_MODEL = "gpt-4.1-mini"; // mapa de mercado PRECISA de web_search (como o Coletor)
+const DEEP_DIVE_MODEL = "gpt-5.4-mini"; // mapa de mercado: web_search + síntese melhor que o 4.1-mini
 const FINANCIALS_MODEL = "gpt-5.4"; // análise financeira (2º nível)
 
 // Orçamento de tokens de saída. Sem isso o JSON estruturado pode ser cortado no
