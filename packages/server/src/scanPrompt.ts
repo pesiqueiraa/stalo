@@ -140,7 +140,7 @@ Produza:
 ${DEEP_DIVE_TYPE[type]}
 ${l.passos}
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
-Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. Se a busca não sustentar um mapa rico, seja honesto (cenário ainda aberto) em vez de encher. É hipótese a validar, nunca afirme como certeza.`;
+Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. NÃO insira links, URLs nem citações no meio da prosa (ex.: "([site](url))") — as fontes vão SOMENTE no campo players[].url. Cada campo contém APENAS o seu próprio conteúdo; não misture nem repita (ex.: não escreva sobre "onde o valor se acumula" dentro de "menorTeste"). Se a busca não sustentar um mapa rico, seja honesto (cenário ainda aberto) em vez de encher. É hipótese a validar, nunca afirme como certeza.`;
 }
 
 interface DeepDiveInput {

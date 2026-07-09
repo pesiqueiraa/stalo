@@ -34,9 +34,12 @@ import type {
   SavedIdea,
   ScanResult,
 } from "@stalo/shared";
-// validação/limpeza pura (dedup, limites, órfãos) vive em validate.ts pra ser
-// testável sem instanciar o cliente OpenAI.
-import { isValidScanResult, stripNul, validateAndClean } from "./validate";
+// validação/limpeza pura (dedup, limites, órfãos, citações) vive em validate.ts
+// pra ser testável sem instanciar o cliente OpenAI.
+import { isValidScanResult, stripCitations, stripNul, validateAndClean } from "./validate";
+
+// limpeza de prosa gerada pela IA: sem byte nulo e sem citação markdown crua.
+const clean = (s: string): string => stripCitations(stripNul(s));
 
 // Modelos por etapa — os "botões" de custo/qualidade.
 // Coletor PRECISA de um modelo que suporte a tool web_search; Analista não.
@@ -211,20 +214,20 @@ function cleanTypeAnalysis(
   if (ta.kind === "tendencia") {
     return {
       kind: "tendencia",
-      estagio: stripNul(ta.estagio),
-      aceleradores: ta.aceleradores.map(stripNul).filter((s) => s.trim()),
-      freios: ta.freios.map(stripNul).filter((s) => s.trim()),
+      estagio: clean(ta.estagio),
+      aceleradores: ta.aceleradores.map(clean).filter((s) => s.trim()),
+      freios: ta.freios.map(clean).filter((s) => s.trim()),
     };
   }
   if (ta.kind === "gap") {
     return {
       kind: "gap",
-      porqueAberto: stripNul(ta.porqueAberto),
-      cemiterio: stripNul(ta.cemiterio),
-      aPonte: stripNul(ta.aPonte),
+      porqueAberto: clean(ta.porqueAberto),
+      cemiterio: clean(ta.cemiterio),
+      aPonte: clean(ta.aPonte),
     };
   }
-  return { kind: "oportunidade", beachhead: stripNul(ta.beachhead), menorTeste: stripNul(ta.menorTeste) };
+  return { kind: "oportunidade", beachhead: clean(ta.beachhead), menorTeste: clean(ta.menorTeste) };
 }
 
 export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
@@ -264,20 +267,20 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
     market: {
       players: dive.market.players
         .map((p) => ({
-          nome: stripNul(p.nome),
-          oQueFaz: stripNul(p.oQueFaz),
+          nome: clean(p.nome),
+          oQueFaz: clean(p.oQueFaz),
           relacao: p.relacao,
-          url: stripNul(p.url),
+          url: stripNul(p.url), // a url é a fonte de verdade — não passa por stripCitations
         }))
         .filter((p) => p.nome.trim()),
-      ondeValor: stripNul(dive.market.ondeValor),
+      ondeValor: clean(dive.market.ondeValor),
       analogas: dive.market.analogas
-        .map((a) => ({ nome: stripNul(a.nome), licao: stripNul(a.licao) }))
+        .map((a) => ({ nome: clean(a.nome), licao: clean(a.licao) }))
         .filter((a) => a.nome.trim()),
     },
-    proximosPassos: dive.proximosPassos.map(stripNul).filter((s) => s.trim()),
+    proximosPassos: dive.proximosPassos.map(clean).filter((s) => s.trim()),
     sinais: dive.sinais
-      .map((s) => ({ kind: s.kind, text: stripNul(s.text) }))
+      .map((s) => ({ kind: s.kind, text: clean(s.text) }))
       .filter((s) => s.text.trim()),
   };
 }

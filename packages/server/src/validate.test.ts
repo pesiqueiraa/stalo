@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Insight, NewsItem } from "@stalo/shared";
-import { isValidScanResult, MAX_INSIGHTS, MAX_ITEMS, stripNul, validateAndClean } from "./validate";
+import {
+  isValidScanResult,
+  MAX_INSIGHTS,
+  MAX_ITEMS,
+  stripCitations,
+  stripNul,
+  validateAndClean,
+} from "./validate";
 
 function item(over: Partial<NewsItem> & { id: string }): NewsItem {
   return {
@@ -30,6 +37,30 @@ describe("stripNul", () => {
   it("remove bytes nulos que o Postgres rejeita", () => {
     expect(stripNul(`a${String.fromCharCode(0)}b`)).toBe("ab");
     expect(stripNul("sem nulo")).toBe("sem nulo");
+  });
+});
+
+describe("stripCitations", () => {
+  it("remove a citação markdown entre parênteses que o modelo cola na prosa", () => {
+    const s =
+      "antes de cada release. ([docs.aws.amazon.com](https://docs.aws.amazon.com/sagemaker/latest/dg/governance.html?utm_source=openai))";
+    expect(stripCitations(s)).toBe("antes de cada release.");
+  });
+
+  it("remove múltiplas citações no meio do texto", () => {
+    const s =
+      "A tese ganha ([c2pa.org](https://c2pa.org/about/)) mas há risco ([anthropic.com](https://www.anthropic.com/policy)).";
+    expect(stripCitations(s)).toBe("A tese ganha mas há risco.");
+  });
+
+  it("converte link markdown solto em só o rótulo", () => {
+    expect(stripCitations("veja [a fonte](https://x.com) aqui")).toBe("veja a fonte aqui");
+  });
+
+  it("não mexe em parênteses comuns (sem link)", () => {
+    expect(stripCitations("mapear quem constrói (inclusive stealth) hoje")).toBe(
+      "mapear quem constrói (inclusive stealth) hoje",
+    );
   });
 });
 

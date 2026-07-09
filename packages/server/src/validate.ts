@@ -14,6 +14,18 @@ export const MAX_INSIGHTS = 5;
 export const stripNul = (s: string): string =>
   typeof s === "string" ? s.split(NUL).join("") : s;
 
+// Remove citações em markdown que o modelo (gpt-5.4-mini + web_search) cola na
+// prosa — ex.: "release. ([docs.aws.amazon.com](https://...))". Como a UI mostra
+// texto puro, elas apareceriam cruas. As fontes têm lugar próprio (players[].url).
+export function stripCitations(s: string): string {
+  if (typeof s !== "string") return s;
+  return s
+    .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)/g, "") // ([rótulo](url)) — o padrão emitido
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [rótulo](url) solto → só o rótulo
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export function validateAndClean(items: NewsItem[], insights: Insight[]): ScanResult {
   // dedup de notícias por url e por título (case-insensitive); mantém a 1ª.
   // as strings já saem sanitizadas (sem byte nulo) daqui.
