@@ -17,3 +17,5 @@ yarn-error.log*
 # Skills de agente (tooling local; reinstalável via `npx skills add`) — não é código do app
 .agents/
 skills-lock.json
+# brainstorming visual companion (superpowers)
+.superpowers/

@@ -5,6 +5,7 @@ import type { SavedIdea } from "@stalo/shared";
 import { labelForType } from "@/lib/ui";
 import { useDismiss } from "@/lib/useDismiss";
 import { CoverageChart } from "./CoverageChart";
+import { DiveHero } from "./DiveHero";
 
 interface DeepDiveViewProps {
   idea: SavedIdea;
@@ -21,6 +22,27 @@ function toMarkdown(idea: SavedIdea): string {
   lines.push(`# ${idea.title}`, "");
   lines.push(`_${labelForType(idea.type)} · ${idea.description}_`, "");
   if (idea.whyNow) lines.push(`**Por que agora:** ${idea.whyNow}`, "");
+  const ta = dive?.typeAnalysis;
+  if (ta?.kind === "tendencia") {
+    lines.push(`## Estágio da tendência`, ta.estagio, "");
+    if (ta.aceleradores.length) {
+      lines.push(`**O que acelera:**`);
+      ta.aceleradores.forEach((a) => lines.push(`- ${a}`));
+      lines.push("");
+    }
+    if (ta.freios.length) {
+      lines.push(`**O que segura:**`);
+      ta.freios.forEach((f) => lines.push(`- ${f}`));
+      lines.push("");
+    }
+  } else if (ta?.kind === "gap") {
+    if (ta.porqueAberto) lines.push(`## Por que o gap segue aberto`, ta.porqueAberto, "");
+    if (ta.cemiterio) lines.push(`## Quem tentou`, ta.cemiterio, "");
+    if (ta.aPonte) lines.push(`## O que faria a ponte`, ta.aPonte, "");
+  } else if (ta?.kind === "oportunidade") {
+    if (ta.beachhead) lines.push(`## O primeiro alvo (beachhead)`, ta.beachhead, "");
+    if (ta.menorTeste) lines.push(`## O menor teste`, ta.menorTeste, "");
+  }
   if (market && market.players.length) {
     lines.push(`## Quem já joga aqui`);
     market.players.forEach((p) =>
@@ -90,6 +112,7 @@ export function DeepDiveView({
   useDismiss(sheetRef, requestClose, true);
   const dive = idea.deepDive;
   const market = dive?.market ?? null;
+  const ta = dive?.typeAnalysis ?? null; // análise específica do tipo (a pergunta central)
   const fin = idea.financials;
   const financing = financingId === idea.id;
 
@@ -108,11 +131,17 @@ export function DeepDiveView({
 
   return (
     <div
-      className={`dive-overlay${closing ? " closing" : ""}`}
+      className={`dive-overlay dive-accent-${idea.type}${closing ? " closing" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label="Mergulho na ideia"
     >
+      {/* nuvens de fundo na cor do tipo (aurora — como nas telas de acesso) */}
+      <div className="dive-aurora" aria-hidden="true">
+        <span className="dive-blob db1" />
+        <span className="dive-blob db2" />
+        <span className="dive-blob db3" />
+      </div>
       <div className="dive-ambient" aria-hidden="true">
         <svg viewBox="0 0 620 620">
           <g transform="translate(310,310)">
@@ -175,12 +204,88 @@ export function DeepDiveView({
           </div>
         )}
 
+        {/* herói animado do tipo — o masthead que "chama atenção" */}
+        <DiveHero type={idea.type} />
+
         {idea.relatedItems.length > 0 && (
           <section className="dive-sec">
             <div className="dive-sec-label">
               <span className="dive-sec-num">{num()}</span> Cobertura ao longo do tempo
             </div>
             <CoverageChart items={idea.relatedItems} />
+          </section>
+        )}
+
+        {/* análise ESPECÍFICA do tipo — a pergunta central que muda por tipo */}
+        {ta?.kind === "tendencia" && (ta.estagio || ta.aceleradores.length > 0 || ta.freios.length > 0) && (
+          <section className="dive-sec">
+            <div className="dive-sec-label">
+              <span className="dive-sec-num">{num()}</span> Onde estamos na curva
+            </div>
+            {ta.estagio && <p className="dive-stage">{ta.estagio}</p>}
+            <div className="dive-forces">
+              {ta.aceleradores.length > 0 && (
+                <div className="dive-force">
+                  <div className="dive-force-head accel">O que acelera</div>
+                  <ul>
+                    {ta.aceleradores.map((a, i) => (
+                      <li key={i}>{a}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ta.freios.length > 0 && (
+                <div className="dive-force">
+                  <div className="dive-force-head brake">O que segura</div>
+                  <ul>
+                    {ta.freios.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {ta?.kind === "gap" && (ta.porqueAberto || ta.cemiterio || ta.aPonte) && (
+          <section className="dive-sec">
+            <div className="dive-sec-label">
+              <span className="dive-sec-num">{num()}</span> Por que o vão segue aberto
+            </div>
+            {ta.porqueAberto && <p className="dive-prose">{ta.porqueAberto}</p>}
+            {ta.cemiterio && (
+              <div className="dive-subsec">
+                <div className="dive-subsec-label">Quem tentou</div>
+                <p className="dive-prose">{ta.cemiterio}</p>
+              </div>
+            )}
+            {ta.aPonte && (
+              <div className="dive-subsec">
+                <div className="dive-subsec-label">O que faria a ponte</div>
+                <p className="dive-prose">{ta.aPonte}</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {ta?.kind === "oportunidade" && (ta.beachhead || ta.menorTeste) && (
+          <section className="dive-sec">
+            <div className="dive-sec-label">
+              <span className="dive-sec-num">{num()}</span> Por onde começar
+            </div>
+            {ta.beachhead && (
+              <div className="dive-subsec">
+                <div className="dive-subsec-label">O primeiro alvo (beachhead)</div>
+                <p className="dive-prose">{ta.beachhead}</p>
+              </div>
+            )}
+            {ta.menorTeste && (
+              <div className="dive-subsec">
+                <div className="dive-subsec-label">O menor teste</div>
+                <p className="dive-prose">{ta.menorTeste}</p>
+              </div>
+            )}
           </section>
         )}
 
