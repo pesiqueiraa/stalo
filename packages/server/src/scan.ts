@@ -34,16 +34,19 @@ import type {
   SavedIdea,
   ScanResult,
 } from "@stalo/shared";
+// validação/limpeza pura (dedup, limites, órfãos, citações) vive em validate.ts
+// pra ser testável sem instanciar o cliente OpenAI.
+import { isValidScanResult, stripCitations, stripNul, validateAndClean } from "./validate";
+
+// limpeza de prosa gerada pela IA: sem byte nulo e sem citação markdown crua.
+const clean = (s: string): string => stripCitations(stripNul(s));
 
 // Modelos por etapa — os "botões" de custo/qualidade.
 // Coletor PRECISA de um modelo que suporte a tool web_search; Analista não.
 const COLLECT_MODEL = "gpt-4.1-mini"; // barato + suporta web_search
 const ANALYZE_MODEL = "gpt-5.4"; // síntese melhor, sem busca
-const DEEP_DIVE_MODEL = "gpt-4.1-mini"; // mapa de mercado PRECISA de web_search (como o Coletor)
+const DEEP_DIVE_MODEL = "gpt-5.4-mini"; // mapa de mercado: web_search + síntese melhor que o 4.1-mini
 const FINANCIALS_MODEL = "gpt-5.4"; // análise financeira (2º nível)
-
-const MAX_ITEMS = 15;
-const MAX_INSIGHTS = 5;
 
 // Orçamento de tokens de saída. Sem isso o JSON estruturado pode ser cortado no
 // meio (JSON.parse quebra com "Unterminated string") quando há muitos itens —
@@ -53,10 +56,6 @@ const COLLECT_MAX_TOKENS = 8000;
 const ANALYZE_MAX_TOKENS = 5000;
 const DEEP_DIVE_MAX_TOKENS = 6000;
 const FINANCIALS_MAX_TOKENS = 5000;
-
-// Byte nulo (0x00): o Postgres rejeita esse caractere em colunas de texto e a
-// saída do LLM/busca web às vezes o traz — precisa ser removido antes de gravar.
-const NUL = String.fromCharCode(0);
 
 const client = new OpenAI(); // lê OPENAI_API_KEY do ambiente
 
@@ -95,7 +94,8 @@ const MarketAnalogueSchema = z.object({
   nome: z.string(),
   licao: z.string(),
 });
-const DeepDiveSchema = z.object({
+// espinha comum aos três tipos: mapa + passos + sinais
+const diveSpine = {
   market: z.object({
     players: z.array(MarketPlayerSchema),
     ondeValor: z.string(),
@@ -108,7 +108,41 @@ const DeepDiveSchema = z.object({
       text: z.string(),
     }),
   ),
+};
+
+// um schema por tipo: a espinha + o bloco de análise específico (typeAnalysis).
+// Schema focado por tipo (em vez de campos opcionais vazios) = prompt mais nítido.
+const TrendDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("tendencia"),
+    estagio: z.string(),
+    aceleradores: z.array(z.string()),
+    freios: z.array(z.string()),
+  }),
 });
+const GapDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("gap"),
+    porqueAberto: z.string(),
+    cemiterio: z.string(),
+    aPonte: z.string(),
+  }),
+});
+const OppDiveSchema = z.object({
+  ...diveSpine,
+  typeAnalysis: z.object({
+    kind: z.literal("oportunidade"),
+    beachhead: z.string(),
+    menorTeste: z.string(),
+  }),
+});
+const DIVE_SCHEMA_BY_TYPE = {
+  tendencia: TrendDiveSchema,
+  gap: GapDiveSchema,
+  oportunidade: OppDiveSchema,
+} as const;
 
 const FinancialsSchema = z.object({
   mercado: z.string(),
@@ -151,66 +185,6 @@ async function analyze(items: NewsItem[]): Promise<Insight[]> {
   return res.output_parsed?.insights ?? [];
 }
 
-const stripNul = (s: string): string =>
-  typeof s === "string" ? s.split(NUL).join("") : s;
-
-// Camada de validação em código (não é IA): blinda o ScanResult antes do grafo.
-function validateAndClean(items: NewsItem[], insights: Insight[]): ScanResult {
-  // dedup de notícias por url e por título (case-insensitive); mantém a 1ª.
-  // as strings já saem sanitizadas (sem byte nulo) daqui.
-  const seenUrls = new Set<string>();
-  const seenTitles = new Set<string>();
-  const cleanItems: NewsItem[] = [];
-  for (const raw of items) {
-    const it: NewsItem = {
-      id: raw.id,
-      topic: stripNul(raw.topic),
-      title: stripNul(raw.title),
-      summary: stripNul(raw.summary),
-      source: stripNul(raw.source),
-      url: stripNul(raw.url),
-      entities: (raw.entities ?? []).map(stripNul),
-      publishedAt: stripNul(raw.publishedAt),
-    };
-    const url = it.url.trim();
-    const titleKey = it.title.trim().toLowerCase();
-    if (url && seenUrls.has(url)) continue;
-    if (titleKey && seenTitles.has(titleKey)) continue;
-    if (url) seenUrls.add(url);
-    if (titleKey) seenTitles.add(titleKey);
-    cleanItems.push(it);
-    if (cleanItems.length >= MAX_ITEMS) break;
-  }
-
-  const itemIds = new Set(cleanItems.map((i) => i.id));
-  const cleanInsights: Insight[] = [];
-  for (const ins of insights) {
-    // só ids de notícias que sobreviveram; o cruzamento exige >= 2 (regra do produto)
-    const related = (ins.related_items ?? []).filter((id) => itemIds.has(id));
-    if (related.length < 2) continue;
-    const title = stripNul(ins.title).trim();
-    if (!title) continue;
-    cleanInsights.push({
-      ...ins,
-      title,
-      description: stripNul(ins.description),
-      rationale: stripNul(ins.rationale ?? ""),
-      whyNow: stripNul(ins.whyNow ?? ""),
-      soWhat: stripNul(ins.soWhat ?? ""),
-      related_items: related,
-    });
-    if (cleanInsights.length >= MAX_INSIGHTS) break;
-  }
-
-  return { items: cleanItems, insights: cleanInsights };
-}
-
-export function isValidScanResult(value: unknown): value is ScanResult {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return Array.isArray(v.items) && Array.isArray(v.insights);
-}
-
 export async function runScan(topics: string[], days: number | null): Promise<ScanResult> {
   const items = await collect(topics, days);
   // sem notícias não há o que cruzar — pula o analista e economiza uma chamada
@@ -230,13 +204,42 @@ export async function runScan(topics: string[], days: number | null): Promise<Sc
 // ③ MERGULHAR — mapa de mercado da ideia salva, fundamentado em BUSCA WEB (quem
 // já joga, onde o valor se acumula, jogadas análogas) + passos e sinais. A tese
 // (rationale/soWhat/whyNow) já está na ideia; aqui é o andar novo. SERVER-ONLY.
+// limpa o bloco de análise específico do tipo, preservando a discriminação `kind`
+function cleanTypeAnalysis(
+  ta:
+    | { kind: "tendencia"; estagio: string; aceleradores: string[]; freios: string[] }
+    | { kind: "gap"; porqueAberto: string; cemiterio: string; aPonte: string }
+    | { kind: "oportunidade"; beachhead: string; menorTeste: string },
+): DeepDive["typeAnalysis"] {
+  if (ta.kind === "tendencia") {
+    return {
+      kind: "tendencia",
+      estagio: clean(ta.estagio),
+      aceleradores: ta.aceleradores.map(clean).filter((s) => s.trim()),
+      freios: ta.freios.map(clean).filter((s) => s.trim()),
+    };
+  }
+  if (ta.kind === "gap") {
+    return {
+      kind: "gap",
+      porqueAberto: clean(ta.porqueAberto),
+      cemiterio: clean(ta.cemiterio),
+      aPonte: clean(ta.aPonte),
+    };
+  }
+  return { kind: "oportunidade", beachhead: clean(ta.beachhead), menorTeste: clean(ta.menorTeste) };
+}
+
 export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
+  // o tipo do insight escolhe o schema E o bloco do prompt (eixo "tipo decide
+  // quais perguntas"); a lente segue temperando o tom (eixo "lente decide o tom").
+  const schema = DIVE_SCHEMA_BY_TYPE[idea.type];
   const res = await client.responses.parse({
     model: DEEP_DIVE_MODEL,
     tools: [{ type: "web_search" }], // o mapa é fundamentado em busca real (anti-alucinação no prompt)
     max_output_tokens: DEEP_DIVE_MAX_TOKENS,
     input: [
-      { role: "system", content: buildDeepDiveSystemPrompt(lens) },
+      { role: "system", content: buildDeepDiveSystemPrompt(idea.type, lens) },
       {
         role: "user",
         content: buildDeepDiveMessage({
@@ -255,28 +258,29 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
         }),
       },
     ],
-    text: { format: zodTextFormat(DeepDiveSchema, "deep_dive") },
+    text: { format: zodTextFormat(schema, "deep_dive") },
   });
   const dive = res.output_parsed;
   if (!dive) throw new Error("Mergulho: resposta vazia da IA");
   return {
+    typeAnalysis: cleanTypeAnalysis(dive.typeAnalysis),
     market: {
       players: dive.market.players
         .map((p) => ({
-          nome: stripNul(p.nome),
-          oQueFaz: stripNul(p.oQueFaz),
+          nome: clean(p.nome),
+          oQueFaz: clean(p.oQueFaz),
           relacao: p.relacao,
-          url: stripNul(p.url),
+          url: stripNul(p.url), // a url é a fonte de verdade — não passa por stripCitations
         }))
         .filter((p) => p.nome.trim()),
-      ondeValor: stripNul(dive.market.ondeValor),
+      ondeValor: clean(dive.market.ondeValor),
       analogas: dive.market.analogas
-        .map((a) => ({ nome: stripNul(a.nome), licao: stripNul(a.licao) }))
+        .map((a) => ({ nome: clean(a.nome), licao: clean(a.licao) }))
         .filter((a) => a.nome.trim()),
     },
-    proximosPassos: dive.proximosPassos.map(stripNul).filter((s) => s.trim()),
+    proximosPassos: dive.proximosPassos.map(clean).filter((s) => s.trim()),
     sinais: dive.sinais
-      .map((s) => ({ kind: s.kind, text: stripNul(s.text) }))
+      .map((s) => ({ kind: s.kind, text: clean(s.text) }))
       .filter((s) => s.text.trim()),
   };
 }
