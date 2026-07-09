@@ -22,6 +22,7 @@ import {
   requestDeepDive,
   requestFinancials,
   requestScan,
+  saveLens,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
 import { insightKey } from "@/lib/ui";
@@ -52,6 +53,22 @@ export default function Home() {
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [lens, setLens] = useState<Lens | null>(null); // lente do workspace: ordena o brief por perfil
+
+  // troca de lente pelo perfil: aplica na hora (o brief reordena) e persiste. Se
+  // o salvamento falhar, reverte e propaga o erro pro modal avisar.
+  const changeLens = useCallback(
+    async (next: Lens) => {
+      const prev = lens;
+      setLens(next);
+      try {
+        await saveLens(next);
+      } catch (e) {
+        setLens(prev);
+        throw e;
+      }
+    },
+    [lens],
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -344,7 +361,12 @@ export default function Home() {
 
   return (
     <div id="app">
-      <Header loading={loading} lastUpdated={lastUpdated} />
+      <Header
+        loading={loading}
+        lastUpdated={lastUpdated}
+        lens={lens}
+        onLensChange={changeLens}
+      />
       <div className={`layout${ideasOpen ? "" : " ideas-collapsed"}`}>
         <TopicsPanel
           topics={topics}
