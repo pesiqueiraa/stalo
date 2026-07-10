@@ -28,10 +28,13 @@ import {
   buildVerdictCollectMessage,
   VERDICT_ANALYZE_SYSTEM_PROMPT,
   buildVerdictAnalyzeMessage,
+  GRINGA_COLLECT_SYSTEM_PROMPT,
+  buildGringaCollectMessage,
 } from "./scanPrompt";
 import type {
   DeepDive,
   Financials,
+  GringaItem,
   Insight,
   Lens,
   NewsItem,
@@ -47,6 +50,7 @@ import {
   stripCitations,
   stripNul,
   validateAndClean,
+  validateGringa,
   validateVerdict,
 } from "./validate";
 
@@ -63,6 +67,8 @@ const FINANCIALS_MODEL = "gpt-5.4"; // análise financeira (2º nível)
 // parecerista só sintetiza. Reusa os modelos do scan (mesmo perfil de tarefa).
 const VERDICT_COLLECT_MODEL = COLLECT_MODEL; // levanta evidência com busca web
 const VERDICT_ANALYZE_MODEL = ANALYZE_MODEL; // emite o parecer, sem busca
+// Na gringa: uma etapa só (coletor com busca web), reusa o modelo do coletor.
+const GRINGA_COLLECT_MODEL = COLLECT_MODEL; // busca internacional + suporta web_search
 
 // Orçamento de tokens de saída. Sem isso o JSON estruturado pode ser cortado no
 // meio (JSON.parse quebra com "Unterminated string") quando há muitos itens —
@@ -74,6 +80,7 @@ const DEEP_DIVE_MAX_TOKENS = 6000;
 const FINANCIALS_MAX_TOKENS = 5000;
 const VERDICT_COLLECT_MAX_TOKENS = 8000; // material bruto das 4 seções, com fontes
 const VERDICT_ANALYZE_MAX_TOKENS = 5000; // o parecer sintetizado
+const GRINGA_COLLECT_MAX_TOKENS = 6000; // ~12 itens com todos os campos
 
 const client = new OpenAI(); // lê OPENAI_API_KEY do ambiente
 
@@ -201,6 +208,23 @@ const VerdictAnalyzeSchema = z.object({
   call: z.enum(["go", "no-go", "pivot"]),
   callRationale: z.string(),
   pivot: z.string(),
+});
+
+// ⑦ saída do coletor "Na gringa": itens SEM id (o código atribui g1..gN).
+const GringaCollectSchema = z.object({
+  items: z.array(
+    z.object({
+      source: z.string(),
+      title: z.string(),
+      region: z.string(),
+      flag: z.string(),
+      date: z.string(),
+      summary: z.string(),
+      lag: z.enum(["nao-chegou", "chegando", "ja-chegou"]),
+      lagMonths: z.number(),
+      url: z.string(),
+    }),
+  ),
 });
 
 // ① COLETOR — busca web + extração estruturada das notícias.
@@ -431,4 +455,22 @@ export async function runVerdict(
     throw new Error("Formato de resposta do veredito inválido");
   }
   return verdict;
+}
+
+// ⑦ NA GRINGA — feed universal (o que se move lá fora antes de chegar ao BR).
+// UMA etapa só: coletor com busca web em fontes internacionais → validação em
+// CÓDIGO (regra da fonte, dedup, clamp de lagMonths, ids g1..gN). Sem síntese
+// cruzada. SERVER-ONLY. Vazio após validar = [] (a rota decide o fallback).
+export async function runGringa(): Promise<GringaItem[]> {
+  const res = await client.responses.parse({
+    model: GRINGA_COLLECT_MODEL,
+    tools: [{ type: "web_search" }],
+    max_output_tokens: GRINGA_COLLECT_MAX_TOKENS,
+    input: [
+      { role: "system", content: GRINGA_COLLECT_SYSTEM_PROMPT },
+      { role: "user", content: buildGringaCollectMessage() },
+    ],
+    text: { format: zodTextFormat(GringaCollectSchema, "gringa") },
+  });
+  return validateGringa(res.output_parsed?.items ?? []);
 }

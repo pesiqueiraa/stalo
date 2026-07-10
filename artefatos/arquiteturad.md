@@ -146,6 +146,16 @@ CREATE TABLE verdicts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- cache GLOBAL do feed "Na gringa" (o que se move lá fora). Uma linha só
+-- (singleton): o feed é universal, não depende de workspace nem de tese, então
+-- é compartilhado por todos e atualizado por TTL (refresh quando fica velho).
+CREATE TABLE gringa_cache (
+  id INT PRIMARY KEY DEFAULT 1,         -- singleton: sempre a linha 1
+  items JSONB NOT NULL,                 -- GringaItem[] serializado (feed inteiro, lido/escrito em bloco)
+  fetched_at TIMESTAMPTZ DEFAULT now(), -- quando o feed foi gerado; base do TTL
+  CONSTRAINT gringa_cache_singleton CHECK (id = 1)
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
 -- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -165,6 +175,8 @@ CREATE TABLE rate_limits (
 > ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
 
 > **Veredito (`verdicts`):** workspace-scoped como o resto do domínio — cada visitante só vê os próprios vereditos. As cinco seções ficam em JSONB (`players`, `shifts`, `gap`, `threat`) em vez de tabelas-filhas: o veredito é lido e escrito como um bloco só, espelhando o contrato `Verdict` de `@stalo/shared`, então normalizar não pagaria. O `isExample` do protótipo NÃO entra aqui — é preocupação só-UI, não do domínio.
+
+> **Feed "Na gringa" (`gringa_cache`):** EXCEÇÃO deliberada ao padrão "tudo é workspace-scoped". O feed é universal — o que já se move lá fora antes de virar assunto no BR não depende da tese nem do usuário —, então é um **cache global singleton** (uma linha só, `id = 1`, garantido por CHECK): todos leem a mesma linha. O feed inteiro (`GringaItem[]`) mora em `items` JSONB, lido/escrito em bloco. Atualização por **TTL**: `fetched_at` marca quando foi gerado; quando o cache está mais velho que o TTL, um refresh sob demanda regenera. Gerar por workspace ou por abertura desperdiçaria LLM num conteúdo que é igual pra todos.
 
 > **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `apps/web/src/proxy.ts` (convenção "proxy" do Next 16, ex-middleware), lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
 
@@ -212,6 +224,7 @@ CREATE TABLE rate_limits (
 - **Coleta sob demanda com LLM+busca em vez de pipeline volumoso (RSS/API de notícias)**: o valor do produto é curadoria + cruzamento, não volume (ver `produto.md`). Pipeline volumoso fica no backlog, só se cobertura/histórico/digest agendado virarem prioridade.
 - **`max_tokens` fixo e prompt com limites explícitos** (máx. 8 notícias, máx. 3 insights por scan): decisão deliberada para manter respostas previsíveis e baratas; ajustar para cima só se o volume de temas monitorados crescer no roadmap.
 - **Personalização por lente (perfil) mora no prompt do mergulho (`dive`), não no scan nem no brief**: o onboarding captura a lente do usuário (**founder / investidor / explorador** — a ideia de "público" de `produto.md` §2-3). As **categorias de insight continuam universais** (`tendência / gap / oportunidade` — mesmos glifos, cores e taxonomia em grafo, brief e mergulho); por isso **não é mudança no `type` do `Insight`** nem no schema de `insights`. O que muda por lente é a **linguagem de direcionamento** — o *"e daí?"/payoff*, os *passos* e o *2º nível financeiro* do mergulho — e a **ordem do brief** (qual categoria lidera é ranqueamento, não regeneração de texto). O **grafo permanece neutro** (é a superfície de triagem/mapa; a divergência por perfil precisa de densidade, e o mergulho é onde ela cabe). Consequência técnica: a lente vira **parâmetro do prompt do `dive`** (e do `financials`), threaded pelo módulo compartilhado de prompts (regra 4). Isso isola a personalização à geração sob demanda (barata, por insight) e preserva o "mesmo radar pra todo mundo" (comparabilidade). A lente é preferência de **workspace/usuário** (não por insight), persistida em `workspace_settings` (§4). **Implementado:** capturada no onboarding, e o prompt do mergulho já se ajusta a ela (`buildDeepDiveSystemPrompt` em `scanPrompt.ts`; a rota `/api/ideas/:id/dive` lê `getLens(wid)` e passa pra `runDeepDive`) — founder puxa validação com cliente, investidor puxa diligência/deal, explorador puxa sinais a acompanhar. O 2º nível financeiro também se ajusta à lente (`buildFinancialsSystemPrompt`; a rota `/api/ideas/:id/financials` lê `getLens(wid)`): founder foca em bootstrap/receita, investidor em venture-scale/defensibilidade, explorador em por onde o dinheiro flui. Os esquemas de saída (mergulho e financeiro), o scan e o grafo seguem neutros; o **brief é reordenado por lente na apresentação** — o componente `Brief` põe a categoria que a lente lidera no topo (evidência como desempate), via `LENS_LEAD_CATEGORY` em `apps/web/src/lib/ui.ts`, com a lente lida por `GET /api/settings`. É reordenação de apresentação: não regenera texto nem altera o contrato do `ScanResult`.
+- **Feed "Na gringa" = cache global com TTL, não por workspace nem por scan**: o feed é universal (o que se move lá fora antes de chegar ao BR não depende da tese nem do usuário), então persiste num **cache global singleton** (`gringa_cache`, §4) atualizado por TTL, em vez de ser gerado por workspace ou a cada abertura — o que desperdiçaria LLM num conteúdo idêntico pra todos. É a única exceção ao "tudo é workspace-scoped" do schema, deliberada e documentada como tal. O `lagMonths` (atraso estimado até o Brasil) é **ESTIMATIVA da IA, não medição** — exibido como leitura qualitativa, nunca como número medido, seguindo a mesma regra de honestidade já aplicada no projeto ("cobertura ≠ tendência").
 
 ## 8. Como começar a implementar
 

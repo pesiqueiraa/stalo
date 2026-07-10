@@ -3,7 +3,7 @@
 // (as rotas /api/* do apps/web). db.ts tem `import "server-only"` como guarda.
 //
 // Este index expõe a API pública que as rotas consomem.
-export { runScan, runDeepDive, runFinancials, runVerdict } from "./scan";
+export { runScan, runDeepDive, runFinancials, runVerdict, runGringa } from "./scan";
 export { isValidScanResult } from "./validate";
 export { checkRateLimit, type RateLimitResult } from "./rateLimit";
 export {
@@ -24,4 +24,6 @@ export {
   saveFinancials,
   getLens,
   setLens,
+  getGringaFeed,
+  saveGringaFeed,
 } from "./repo";

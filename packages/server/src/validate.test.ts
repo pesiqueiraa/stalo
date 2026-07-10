@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 import type { Insight, NewsItem, VerdictSource } from "@stalo/shared";
 import {
   isValidScanResult,
+  MAX_GRINGA_ITEMS,
   MAX_INSIGHTS,
   MAX_ITEMS,
   MAX_VERDICT_GAP_SOURCES,
   MAX_VERDICT_PLAYERS,
   MAX_VERDICT_SHIFTS,
+  type RawGringaItem,
   type RawVerdict,
   stripCitations,
   stripNul,
   validateAndClean,
+  validateGringa,
   validateVerdict,
 } from "./validate";
 
@@ -216,6 +219,73 @@ describe("validateVerdict", () => {
   it("zera o pivot quando a decisão não é 'pivot'", () => {
     const v = validateVerdict(THESIS, [], rawVerdict({ call: "go", pivot: "algo" }));
     expect(v.pivot).toBeNull();
+  });
+});
+
+function gringa(over: Partial<RawGringaItem> = {}): RawGringaItem {
+  return {
+    source: "The Information",
+    title: "algo se move",
+    region: "US",
+    flag: "🇺🇸",
+    date: "2026-06-01",
+    summary: "resumo",
+    lag: "nao-chegou",
+    lagMonths: 6,
+    url: "https://x/1",
+    ...over,
+  };
+}
+
+describe("validateGringa", () => {
+  it("descarta item sem url (regra da fonte) e mantém os com fonte", () => {
+    const r = validateGringa([
+      gringa({ url: "" }),
+      gringa({ url: "https://a" }),
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].url).toBe("https://a");
+  });
+
+  it("deduplica por url, mantendo o primeiro", () => {
+    const r = validateGringa([
+      gringa({ url: "https://dup", title: "A" }),
+      gringa({ url: "https://dup", title: "B" }),
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].title).toBe("A");
+  });
+
+  it("descarta item com lag fora do enum", () => {
+    const r = validateGringa([gringa({ lag: "sumiu", url: "https://a" })]);
+    expect(r).toHaveLength(0);
+  });
+
+  it("atribui ids estáveis g1..gN na ordem final", () => {
+    const r = validateGringa([
+      gringa({ url: "https://a" }),
+      gringa({ url: "https://b" }),
+      gringa({ url: "https://c" }),
+    ]);
+    expect(r.map((i) => i.id)).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("faz clamp de lagMonths inválido/negativo para 0", () => {
+    const r = validateGringa([
+      gringa({ url: "https://a", lagMonths: -3 }),
+      gringa({ url: "https://b", lagMonths: Number.NaN }),
+      gringa({ url: "https://c", lagMonths: 8 }),
+    ]);
+    expect(r[0].lagMonths).toBe(0);
+    expect(r[1].lagMonths).toBe(0);
+    expect(r[2].lagMonths).toBe(8);
+  });
+
+  it("aplica o teto de MAX_GRINGA_ITEMS", () => {
+    const many = Array.from({ length: MAX_GRINGA_ITEMS + 5 }, (_, i) =>
+      gringa({ url: `https://u${i}` }),
+    );
+    expect(validateGringa(many)).toHaveLength(MAX_GRINGA_ITEMS);
   });
 });
 

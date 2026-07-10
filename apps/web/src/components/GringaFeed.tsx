@@ -1,6 +1,8 @@
 "use client";
 
-import { GRINGA_ITEMS, LAG_LABEL, type GringaItem } from "@/lib/gringaMock";
+import { useEffect, useState } from "react";
+import { LAG_LABEL, type GringaItem } from "@stalo/shared";
+import { fetchGringa } from "@/lib/api";
 import { formatShortDate } from "@/lib/ui";
 
 // Cada item é um link pra fonte: a fonte é o produto no Stalo, então o veículo
@@ -35,6 +37,33 @@ function GringaCard({ item }: { item: GringaItem }) {
 }
 
 export function GringaFeed() {
+  const [items, setItems] = useState<GringaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // busca o feed real na montagem (cache+TTL vive no servidor). setState fica
+  // SÓ dentro do async (then/catch/finally), com flag `cancelled` no cleanup pra
+  // não atualizar após desmontar — o estado inicial (loading=true) já cobre a
+  // primeira renderização, então nada de setState síncrono no corpo do effect.
+  useEffect(() => {
+    let cancelled = false;
+    fetchGringa()
+      .then((feed) => {
+        if (cancelled) return;
+        setItems(feed);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Não consegui carregar o feed agora.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="gringa">
       {/* div, não <header>: a regra global header{} do topo do app é display:flex
@@ -49,16 +78,19 @@ export function GringaFeed() {
         </p>
       </div>
 
-      <div className="gringa-note" role="note">
-        <strong>Exemplo ilustrativo.</strong> No produto real, este feed vem de uma busca contínua a
-        fontes internacionais — aqui os itens são montados no navegador pra você ver o formato.
-      </div>
-
-      <div className="gringa-list">
-        {GRINGA_ITEMS.map((item) => (
-          <GringaCard key={item.id} item={item} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="brief-empty">Buscando o que já se move lá fora…</div>
+      ) : error ? (
+        <div className="brief-empty">{error}</div>
+      ) : items.length === 0 ? (
+        <div className="brief-empty">Nada novo no radar da gringa por enquanto.</div>
+      ) : (
+        <div className="gringa-list">
+          {items.map((item) => (
+            <GringaCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

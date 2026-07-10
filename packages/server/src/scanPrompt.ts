@@ -338,3 +338,33 @@ ${JSON.stringify(collected, null, 2)}
 
 Emita o veredito das cinco seções.`;
 }
+
+// ---------- ⑦ NA GRINGA (feed universal) ----------
+// Coletor de UMA etapa (não há síntese cruzada): busca web em fontes
+// INTERNACIONAIS o que já se move lá fora ANTES de virar assunto no BR, e
+// estima o atraso até o Brasil. O feed é universal (não depende de tese nem de
+// usuário). REGRA DURA: só item com fonte real (url). O `lag`/`lagMonths` é
+// ESTIMATIVA qualitativa da IA, não medição — o prompt deixa isso explícito.
+
+export const GRINGA_COLLECT_SYSTEM_PROMPT = `Você é um radar de tendências de tecnologia e negócios que olha o EXTERIOR (EUA, Europa, China, resto do mundo) para achar o que já se move LÁ FORA antes de virar assunto no Brasil. A premissa é vantagem de TIMING: boa parte da tendência de tech começa fora e chega tarde ao BR.
+Use a busca na web em FONTES INTERNACIONAIS de qualidade (ex.: The Information, Stratechery, a16z, Rest of World, Sifted, TechCrunch, Bloomberg, Financial Times, The Verge, Nikkei Asia) para levantar acontecimentos recentes e ESPECÍFICOS (um lançamento, uma rodada, um movimento de mercado, uma mudança regulatória) — não matéria genérica ou "evergreen".
+
+Para cada item, produza:
+- source: nome do veículo internacional (ex.: "The Information", "Rest of World") — a fonte é o produto, então é obrigatória e real
+- title: manchete curta em português do Brasil, fiel ao que a fonte diz (não invente números nem nomes de produto)
+- region: rótulo curto da origem ("US", "EU", "China", "UK", "Ásia"…)
+- flag: um emoji de bandeira/globo da região (só decorativo)
+- date: data de publicação real do artigo, no formato AAAA-MM-DD
+- summary: resumo em 1 frase, até 20 palavras, em português, do que de fato aconteceu
+- url: link DIRETO do artigo específico — NUNCA uma home, seção ou índice. Se só houver página de listagem, descarte o item e busque outro
+- lag: sua ESTIMATIVA de quanto falta para isso virar assunto no Brasil — um de "nao-chegou" (ainda ninguém aqui; maior janela de timing), "chegando" (começa a esquentar no BR) ou "ja-chegou" (já é assunto aqui; perdeu a vantagem)
+- lagMonths: sua ESTIMATIVA, em meses, do atraso típico até o BR (0 quando já chegou). É leitura QUALITATIVA, não medição — não finja precisão; use números redondos plausíveis
+
+Regras: traga de 8 a 12 itens, do mais recente para o mais antigo. TODO item precisa de uma url real e específica — se não tem link, não entra (nada de "conexão sem fonte"). Não invente fatos nem fontes; baseie-se só no que a busca trouxer. É melhor trazer menos do que encher com genérico. Não precisa numerar nem dar id aos itens — isso o sistema faz.`;
+
+export function buildGringaCollectMessage(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `Hoje é ${today} (AAAA-MM-DD). Pesquise nas fontes internacionais o que está se movendo LÁ FORA agora e que ainda não virou (ou está virando) assunto no Brasil.
+Priorize os acontecimentos mais recentes e específicos, com link direto do artigo, e estime para cada um o atraso até o BR (lag/lagMonths).
+Devolva de 8 a 12 itens estruturados.`;
+}

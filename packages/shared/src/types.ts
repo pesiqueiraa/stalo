@@ -204,3 +204,32 @@ export interface SavedIdea {
   deepDive: DeepDive | null; // null = ainda não mergulhado
   financials: Financials | null; // null = mergulho ainda não aprofundado no financeiro
 }
+
+// "Na gringa": o que já se move lá fora ANTES de virar assunto no BR. Feed
+// UNIVERSAL (não depende da tese nem do usuário) — a premissa é vantagem de
+// timing. Provider-neutro; no produto real vem de busca contínua a fontes
+// internacionais.
+
+// defasagem pro Brasil: o coração do feed. "nao-chegou" é a maior janela de
+// timing (ninguém aqui ainda), "chegando" está esquentando, "ja-chegou" perdeu
+// a vantagem. A cor de cada estado reusa a paleta neon dos insights.
+export type GringaLag = "nao-chegou" | "chegando" | "ja-chegou";
+
+export interface GringaItem {
+  id: string;
+  source: string; // veículo — a fonte é o produto no Stalo, então fica em destaque
+  title: string; // manchete curta
+  region: string; // rótulo curto da região (US, EU, China…)
+  flag: string; // emoji de bandeira/globo, só decorativo
+  date: string; // ISO yyyy-mm-dd
+  summary: string; // uma linha
+  lag: GringaLag;
+  lagMonths: number; // atraso típico ESTIMADO até o Brasil, em meses (não medido)
+  url: string;
+}
+
+export const LAG_LABEL: Record<GringaLag, string> = {
+  "nao-chegou": "Ainda não chegou ao BR",
+  chegando: "Chegando ao BR",
+  "ja-chegou": "Já chegou ao BR",
+};

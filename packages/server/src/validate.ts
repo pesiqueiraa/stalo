@@ -1,4 +1,6 @@
 import type {
+  GringaItem,
+  GringaLag,
   Insight,
   NewsItem,
   ScanResult,
@@ -231,4 +233,59 @@ export function isValidVerdict(value: unknown): value is Verdict {
     (Array.isArray(gapFontes) && gapFontes.length > 0);
   const gapTextOk = typeof gap?.texto === "string" && gap.texto.trim().length > 0;
   return callOk && hasSource && gapTextOk;
+}
+
+// ---------- Na gringa ----------
+// Validação/limpeza PURA do feed "Na gringa" (uma etapa, sem síntese cruzada).
+// Regra dura: só item com fonte (url). O `id` é atribuído em CÓDIGO (g1..gN) na
+// ordem final — a IA não precisa inventá-lo. `lagMonths` é estimativa da IA:
+// aqui só garantimos que é número >= 0 (clamp), sem fingir precisão.
+
+export const MAX_GRINGA_ITEMS = 12;
+
+const GRINGA_LAGS: readonly GringaLag[] = ["nao-chegou", "chegando", "ja-chegou"];
+const isGringaLag = (v: unknown): v is GringaLag => GRINGA_LAGS.includes(v as GringaLag);
+
+// item bruto do coletor (sem id — o código atribui).
+export interface RawGringaItem {
+  source: string;
+  title: string;
+  region: string;
+  flag: string;
+  date: string;
+  summary: string;
+  lag: string;
+  lagMonths: number;
+  url: string;
+}
+
+export function validateGringa(raw: RawGringaItem[]): GringaItem[] {
+  const seenUrls = new Set<string>();
+  const items: GringaItem[] = [];
+  for (const r of raw ?? []) {
+    const url = stripNul(r?.url ?? "").trim(); // url é a fonte: nunca stripCitations
+    if (!url) continue; // regra dura: sem fonte não entra
+    if (seenUrls.has(url)) continue; // dedup por url
+    if (!isGringaLag(r.lag)) continue; // lag fora do enum = item malformado
+    seenUrls.add(url);
+    // lagMonths: estimativa da IA; garante número finito >= 0 (senão 0).
+    const months =
+      typeof r.lagMonths === "number" && Number.isFinite(r.lagMonths) && r.lagMonths >= 0
+        ? r.lagMonths
+        : 0;
+    items.push({
+      id: `g${items.length + 1}`, // id estável atribuído em código, na ordem final
+      source: cleanText(r.source),
+      title: cleanText(r.title),
+      region: cleanText(r.region),
+      flag: stripNul(r.flag ?? "").trim(), // emoji: só tira byte nulo
+      date: stripNul(r.date ?? "").trim(),
+      summary: cleanText(r.summary),
+      lag: r.lag,
+      lagMonths: months,
+      url,
+    });
+    if (items.length >= MAX_GRINGA_ITEMS) break;
+  }
+  return items;
 }

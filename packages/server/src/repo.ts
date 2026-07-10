@@ -3,6 +3,7 @@ import { sql } from "./db";
 import type {
   DeepDive,
   Financials,
+  GringaItem,
   Insight,
   Lens,
   NewsItem,
@@ -396,5 +397,27 @@ export async function setLens(wid: string, lens: Lens): Promise<void> {
     INSERT INTO workspace_settings (workspace_id, lens, updated_at)
     VALUES (${wid}, ${lens}, now())
     ON CONFLICT (workspace_id) DO UPDATE SET lens = ${lens}, updated_at = now()
+  `;
+}
+
+// ---------- gringa feed (cache global) ----------
+
+// O feed "Na gringa" é universal (não escopado por workspace): uma única linha
+// singleton (id=1) guarda o feed inteiro em bloco. `fetchedAt` sai daqui para a
+// rota decidir o TTL (regerar o feed ou servir o cache).
+export async function getGringaFeed(): Promise<{ items: GringaItem[]; fetchedAt: string } | null> {
+  const [row] = await sql<{ items: GringaItem[]; fetched_at: unknown }[]>`
+    SELECT items, fetched_at FROM gringa_cache WHERE id = 1 LIMIT 1
+  `;
+  if (!row) return null;
+  return { items: row.items, fetchedAt: toIso(row.fetched_at) };
+}
+
+// upsert do singleton: uma linha só, sobrescrita no lugar a cada geração.
+export async function saveGringaFeed(items: GringaItem[]): Promise<void> {
+  await sql`
+    INSERT INTO gringa_cache (id, items, fetched_at)
+    VALUES (1, ${sql.json(items as unknown as Parameters<typeof sql.json>[0])}, now())
+    ON CONFLICT (id) DO UPDATE SET items = EXCLUDED.items, fetched_at = now()
   `;
 }

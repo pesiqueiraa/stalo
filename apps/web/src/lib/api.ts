@@ -1,4 +1,4 @@
-import type { Lens, NewsItem, SavedIdea, ScanResult, Topic, Verdict } from "@stalo/shared";
+import type { GringaItem, Lens, NewsItem, SavedIdea, ScanResult, Topic, Verdict } from "@stalo/shared";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -83,6 +83,17 @@ export async function fetchLatestVerdict(): Promise<Verdict | null> {
   if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar o último veredito."));
   const data = (await res.json()) as { verdict: Verdict | null };
   return data.verdict;
+}
+
+// ---------- na gringa ----------
+
+// Feed "Na gringa" (universal, cache global com TTL no servidor). Devolve os
+// itens (ou [] se não houver). A rota GET /api/gringa responde { items, fetchedAt }.
+export async function fetchGringa(): Promise<GringaItem[]> {
+  const res = await fetch("/api/gringa");
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar o feed da gringa."));
+  const data = (await res.json()) as { items: GringaItem[]; fetchedAt: string };
+  return data.items ?? [];
 }
 
 // ---------- saved ideas ----------

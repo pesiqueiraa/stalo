@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS verdicts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- cache GLOBAL do feed "Na gringa" (o que se move lá fora). Uma linha só
+-- (singleton): o feed é universal, não depende de workspace nem de tese, então
+-- é compartilhado por todos e atualizado por TTL (refresh quando fica velho).
+CREATE TABLE IF NOT EXISTS gringa_cache (
+  id INT PRIMARY KEY DEFAULT 1,         -- singleton: sempre a linha 1
+  items JSONB NOT NULL,                 -- GringaItem[] serializado (feed inteiro, lido/escrito em bloco)
+  fetched_at TIMESTAMPTZ DEFAULT now(), -- quando o feed foi gerado; base do TTL
+  CONSTRAINT gringa_cache_singleton CHECK (id = 1)
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...), para proteger os endpoints de IA de abuso de
 -- custo agora que o app é público. Uma linha por chave, atualizada no lugar.
