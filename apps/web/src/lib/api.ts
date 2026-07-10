@@ -1,4 +1,4 @@
-import type { Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
+import type { Lens, NewsItem, SavedIdea, ScanResult, Topic, Verdict } from "@stalo/shared";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -55,6 +55,34 @@ export async function fetchLatestScan(): Promise<{
   const res = await fetch("/api/scan/latest");
   if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar o último scan."));
   return (await res.json()) as { result: ScanResult | null; createdAt: string | null };
+}
+
+// ---------- verdict ----------
+
+// Gera o veredito da tese/setores no servidor e devolve o Verdict (mesmo formato
+// cru que a rota POST /api/verdict retorna). Lança Error com mensagem pra UI.
+export async function requestVerdict(
+  build: string,
+  forWhom: string,
+  sectors: string[],
+  days: number | null,
+): Promise<Verdict> {
+  const res = await fetch("/api/verdict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ build, forWhom, sectors, days }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao gerar o veredito."));
+  return (await res.json()) as Verdict;
+}
+
+// Último veredito salvo (para remontar o estado ao abrir o radar); null quando
+// nunca houve. A rota GET /api/verdict/latest devolve { verdict }.
+export async function fetchLatestVerdict(): Promise<Verdict | null> {
+  const res = await fetch("/api/verdict/latest");
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar o último veredito."));
+  const data = (await res.json()) as { verdict: Verdict | null };
+  return data.verdict;
 }
 
 // ---------- saved ideas ----------

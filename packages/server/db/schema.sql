@@ -93,6 +93,26 @@ CREATE TABLE IF NOT EXISTS workspace_settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- veredito da tese (o parecer veredito-primeiro). Uma linha por veredito gerado;
+-- as 5 seções (players, shifts, gap, threat + decisão) ficam em JSONB para
+-- espelhar o contrato Verdict de @stalo/shared sem espalhar em tabelas-filhas.
+CREATE TABLE IF NOT EXISTS verdicts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
+  thesis_build TEXT,        -- "o que construir" da tese
+  thesis_for TEXT,          -- "para quem" da tese
+  sectors TEXT[],           -- o cruzamento de setores que a tese toca
+  players JSONB,            -- (i) quem já faz isso — VerdictPlayer[]
+  shifts JSONB,             -- (ii) o que mudou nos últimos 90 dias — VerdictShift[]
+  gap JSONB,                -- (iii) o gap específico { texto, fontes }
+  threat JSONB,             -- (iv) o que mata a ideia { texto, fonte }
+  call TEXT CHECK (call IN ('go','no-go','pivot')),  -- (v) a decisão
+  call_rationale TEXT,      -- por que essa decisão
+  pivot TEXT,               -- sugestão de pivot quando call = 'pivot' (senão null)
+  discarded_no_source INT,  -- conexões descartadas por não terem fonte checável
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...), para proteger os endpoints de IA de abuso de
 -- custo agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -118,6 +138,7 @@ CREATE INDEX IF NOT EXISTS scans_workspace_created_idx ON scans (workspace_id, c
 CREATE INDEX IF NOT EXISTS news_items_scan_id_idx ON news_items (scan_id);
 CREATE INDEX IF NOT EXISTS insights_scan_id_idx ON insights (scan_id);
 CREATE INDEX IF NOT EXISTS saved_ideas_workspace_saved_idx ON saved_ideas (workspace_id, saved_at DESC);
+CREATE INDEX IF NOT EXISTS verdicts_workspace_created_idx ON verdicts (workspace_id, created_at DESC);
 
 -- Sem seed de temas: com isolamento por workspace, cada visitante começa com o
 -- radar vazio e adiciona os próprios temas (um seed global não faz mais sentido).

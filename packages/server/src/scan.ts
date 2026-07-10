@@ -24,6 +24,10 @@ import {
   buildDeepDiveMessage,
   buildFinancialsSystemPrompt,
   buildFinancialsMessage,
+  VERDICT_COLLECT_SYSTEM_PROMPT,
+  buildVerdictCollectMessage,
+  VERDICT_ANALYZE_SYSTEM_PROMPT,
+  buildVerdictAnalyzeMessage,
 } from "./scanPrompt";
 import type {
   DeepDive,
@@ -33,10 +37,18 @@ import type {
   NewsItem,
   SavedIdea,
   ScanResult,
+  Verdict,
 } from "@stalo/shared";
 // validação/limpeza pura (dedup, limites, órfãos, citações) vive em validate.ts
 // pra ser testável sem instanciar o cliente OpenAI.
-import { isValidScanResult, stripCitations, stripNul, validateAndClean } from "./validate";
+import {
+  isValidScanResult,
+  isValidVerdict,
+  stripCitations,
+  stripNul,
+  validateAndClean,
+  validateVerdict,
+} from "./validate";
 
 // limpeza de prosa gerada pela IA: sem byte nulo e sem citação markdown crua.
 const clean = (s: string): string => stripCitations(stripNul(s));
@@ -47,6 +59,10 @@ const COLLECT_MODEL = "gpt-4.1-mini"; // barato + suporta web_search
 const ANALYZE_MODEL = "gpt-5.4"; // síntese melhor, sem busca
 const DEEP_DIVE_MODEL = "gpt-5.4-mini"; // mapa de mercado: web_search + síntese melhor que o 4.1-mini
 const FINANCIALS_MODEL = "gpt-5.4"; // análise financeira (2º nível)
+// Veredito: mesmas duas etapas do scan — coletor precisa de web_search, o
+// parecerista só sintetiza. Reusa os modelos do scan (mesmo perfil de tarefa).
+const VERDICT_COLLECT_MODEL = COLLECT_MODEL; // levanta evidência com busca web
+const VERDICT_ANALYZE_MODEL = ANALYZE_MODEL; // emite o parecer, sem busca
 
 // Orçamento de tokens de saída. Sem isso o JSON estruturado pode ser cortado no
 // meio (JSON.parse quebra com "Unterminated string") quando há muitos itens —
@@ -56,6 +72,8 @@ const COLLECT_MAX_TOKENS = 8000;
 const ANALYZE_MAX_TOKENS = 5000;
 const DEEP_DIVE_MAX_TOKENS = 6000;
 const FINANCIALS_MAX_TOKENS = 5000;
+const VERDICT_COLLECT_MAX_TOKENS = 8000; // material bruto das 4 seções, com fontes
+const VERDICT_ANALYZE_MAX_TOKENS = 5000; // o parecer sintetizado
 
 const client = new OpenAI(); // lê OPENAI_API_KEY do ambiente
 
@@ -149,6 +167,40 @@ const FinancialsSchema = z.object({
   monetizacao: z.string(),
   premissas: z.array(z.string()),
   custoValidar: z.string(),
+});
+
+// Schemas do veredito (structured outputs) — espelham VerdictSource/Player/Shift.
+const VerdictSourceSchema = z.object({
+  veiculo: z.string(),
+  diz: z.string(),
+  url: z.string(),
+  data: z.string(),
+});
+const VerdictPlayerSchema = z.object({
+  nome: z.string(),
+  oQueFaz: z.string(),
+  relacao: z.enum(["direto", "adjacente"]),
+  fonte: VerdictSourceSchema,
+});
+const VerdictShiftSchema = z.object({ texto: z.string(), fonte: VerdictSourceSchema });
+
+// ⑤ saída do Coletor: material bruto com fonte para as 4 seções.
+const VerdictCollectSchema = z.object({
+  players: z.array(VerdictPlayerSchema),
+  shifts: z.array(VerdictShiftSchema),
+  gapSources: z.array(VerdictSourceSchema),
+  threats: z.array(VerdictShiftSchema),
+});
+
+// ⑥ saída do Parecerista: o parecer organizado (pivot vazio = "" → null no código).
+const VerdictAnalyzeSchema = z.object({
+  players: z.array(VerdictPlayerSchema),
+  shifts: z.array(VerdictShiftSchema),
+  gap: z.object({ texto: z.string(), fontes: z.array(VerdictSourceSchema) }),
+  threat: z.object({ texto: z.string(), fonte: VerdictSourceSchema }),
+  call: z.enum(["go", "no-go", "pivot"]),
+  callRationale: z.string(),
+  pivot: z.string(),
 });
 
 // ① COLETOR — busca web + extração estruturada das notícias.
@@ -316,4 +368,67 @@ export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promis
     premissas: fin.premissas.map(stripNul).filter((s) => s.trim()),
     custoValidar: stripNul(fin.custoValidar),
   };
+}
+
+// ⑤+⑥ VEREDITO — mesma arquitetura de duas etapas do scan, aplicada à TESE do
+// founder: Coletor (busca web, levanta material com fonte) → Parecerista (sem
+// busca, sintetiza e decide). A validação em CÓDIGO (validateVerdict) aplica a
+// regra dura "conexão sem fonte não aparece" e conta discardedNoSource. SERVER-ONLY.
+
+async function collectVerdict(
+  thesis: { build: string; forWhom: string },
+  sectors: string[],
+  days: number | null,
+): Promise<z.infer<typeof VerdictCollectSchema>> {
+  const since =
+    days != null ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : null;
+  const res = await client.responses.parse({
+    model: VERDICT_COLLECT_MODEL,
+    tools: [{ type: "web_search" }],
+    max_output_tokens: VERDICT_COLLECT_MAX_TOKENS,
+    input: [
+      { role: "system", content: VERDICT_COLLECT_SYSTEM_PROMPT },
+      { role: "user", content: buildVerdictCollectMessage(thesis, sectors, days, since) },
+    ],
+    text: { format: zodTextFormat(VerdictCollectSchema, "verdict_collect") },
+  });
+  return res.output_parsed ?? { players: [], shifts: [], gapSources: [], threats: [] };
+}
+
+async function analyzeVerdict(
+  thesis: { build: string; forWhom: string },
+  sectors: string[],
+  collected: z.infer<typeof VerdictCollectSchema>,
+): Promise<z.infer<typeof VerdictAnalyzeSchema>> {
+  const res = await client.responses.parse({
+    model: VERDICT_ANALYZE_MODEL,
+    max_output_tokens: VERDICT_ANALYZE_MAX_TOKENS,
+    input: [
+      { role: "system", content: VERDICT_ANALYZE_SYSTEM_PROMPT },
+      { role: "user", content: buildVerdictAnalyzeMessage(thesis, sectors, collected) },
+    ],
+    text: { format: zodTextFormat(VerdictAnalyzeSchema, "verdict") },
+  });
+  const parsed = res.output_parsed;
+  if (!parsed) throw new Error("Veredito: resposta vazia da IA");
+  return parsed;
+}
+
+export async function runVerdict(
+  thesis: { build: string; forWhom: string },
+  sectors: string[],
+  days: number | null,
+): Promise<Verdict> {
+  const collected = await collectVerdict(thesis, sectors, days);
+  const raw = await analyzeVerdict(thesis, sectors, collected);
+  // dedup por url, descarte do que não tem fonte (contado em discardedNoSource),
+  // limites e limpeza de prosa — tudo em código, não na IA.
+  const verdict = validateVerdict(thesis, sectors, raw);
+
+  // erros de LLM já sobem como exceção; aqui garantimos seções mínimas com fonte
+  // (a rota mostra fallback visível — CLAUDE.md: nunca falhar em silêncio).
+  if (!isValidVerdict(verdict)) {
+    throw new Error("Formato de resposta do veredito inválido");
+  }
+  return verdict;
 }

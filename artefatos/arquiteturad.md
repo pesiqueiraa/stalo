@@ -126,6 +126,26 @@ CREATE TABLE workspace_settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- veredito da tese (o parecer veredito-primeiro). Uma linha por veredito gerado;
+-- as 5 seções (players, shifts, gap, threat + decisão) ficam em JSONB para
+-- espelhar o contrato Verdict de @stalo/shared sem espalhar em tabelas-filhas.
+CREATE TABLE verdicts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
+  thesis_build TEXT,        -- "o que construir" da tese
+  thesis_for TEXT,          -- "para quem" da tese
+  sectors TEXT[],           -- o cruzamento de setores que a tese toca
+  players JSONB,            -- (i) quem já faz isso — VerdictPlayer[]
+  shifts JSONB,             -- (ii) o que mudou nos últimos 90 dias — VerdictShift[]
+  gap JSONB,                -- (iii) o gap específico { texto, fontes }
+  threat JSONB,             -- (iv) o que mata a ideia { texto, fonte }
+  call TEXT CHECK (call IN ('go','no-go','pivot')),  -- (v) a decisão
+  call_rationale TEXT,      -- por que essa decisão
+  pivot TEXT,               -- sugestão de pivot quando call = 'pivot' (senão null)
+  discarded_no_source INT,  -- conexões descartadas por não terem fonte checável
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
 -- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -144,6 +164,8 @@ CREATE TABLE rate_limits (
 > o `ScanResult` no formato exato que o `buildGraph()` do frontend espera, sem tradução de
 > ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
 
+> **Veredito (`verdicts`):** workspace-scoped como o resto do domínio — cada visitante só vê os próprios vereditos. As cinco seções ficam em JSONB (`players`, `shifts`, `gap`, `threat`) em vez de tabelas-filhas: o veredito é lido e escrito como um bloco só, espelhando o contrato `Verdict` de `@stalo/shared`, então normalizar não pagaria. O `isExample` do protótipo NÃO entra aqui — é preocupação só-UI, não do domínio.
+
 > **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `apps/web/src/proxy.ts` (convenção "proxy" do Next 16, ex-middleware), lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
 
 ## 5. Endpoints propostos
@@ -155,6 +177,8 @@ CREATE TABLE rate_limits (
 | `DELETE` | `/api/topics/:id` | Remove um tema |
 | `POST` | `/api/scan` | Roda o scan em duas etapas (Coletor com busca web + Analista), valida/limpa, persiste `scans` + `news_items` + `insights`, e devolve o `ScanResult` |
 | `GET` | `/api/scan/latest` | Retorna o último scan (para o frontend recarregar estado ao abrir a página) |
+| `POST` | `/api/verdict` | Gera o veredito da tese (Coletor com busca web + Parecerista), valida/limpa, persiste em `verdicts`, devolve o `Verdict` |
+| `GET` | `/api/verdict/latest` | Último veredito do workspace, para remontar o estado ao abrir o radar |
 | `POST` | `/api/ideas` | Salva uma ideia a partir de um insight |
 | `GET` | `/api/ideas` | Lista ideias salvas |
 | `DELETE` | `/api/ideas/:id` | Remove uma ideia salva |

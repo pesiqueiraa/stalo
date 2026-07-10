@@ -239,3 +239,102 @@ export function buildAnalyzeMessage(items: CollectedItem[]): string {
   }));
   return `Notícias coletadas (cruze estas, referenciando os ids):\n${JSON.stringify(slim, null, 2)}`;
 }
+
+// ---------- ⑤ VEREDITO: COLETOR ----------
+// Mesma arquitetura de duas etapas do scan, aplicada à TESE do founder. Este é o
+// Coletor: COM busca web, levanta MATERIAL BRUTO COM FONTE para as 5 seções do
+// parecer (players, shifts, fontes do gap, ameaças). Não decide nada — quem
+// sintetiza e emite o veredito é o Parecerista (⑥). A regra dura do produto
+// ("conexão sem fonte não aparece") aparece aqui como instrução de sempre trazer
+// url; quando não achar fonte, o item vem com url:"" para o CÓDIGO contá-lo como
+// descartado (validateVerdict), não a IA.
+
+export const VERDICT_COLLECT_SYSTEM_PROMPT = `Você é um pesquisador que levanta EVIDÊNCIA sobre uma tese de negócio, usando a busca na web.
+Você recebe uma tese ("quero construir X para Y") e os setores que ela cruza. Sua ÚNICA tarefa é coletar MATERIAL BRUTO COM FONTE — NÃO escreva o parecer, não decida go/no-go/pivot (isso é outra etapa).
+
+Toda afirmação precisa de uma FONTE CHECÁVEL: um veículo de imprensa, o link DIRETO do artigo e a data. A regra do produto é dura: "conexão sem fonte não aparece".
+
+Levante quatro tipos de material:
+- players: quem JÁ FAZ algo parecido no Brasil (concorrente direto ou play adjacente). Cada um: nome, oQueFaz (1 frase), relacao ("direto" ou "adjacente"), e fonte.
+- shifts: o que MUDOU recentemente e cria TIMING para a tese (um movimento, uma regra que mudou, uma janela que abriu). Cada um: texto (1 frase) e fonte.
+- gapSources: fontes que evidenciam o VÃO ESPECÍFICO que a tese ataca — que a dor existe e não está bem resolvida. Cada uma é uma fonte (veiculo, diz, url, data).
+- threats: o que pode MATAR a ideia (quem tem vantagem estrutural, custo de capital menor, relacionamento). Cada um: texto (1 frase) e fonte.
+
+Sobre a fonte (veiculo, diz, url, data):
+- url: link DIRETO do artigo/página que sustenta a afirmação — NUNCA uma home, seção ou índice de listagem.
+- Sempre que ACHAR a fonte, preencha a url.
+- Se você considerou uma conexão relevante mas NÃO achou fonte checável, ainda assim INCLUA o item com url: "" (string vazia). Não omita: o sistema conta essas conexões descartadas por falta de fonte. Nunca invente uma url para preencher.
+- veiculo: nome do veículo (ex.: "Valor Econômico"); diz: o que a fonte diz, em 1 frase; data: AAAA-MM-DD.
+
+Regras: no máximo ~5 players, ~4 shifts, ~4 gapSources, ~3 threats. Respeite a janela de tempo indicada (sobretudo para os shifts). Nunca invente fontes nem fatos — baseie-se só no que a busca trouxer. É melhor trazer menos do que encher com genérico.`;
+
+export function buildVerdictCollectMessage(
+  thesis: { build: string; forWhom: string },
+  sectors: string[],
+  days: number | null,
+  since: string | null,
+): string {
+  const window =
+    days != null && since != null
+      ? `Janela de tempo para "o que mudou": priorize fatos dos últimos ${days} dias — a partir de ${since} (AAAA-MM-DD).`
+      : `Sem restrição de data: priorize os fatos e movimentos mais recentes.`;
+  const setores =
+    sectors.length > 0 ? sectors.join(", ") : "(não especificados — deduza pelos termos da tese)";
+  return `Tese: quero construir ${thesis.build} para ${thesis.forWhom}.
+Setores que a tese cruza: ${setores}.
+${window}
+Pesquise na web e devolva o material bruto com fonte (players, shifts, gapSources, threats).`;
+}
+
+// ---------- ⑥ VEREDITO: PARECERISTA ----------
+// SEM busca web: recebe só o material já coletado (anti-alucinação, como o
+// Analista do scan). Sintetiza o VÃO e a AMEAÇA em prosa, DECIDE o call, escreve
+// o callRationale e o pivot, e organiza players/shifts/gap.fontes escolhendo os
+// mais fortes do material — copiando as fontes como vieram (sem inventar url).
+
+export const VERDICT_ANALYZE_SYSTEM_PROMPT = `Você é um parecerista que emite um VEREDITO sobre uma tese de negócio, no formato veredito-primeiro.
+Você recebe a tese e o MATERIAL BRUTO já coletado (players, shifts, fontes do gap, ameaças), cada item com sua fonte. NÃO pesquise nem invente nada além do material recebido — trabalhe SOMENTE com o que foi fornecido (anti-alucinação, como no cruzamento do scan).
+
+Sintetize e organize as cinco seções do parecer:
+- players: escolha e ordene os concorrentes/plays do material que de fato tocam a tese. Mantenha nome, oQueFaz, relacao e a fonte EXATAMENTE como vieram.
+- shifts: escolha os movimentos de TIMING mais fortes; texto em 1 frase, com a fonte como veio.
+- gap: escreva gap.texto — 2 a 3 frases sobre o VÃO ESPECÍFICO que a tese ataca e por que ninguém o resolve bem — e liste em gap.fontes as fontes do material que sustentam esse vão.
+- threat: escreva threat.texto — 1 a 2 frases sobre o que MAIS ameaça a ideia — com a fonte que a sustenta.
+- call: a decisão — "go" (a tese se sustenta, vale construir), "no-go" (a evidência não sustenta) ou "pivot" (há algo real, mas não do jeito proposto).
+- callRationale: 2 a 3 frases justificando a decisão A PARTIR da evidência coletada.
+- pivot: quando call = "pivot", 1 a 2 frases com o ângulo sugerido; caso contrário, deixe "" (string vazia).
+
+Regras importantes:
+- COPIE as urls exatamente como vieram; NUNCA invente uma url nem "conserte" um link.
+- Se um item veio com url vazia (sem fonte), você pode mantê-lo onde estava — o sistema o descarta e contabiliza. NÃO invente uma fonte para salvá-lo.
+- Nos campos de texto (gap.texto, threat.texto, callRationale, pivot) escreva em prosa corrida, SOMENTE em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas). NUNCA insira urls ou citações no meio da prosa — as fontes vão SÓ nos campos de fonte.
+- É um parecer — hipótese fundamentada na evidência, não afirme como certeza.`;
+
+interface VerdictSourceInput {
+  veiculo: string;
+  diz: string;
+  url: string;
+  data: string;
+}
+interface VerdictCollectedInput {
+  players: { nome: string; oQueFaz: string; relacao: string; fonte: VerdictSourceInput }[];
+  shifts: { texto: string; fonte: VerdictSourceInput }[];
+  gapSources: VerdictSourceInput[];
+  threats: { texto: string; fonte: VerdictSourceInput }[];
+}
+
+export function buildVerdictAnalyzeMessage(
+  thesis: { build: string; forWhom: string },
+  sectors: string[],
+  collected: VerdictCollectedInput,
+): string {
+  const setores =
+    sectors.length > 0 ? sectors.join(", ") : "(não especificados — deduza pelos termos da tese)";
+  return `Tese: quero construir ${thesis.build} para ${thesis.forWhom}.
+Setores: ${setores}.
+
+Material coletado (use SOMENTE isto; cada item já traz sua fonte):
+${JSON.stringify(collected, null, 2)}
+
+Emita o veredito das cinco seções.`;
+}

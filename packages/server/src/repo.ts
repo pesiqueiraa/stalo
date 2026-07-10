@@ -9,6 +9,7 @@ import type {
   SavedIdea,
   ScanResult,
   Topic,
+  Verdict,
 } from "@stalo/shared";
 
 // Camada de acesso a dados: TODO o SQL do app vive aqui, mapeando as linhas
@@ -195,6 +196,73 @@ export async function getLatestScan(wid: string): Promise<{
   }));
 
   return { result: { items, insights }, createdAt: toIso(scan.created_at) };
+}
+
+// ---------- verdict ----------
+
+// Persiste o veredito do último "Gerar veredito": uma linha por veredito,
+// espelhando saveScan (INSERT escopado por wid, JSONB via sql.json).
+export async function saveVerdict(wid: string, v: Verdict): Promise<void> {
+  await sql`
+    INSERT INTO verdicts (
+      workspace_id, thesis_build, thesis_for, sectors,
+      players, shifts, gap, threat,
+      call, call_rationale, pivot, discarded_no_source
+    )
+    VALUES (
+      ${wid},
+      ${v.thesis.build},
+      ${v.thesis.forWhom},
+      ${v.sectors},
+      ${sql.json(v.players as unknown as Parameters<typeof sql.json>[0])},
+      ${sql.json(v.shifts as unknown as Parameters<typeof sql.json>[0])},
+      ${sql.json(v.gap as unknown as Parameters<typeof sql.json>[0])},
+      ${sql.json(v.threat as unknown as Parameters<typeof sql.json>[0])},
+      ${v.call},
+      ${v.callRationale},
+      ${v.pivot},
+      ${v.discardedNoSource}
+    )
+  `;
+}
+
+// Reconstrói o Verdict do último veredito salvo (o mais recente do workspace),
+// espelhando getLatestScan. JSONB volta já como objeto no postgres.js.
+export async function getLatestVerdict(wid: string): Promise<Verdict | null> {
+  const [row] = await sql<
+    {
+      thesis_build: string | null;
+      thesis_for: string | null;
+      sectors: string[] | null;
+      players: Verdict["players"] | null;
+      shifts: Verdict["shifts"] | null;
+      gap: Verdict["gap"] | null;
+      threat: Verdict["threat"] | null;
+      call: Verdict["call"];
+      call_rationale: string | null;
+      pivot: string | null;
+      discarded_no_source: number | null;
+    }[]
+  >`
+    SELECT thesis_build, thesis_for, sectors, players, shifts, gap, threat,
+           call, call_rationale, pivot, discarded_no_source
+    FROM verdicts WHERE workspace_id = ${wid}
+    ORDER BY created_at DESC LIMIT 1
+  `;
+  if (!row) return null;
+
+  return {
+    thesis: { build: row.thesis_build ?? "", forWhom: row.thesis_for ?? "" },
+    sectors: row.sectors ?? [],
+    players: row.players ?? [],
+    shifts: row.shifts ?? [],
+    gap: row.gap ?? { texto: "", fontes: [] },
+    threat: row.threat ?? { texto: "", fonte: { veiculo: "", diz: "", url: "", data: "" } },
+    call: row.call,
+    callRationale: row.call_rationale ?? "",
+    pivot: row.pivot,
+    discardedNoSource: row.discarded_no_source ?? 0,
+  };
 }
 
 // ---------- saved ideas ----------

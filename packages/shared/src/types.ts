@@ -145,6 +145,50 @@ export interface Financials {
   custoValidar: string; // quão barato dá pra testar a hipótese financeira
 }
 
+// "Veredito" (verdict): o parecer sobre a tese do usuário, no formato
+// veredito-primeiro. Provider-neutro — no produto real cada item vem de uma
+// busca web ao vivo (o Coletor) e passa pela regra dura: conexão sem fonte não
+// aparece. As cinco seções (players, shifts, gap, threat, call) codificam a
+// sequência evidência → parecer.
+export type VerdictCall = "go" | "no-go" | "pivot";
+
+// Uma fonte checável: é o que separa "clareza" de "inspiração de LinkedIn".
+export interface VerdictSource {
+  veiculo: string; // veículo/origem (ex.: Globo Rural)
+  diz: string; // o que a fonte diz, em uma linha
+  url: string;
+  data: string; // ISO (YYYY-MM-DD)
+}
+
+// (i) Quem já faz isso no Brasil — a seção que mata ou salva a ideia.
+export interface VerdictPlayer {
+  nome: string;
+  oQueFaz: string;
+  relacao: "direto" | "adjacente";
+  fonte: VerdictSource;
+}
+
+// (ii) O que mudou nos últimos 90 dias — a vantagem de timing (notícia fresca).
+export interface VerdictShift {
+  texto: string;
+  fonte: VerdictSource;
+}
+
+export interface Verdict {
+  thesis: { build: string; forWhom: string };
+  sectors: string[]; // o cruzamento é o MEIO de achar o ângulo, não o fim
+  players: VerdictPlayer[]; // (i)
+  shifts: VerdictShift[]; // (ii)
+  gap: { texto: string; fontes: VerdictSource[] }; // (iii)
+  threat: { texto: string; fonte: VerdictSource }; // (iv) o que mata a ideia
+  call: VerdictCall; // (v)
+  callRationale: string;
+  pivot: string | null; // sugestão de pivot quando call === "pivot"
+  // regra dura tornada visível: quantas conexões o Coletor achou mas descartou
+  // por não terem fonte checável. Custa recall, ganha confiança.
+  discardedNoSource: number;
+}
+
 export interface SavedIdea {
   id: string;
   insightRef: string; // ref do insight de origem no scan (i1, i2…); efêmero — a detecção de "já salva" é por conteúdo (tipo+título), não por esse ref

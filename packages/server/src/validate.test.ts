@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { Insight, NewsItem } from "@stalo/shared";
+import type { Insight, NewsItem, VerdictSource } from "@stalo/shared";
 import {
   isValidScanResult,
   MAX_INSIGHTS,
   MAX_ITEMS,
+  MAX_VERDICT_GAP_SOURCES,
+  MAX_VERDICT_PLAYERS,
+  MAX_VERDICT_SHIFTS,
+  type RawVerdict,
   stripCitations,
   stripNul,
   validateAndClean,
+  validateVerdict,
 } from "./validate";
 
 function item(over: Partial<NewsItem> & { id: string }): NewsItem {
@@ -127,6 +132,90 @@ describe("validateAndClean — insights", () => {
       insight({ id: `i${i}`, title: `T${i}`, related_items: ["n1", "n2"] }),
     );
     expect(validateAndClean(items, insights).insights).toHaveLength(MAX_INSIGHTS);
+  });
+});
+
+function src(over: Partial<VerdictSource> = {}): VerdictSource {
+  return { veiculo: "V", diz: "d", url: "https://x/1", data: "2026-06-01", ...over };
+}
+function rawVerdict(over: Partial<RawVerdict> = {}): RawVerdict {
+  return {
+    players: [],
+    shifts: [],
+    gap: { texto: "há um vão específico", fontes: [] },
+    threat: { texto: "", fonte: src({ url: "" }) },
+    call: "pivot",
+    callRationale: "porque a evidência aponta pra isso",
+    pivot: "entre pela camada de dados",
+    ...over,
+  };
+}
+const THESIS = { build: "crédito de giro", forWhom: "produtor de café" };
+
+describe("validateVerdict", () => {
+  it("deduplica fontes por url, mantendo a primeira (duplicata não conta como descarte)", () => {
+    const v = validateVerdict(THESIS, [], rawVerdict({
+      players: [
+        { nome: "A", oQueFaz: "x", relacao: "direto", fonte: src({ url: "https://dup" }) },
+        { nome: "B", oQueFaz: "y", relacao: "adjacente", fonte: src({ url: "https://dup" }) },
+      ],
+    }));
+    expect(v.players).toHaveLength(1);
+    expect(v.players[0].nome).toBe("A");
+    expect(v.discardedNoSource).toBe(0);
+  });
+
+  it("descarta afirmação com url vazia (conexão sem fonte não aparece)", () => {
+    const v = validateVerdict(THESIS, [], rawVerdict({
+      players: [
+        { nome: "A", oQueFaz: "x", relacao: "direto", fonte: src({ url: "" }) },
+        { nome: "B", oQueFaz: "y", relacao: "direto", fonte: src({ url: "https://b" }) },
+      ],
+    }));
+    expect(v.players).toHaveLength(1);
+    expect(v.players[0].nome).toBe("B");
+  });
+
+  it("conta em discardedNoSource exatamente as afirmações sem fonte", () => {
+    const v = validateVerdict(THESIS, [], rawVerdict({
+      players: [
+        { nome: "A", oQueFaz: "x", relacao: "direto", fonte: src({ url: "" }) },
+        { nome: "B", oQueFaz: "y", relacao: "direto", fonte: src({ url: "https://b" }) },
+      ],
+      shifts: [{ texto: "algo mudou", fonte: src({ url: "" }) }],
+      gap: { texto: "o vão", fontes: [src({ url: "" }), src({ url: "https://g" })] },
+      threat: { texto: "uma ameaça real", fonte: src({ url: "" }) },
+    }));
+    // 1 player + 1 shift + 1 gap-fonte + 1 threat, todos sem fonte = 4
+    expect(v.discardedNoSource).toBe(4);
+    // e os COM fonte sobrevivem
+    expect(v.players).toHaveLength(1);
+    expect(v.shifts).toHaveLength(0); // o único shift não tinha fonte
+    expect(v.gap.fontes).toHaveLength(1);
+    expect(v.threat.texto).toBe(""); // ameaça sem fonte some
+  });
+
+  it("aplica os limites por seção", () => {
+    const players = Array.from({ length: 10 }, (_, i) => ({
+      nome: `P${i}`,
+      oQueFaz: "x",
+      relacao: "direto" as const,
+      fonte: src({ url: `https://p${i}` }),
+    }));
+    const shifts = Array.from({ length: 10 }, (_, i) => ({
+      texto: `S${i}`,
+      fonte: src({ url: `https://s${i}` }),
+    }));
+    const fontes = Array.from({ length: 10 }, (_, i) => src({ url: `https://g${i}` }));
+    const v = validateVerdict(THESIS, [], rawVerdict({ players, shifts, gap: { texto: "o vão", fontes } }));
+    expect(v.players).toHaveLength(MAX_VERDICT_PLAYERS);
+    expect(v.shifts).toHaveLength(MAX_VERDICT_SHIFTS);
+    expect(v.gap.fontes).toHaveLength(MAX_VERDICT_GAP_SOURCES);
+  });
+
+  it("zera o pivot quando a decisão não é 'pivot'", () => {
+    const v = validateVerdict(THESIS, [], rawVerdict({ call: "go", pivot: "algo" }));
+    expect(v.pivot).toBeNull();
   });
 });
 
