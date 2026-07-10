@@ -17,9 +17,14 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
 
-  // OAuth que falhou volta com ?error=oauth
+  // OAuth que falhou volta com ?error=oauth. Ler a URL é uma sincronização com um
+  // sistema externo (a barra de endereço) que só existe no cliente — derivar isso
+  // durante o render causaria mismatch de hidratação (o servidor não enxerga
+  // window). Por isso o effect é o lugar certo; a regra que desencoraja setState
+  // em effect é falso-positivo aqui, então a desligamos pontualmente.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("error") === "oauth") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setErrors({ form: "Não consegui entrar com o Google. Tente de novo." });
     }
   }, []);

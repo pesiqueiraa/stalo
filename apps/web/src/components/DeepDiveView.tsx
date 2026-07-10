@@ -9,8 +9,6 @@ import { DiveHero } from "./DiveHero";
 
 interface DeepDiveViewProps {
   idea: SavedIdea;
-  financingId: string | null; // id com análise financeira em andamento
-  onDeepenFinancials: (id: string) => void;
   onClose: () => void;
 }
 
@@ -71,27 +69,10 @@ function toMarkdown(idea: SavedIdea): string {
     lines.push("");
   }
   if (idea.notes) lines.push(`## Sua nota`, idea.notes, "");
-  const f = idea.financials;
-  if (f) {
-    lines.push(`---`, "", `# Análise financeira`, "");
-    lines.push(`## Mercado`, f.mercado, "");
-    lines.push(`## Monetização`, f.monetizacao, "");
-    if (f.premissas.length) {
-      lines.push(`## O que precisa ser verdade`);
-      f.premissas.forEach((p) => lines.push(`- ${p}`));
-      lines.push("");
-    }
-    lines.push(`## Custo de validar`, f.custoValidar, "");
-  }
   return lines.join("\n");
 }
 
-export function DeepDiveView({
-  idea,
-  financingId,
-  onDeepenFinancials,
-  onClose,
-}: DeepDiveViewProps) {
+export function DeepDiveView({ idea, onClose }: DeepDiveViewProps) {
   const [copied, setCopied] = useState(false);
   const [closing, setClosing] = useState(false);
   const [thesisOpen, setThesisOpen] = useState(false); // "relembrar a tese" recolhível
@@ -113,8 +94,6 @@ export function DeepDiveView({
   const dive = idea.deepDive;
   const market = dive?.market ?? null;
   const ta = dive?.typeAnalysis ?? null; // análise específica do tipo (a pergunta central)
-  const fin = idea.financials;
-  const financing = financingId === idea.id;
 
   function copyMarkdown() {
     navigator.clipboard?.writeText(toMarkdown(idea)).then(
@@ -396,65 +375,6 @@ export function DeepDiveView({
             <div className="dive-sec-label">Sua nota</div>
             <p className="dive-note">{idea.notes}</p>
           </section>
-        )}
-
-        {/* segundo nível: análise financeira (sob demanda) */}
-        {fin ? (
-          <div className="dive-fin">
-            <div className="dive-fin-head">Análise financeira</div>
-            <section className="dive-sec">
-              <div className="dive-sec-label">
-                <span className="dive-sec-num">{num()}</span> Mercado
-              </div>
-              <p className="dive-prose">{fin.mercado}</p>
-            </section>
-            <section className="dive-sec">
-              <div className="dive-sec-label">
-                <span className="dive-sec-num">{num()}</span> Monetização
-              </div>
-              <p className="dive-prose">{fin.monetizacao}</p>
-            </section>
-            {fin.premissas.length > 0 && (
-              <section className="dive-sec">
-                <div className="dive-sec-label">
-                  <span className="dive-sec-num">{num()}</span> O que precisa ser verdade
-                </div>
-                <ul className="dive-premissas">
-                  {fin.premissas.map((p, i) => (
-                    <li key={i}>{p}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            <section className="dive-sec">
-              <div className="dive-sec-label">
-                <span className="dive-sec-num">{num()}</span> Custo de validar
-              </div>
-              <p className="dive-prose">{fin.custoValidar}</p>
-            </section>
-          </div>
-        ) : (
-          <div className="dive-deepen">
-            <div className="dive-deepen-text">
-              <div className="dive-deepen-title">Aprofundar: análise financeira</div>
-              <div className="dive-deepen-sub">
-                mercado · monetização · o que precisa ser verdade · custo de validar
-              </div>
-            </div>
-            <button
-              className="dive-deepen-btn"
-              onClick={() => onDeepenFinancials(idea.id)}
-              disabled={financing}
-            >
-              {financing ? (
-                <>
-                  <span className="spinner" /> Analisando…
-                </>
-              ) : (
-                "Aprofundar"
-              )}
-            </button>
-          </div>
         )}
 
         <div className="dive-actions">

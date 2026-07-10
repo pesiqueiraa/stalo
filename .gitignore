@@ -19,3 +19,5 @@ yarn-error.log*
 skills-lock.json
 # brainstorming visual companion (superpowers)
 .superpowers/
+# workspace de orquestração do Maestri (tooling local; roles/notas da sessão) — não é código do app
+.maestri/

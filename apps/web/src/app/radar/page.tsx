@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Header } from "@/components/Header";
-import { TopicsPanel } from "@/components/TopicsPanel";
+import { ThesisPanel } from "@/components/ThesisPanel";
 import { GraphCanvas } from "@/components/GraphCanvas";
 import { ScanLoader } from "@/components/ScanLoader";
 import { DetailPanel } from "@/components/DetailPanel";
@@ -10,19 +10,20 @@ import { IdeasPanel } from "@/components/IdeasPanel";
 import { Toast, type ToastAction } from "@/components/Toast";
 import { DeepDiveView } from "@/components/DeepDiveView";
 import { Brief } from "@/components/Brief";
+import { VerdictView } from "@/components/VerdictView";
+import { GringaFeed } from "@/components/GringaFeed";
+import { verdictToScan } from "@/lib/verdict";
+import { takePendingThesis } from "@/lib/thesisHandoff";
 import {
   createIdea,
   createTopic,
   deleteIdea,
   deleteTopic,
   fetchIdeas,
-  fetchLatestScan,
-  fetchSettings,
+  fetchLatestVerdict,
   fetchTopics,
   requestDeepDive,
-  requestFinancials,
-  requestScan,
-  saveLens,
+  requestVerdict,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
 import { insightKey } from "@/lib/ui";
@@ -36,44 +37,32 @@ import type {
   Graph,
   GraphNode,
   InsightNode,
-  Lens,
   NewsItem,
   NewsNode,
   SavedIdea,
   Topic,
+  Verdict,
 } from "@stalo/shared";
 
 const MAX_TOPICS = 5;
 const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
-type View = "rede" | "brief";
+type View = "veredito" | "rede" | "brief" | "gringa";
 
 export default function Home() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [lens, setLens] = useState<Lens | null>(null); // lente do workspace: ordena o brief por perfil
-
-  // troca de lente pelo perfil: aplica na hora (o brief reordena) e persiste. Se
-  // o salvamento falhar, reverte e propaga o erro pro modal avisar.
-  const changeLens = useCallback(
-    async (next: Lens) => {
-      const prev = lens;
-      setLens(next);
-      try {
-        await saveLens(next);
-      } catch (e) {
-        setLens(prev);
-        throw e;
-      }
-    },
-    [lens],
-  );
+  // a tese é o input principal — "quero construir [build] para [forWhom]"
+  const [thesisBuild, setThesisBuild] = useState("");
+  const [thesisFor, setThesisFor] = useState("");
+  // veredito gerado pelo backend real; null antes de gerar
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30); // janela de recência do scan (30/60/90 ou null = sem limite)
-  const [view, setView] = useState<View>("rede"); // rede-first: o usuário vê primeiro o mapa das conexões, depois o brief
+  const [view, setView] = useState<View>("veredito"); // veredito-primeiro: o founder lê o parecer sobre a tese; a rede é a evidência atrás
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [highlightedIdeaId, setHighlightedIdeaId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null);
@@ -91,8 +80,6 @@ export default function Home() {
   // "Mergulhar": id em geração (loading) e id do mergulho aberto na tela
   const [divingId, setDivingId] = useState<string | null>(null);
   const [openDiveId, setOpenDiveId] = useState<string | null>(null);
-  // "Aprofundar" (financeiro, 2º nível): id em geração
-  const [financingId, setFinancingId] = useState<string | null>(null);
   // manchete que surge ao fim da revelação do grafo, anunciando o que foi achado
   const [banner, setBanner] = useState<string | null>(null);
   const bannerTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -107,24 +94,53 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // tese trazida do onboarding (handoff só-frontend via localStorage): pré-
+      // preenche o compositor já na chegada, antes mesmo do banco responder.
+      const pending = takePendingThesis();
+      if (pending && !cancelled) {
+        setThesisBuild(pending.build);
+        setThesisFor(pending.forWhom);
+      }
       const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
       for (let attempt = 0; ; attempt++) {
         try {
-          const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
+          const [loadedTopics, loadedIdeas, latestVerdict] = await Promise.all([
             fetchTopics(),
             fetchIdeas(),
-            fetchLatestScan(),
-            fetchSettings(),
+            fetchLatestVerdict(),
           ]);
           if (cancelled) return;
           setTopics(loadedTopics);
           setIdeas(loadedIdeas);
-          setLens(loadedSettings.lens);
-          if (latest.result) {
-            setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
-            setLastUpdated(latest.createdAt);
-          }
           setError(null);
+          if (pending) {
+            // recém-saído do onboarding: GERA o primeiro veredito REAL da tese na
+            // chegada, com os setores recém-carregados. Fecha o loop tese→veredito,
+            // agora com LLM de verdade (o loader aparece durante a geração). Tem
+            // prioridade sobre um veredito salvo: a tese que o founder acabou de
+            // escrever ganha. Erro aqui não trava — deixa o compositor pré-preenchido.
+            setLoading(true);
+            try {
+              const sectors = loadedTopics.slice(0, MAX_TOPICS).map((t) => t.name);
+              const v = await requestVerdict(pending.build, pending.forWhom, sectors, days);
+              if (cancelled) return;
+              setVerdict(v);
+              setGraph(buildGraph(verdictToScan(v), v.sectors));
+              setLastUpdated(new Date().toISOString());
+              setView("veredito");
+            } catch (err) {
+              if (cancelled) return;
+              setError(err instanceof Error ? err.message : "Não consegui gerar o veredito.");
+            } finally {
+              if (!cancelled) setLoading(false);
+            }
+          } else if (latestVerdict) {
+            // sem tese nova: restaura o último veredito do workspace e sua evidência.
+            setVerdict(latestVerdict);
+            setGraph(buildGraph(verdictToScan(latestVerdict), latestVerdict.sectors));
+            setLastUpdated(new Date().toISOString());
+            setView("veredito");
+          }
           return;
         } catch (err) {
           console.error(err);
@@ -142,6 +158,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
+    // roda uma vez na montagem: usa o `days` inicial só para a geração de
+    // chegada (tese vinda do onboarding). Não deve re-rodar — nem regenerar o
+    // veredito — quando o usuário muda a janela de tempo depois.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function flashMessage(message: string, action?: ToastAction) {
@@ -185,6 +205,11 @@ export default function Home() {
 
   const handleSelect = useCallback((node: GraphNode) => setSelectedNode(node), []);
 
+  // "Gerar veredito": chama o backend real (Coletor com busca web + Parecerista)
+  // via requestVerdict, com os setores como input primário e a tese opcional.
+  // Deriva a evidência: as fontes do veredito viram as notícias e insights do
+  // MESMO grafo do radar, então "ver a evidência no grafo" mostra a prova por
+  // trás do parecer. Erro do LLM/rota fica VISÍVEL (CLAUDE.md), não em silêncio.
   async function scan() {
     if (loading) return;
     setLoading(true);
@@ -193,25 +218,20 @@ export default function Home() {
     bannerTimers.current = [];
     setBanner(null);
     try {
-      const topicNames = topics.slice(0, MAX_TOPICS).map((t) => t.name);
-      const result = await requestScan(topicNames, days);
-      setGraph(buildGraph(result, topics.map((t) => t.name)));
+      const sectors = topics.slice(0, MAX_TOPICS).map((t) => t.name);
+      const v = await requestVerdict(thesisBuild, thesisFor, sectors, days);
+      setVerdict(v);
+      setGraph(buildGraph(verdictToScan(v), v.sectors));
       setLastUpdated(new Date().toISOString());
-      // a manchete entra quando os insights terminam de estourar (fim do stagger)
-      // e some depois de alguns segundos
-      if (result.insights.length > 0) {
-        const n = result.insights.length;
-        const text = `${n} ${n === 1 ? "conexão" : "conexões"} entre seus temas`;
-        bannerTimers.current.push(setTimeout(() => setBanner(text), 1500));
-        bannerTimers.current.push(setTimeout(() => setBanner(null), 6500));
-      }
+      setView("veredito");
+      const text = "Veredito pronto — a evidência está no grafo";
+      bannerTimers.current.push(setTimeout(() => setBanner(text), 300));
+      bannerTimers.current.push(setTimeout(() => setBanner(null), 5000));
     } catch (err) {
-      console.error(err);
-      setError(
-        "Não consegui buscar ou interpretar as notícias agora. Tente novamente em instantes.",
-      );
+      setError(err instanceof Error ? err.message : "Não consegui gerar o veredito.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function saveIdea(node: GraphNode, notes: string) {
@@ -318,20 +338,6 @@ export default function Home() {
     }
   }
 
-  // aprofunda no financeiro (2º nível) — a ideia já precisa estar mergulhada
-  async function deepenFinancials(id: string) {
-    if (financingId) return;
-    setFinancingId(id);
-    try {
-      const updated = await requestFinancials(id);
-      setIdeas((prev) => prev.map((i) => (i.id === id ? updated : i)));
-    } catch (err) {
-      flashMessage(err instanceof Error ? err.message : "Não consegui gerar a análise financeira.");
-    } finally {
-      setFinancingId(null);
-    }
-  }
-
   const openDiveIdea = openDiveId ? ideas.find((i) => i.id === openDiveId) ?? null : null;
 
   // dados do brief, derivados do mesmo grafo (ScanResult é a fronteira única):
@@ -361,14 +367,13 @@ export default function Home() {
 
   return (
     <div id="app">
-      <Header
-        loading={loading}
-        lastUpdated={lastUpdated}
-        lens={lens}
-        onLensChange={changeLens}
-      />
+      <Header loading={loading} lastUpdated={lastUpdated} />
       <div className={`layout${ideasOpen ? "" : " ideas-collapsed"}`}>
-        <TopicsPanel
+        <ThesisPanel
+          thesisBuild={thesisBuild}
+          thesisFor={thesisFor}
+          onThesisBuildChange={setThesisBuild}
+          onThesisForChange={setThesisFor}
           topics={topics}
           newsCounts={newsCounts}
           onAddTopic={addTopic}
@@ -380,28 +385,80 @@ export default function Home() {
           onDaysChange={setDays}
           settings={settings}
           onSettingsChange={setGraphSettings}
+          showGraphControls={view === "rede"}
         />
         <div className="panel center-panel" style={{ padding: 0 }}>
+          {/* As três views do veredito (Veredito/Evidência/Brief) só fazem
+              sentido depois que há veredito — antes disso seriam abas vazias
+              competindo com o chamado pra escrever a tese (comportamento do
+              item 2, mantido). Já "Na gringa" é um eixo à parte: um feed sempre
+              navegável, então fica numa pílula própria, separada à direita e
+              presente mesmo antes do veredito. Como o compositor da tese vive
+              na coluna esquerda o tempo todo, voltar ao chamado é sempre
+              possível; a pílula ainda alterna de volta pro veredito ao ser
+              reclicada. */}
           <div className="view-toggle" role="tablist" aria-label="Modo de visualização">
+            {verdict && (
+              <>
+                <button
+                  role="tab"
+                  aria-selected={view === "rede"}
+                  className={`view-tab${view === "rede" ? " active" : ""}`}
+                  onClick={() => setView("rede")}
+                >
+                  Evidência
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={view === "brief"}
+                  className={`view-tab${view === "brief" ? " active" : ""}`}
+                  onClick={() => setView("brief")}
+                >
+                  Brief
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={view === "veredito"}
+                  className={`view-tab${view === "veredito" ? " active" : ""}`}
+                  onClick={() => setView("veredito")}
+                >
+                  Veredito
+                </button>
+              </>
+            )}
             <button
               role="tab"
-              aria-selected={view === "rede"}
-              className={`view-tab${view === "rede" ? " active" : ""}`}
-              onClick={() => setView("rede")}
+              aria-selected={view === "gringa"}
+              className={`view-tab gringa-tab${view === "gringa" ? " active" : ""}`}
+              onClick={() => setView(view === "gringa" ? "veredito" : "gringa")}
+              title="O que já se move lá fora antes de virar assunto no Brasil"
             >
-              Rede
-            </button>
-            <button
-              role="tab"
-              aria-selected={view === "brief"}
-              className={`view-tab${view === "brief" ? " active" : ""}`}
-              onClick={() => setView("brief")}
-            >
-              Brief
+              <span aria-hidden="true">🌐</span> Na gringa
             </button>
           </div>
           <div className="center-body">
-            {view === "rede" ? (
+            {view === "gringa" ? (
+              <GringaFeed />
+            ) : view === "veredito" ? (
+              verdict ? (
+                <VerdictView verdict={verdict} onSeeEvidence={() => setView("rede")} isExample={false} />
+              ) : loading ? (
+                <div className="brief-empty">Cruzando as fontes atrás do veredito…</div>
+              ) : (
+                <div className="center-cta">
+                  <span className="center-cta-arrow" aria-hidden="true">
+                    ←
+                  </span>
+                  <h2 className="center-cta-title">Comece pelos setores</h2>
+                  <p className="center-cta-text">
+                    Escolha ao lado os setores que você quer cruzar (e, se quiser, descreva sua
+                    tese), depois clique em <strong>Gerar veredito</strong>. Você recebe um parecer
+                    de uma página: quem já faz, o que mudou, o gap, o que mata a ideia e um go /
+                    no-go / pivot.
+                  </p>
+                </div>
+              )
+            ) : view === "rede" ? (
               <div className="graph-wrap">
                 <GraphCanvas
                   graph={graph}
@@ -411,21 +468,10 @@ export default function Home() {
                 />
                 {graph.nodes.length === 0 && !loading && (
                   <div className="empty-state">
-                    {lastUpdated === null ? (
-                      <>
-                        Adicione temas ao lado e clique em{" "}
-                        <span>&quot;Atualizar notícias&quot;</span>
-                        <br />
-                        para o radar buscar conexões, tendências e lacunas entre eles.
-                      </>
-                    ) : (
-                      <>
-                        O radar não encontrou notícias ou conexões para esses temas dessa vez.
-                        <br />
-                        Tente ajustar os temas monitorados e clicar em{" "}
-                        <span>&quot;Atualizar notícias&quot;</span> de novo.
-                      </>
-                    )}
+                    Esta é a evidência por trás do veredito.
+                    <br />
+                    Gere um veredito a partir da sua tese e as fontes aparecem aqui como grafo
+                    navegável.
                   </div>
                 )}
                 {banner && !loading && (
@@ -448,7 +494,6 @@ export default function Home() {
                 newsNodes={newsNodes}
                 savedKeys={savedKeys}
                 hasScanned={lastUpdated !== null}
-                lens={lens}
                 onSave={saveIdea}
               />
             )}
@@ -483,12 +528,7 @@ export default function Home() {
         )}
       </div>
       {openDiveIdea && (
-        <DeepDiveView
-          idea={openDiveIdea}
-          financingId={financingId}
-          onDeepenFinancials={deepenFinancials}
-          onClose={() => setOpenDiveId(null)}
-        />
+        <DeepDiveView idea={openDiveIdea} onClose={() => setOpenDiveId(null)} />
       )}
       <Toast message={toast?.message ?? null} action={toast?.action} />
     </div>

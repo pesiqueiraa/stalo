@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import "./landing.css";
+import "./landing.css"; // pra-quem colapsado no founder (lente única)
 
 // Landing pública. `authed` vem do server component (page.tsx): quem já tem
 // sessão vê "Ir ao radar" no lugar dos CTAs de login/cadastro — sem redirect e
@@ -323,10 +323,10 @@ export default function Landing({ authed }: { authed: boolean }) {
             <img className="lp-logo" src="/logo-branca.svg" alt="Stalo" />
           </Link>
           <div className="nav-links">
-            <a href="#cruzamento">O cruzamento</a>
-            <a href="#pra-quem">Pra quem</a>
-            <a href="#como">Como funciona</a>
+            <a href="#veredito">O veredito</a>
             <a href="#evidencia">Evidência</a>
+            <a href="#pra-quem">Pra quem</a>
+            <a href="#planos">Preço</a>
           </div>
           <div className="nav-cta">
             {authed ? (
@@ -353,13 +353,14 @@ export default function Landing({ authed }: { authed: boolean }) {
         <div className="hero-scrim" />
         <div className="wrap hero-inner">
           <div className="hero-col">
-            <span className="eyebrow">ache sua oportunidade</span>
+            <span className="eyebrow">de tese a veredito</span>
             <h1>
-              Onde dois setores se <span className="cross">cruzam</span>, mora a{" "}
-              <span className="accent">oportunidade</span>.
+              Traga sua tese. Receba um <span className="accent">veredito</span> — com{" "}
+              <span className="cross">evidência</span> que você pode checar.
             </h1>
             <p className="lede">
-              Escolha seus setores. A IA cruza as notícias e aponta o gap.
+              Escreva o que você quer construir. A IA cruza as notícias frescas e diz: quem já faz,
+              o que mudou, onde está o espaço — e se é go, no-go ou pivot.
             </p>
             <div className="cta-row">
               {authed ? (
@@ -417,14 +418,102 @@ export default function Landing({ authed }: { authed: boolean }) {
         </div>
       </header>
 
-      {/* ---------- o cruzamento ---------- */}
+      {/* ---------- o veredito (a saída, veredito-primeiro) ---------- */}
+      <section className="band reveal" id="veredito">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow">a saída</span>
+            <h2>Uma página. O veredito primeiro, a evidência atrás.</h2>
+            <p>
+              Não é uma lista de tendências pra você interpretar — isso você acha de graça no
+              LinkedIn. É um parecer sobre a sua tese, com o link pra você checar cada afirmação.
+            </p>
+          </div>
+
+          <div className="verdict-demo">
+            <div className="vd-head">
+              <div className="vd-head-main">
+                <span className="vd-eyebrow">Veredito sobre a sua tese</span>
+                <strong className="vd-thesis">
+                  Antecipação de recebíveis de convênio para clínicas e consultórios pequenos.
+                </strong>
+                <span className="vd-meta">5 seções · cada afirmação com fonte checável</span>
+              </div>
+              <div className="vd-seal">
+                <span className="vd-call vd-call-pivot">Pivot</span>
+                <span className="vd-seal-hint">há algo real — mas não do jeito proposto</span>
+              </div>
+            </div>
+            <ol className="vd-rows">
+              <li>
+                <span className="vd-num">01</span>
+                <div className="vd-row-body">
+                  <b>Quem já faz isso no Brasil</b>
+                  <p>
+                    Cora e Conta Simples já dão crédito PJ; Adiante e Zippi antecipam recebíveis —
+                    nenhum especialista em convênio de saúde.
+                  </p>
+                </div>
+                <span className="vd-flag">mata ou salva</span>
+              </li>
+              <li>
+                <span className="vd-num">02</span>
+                <div className="vd-row-body">
+                  <b>O que mudou nos últimos 90 dias</b>
+                  <p>
+                    A ANS apertou o prazo de pagamento das operadoras e o padrão TISS digitalizou o
+                    recebível — o fluxo virou dado checável.
+                  </p>
+                </div>
+                <span className="vd-flag">timing</span>
+              </li>
+              <li>
+                <span className="vd-num">03</span>
+                <div className="vd-row-body">
+                  <b>O gap específico</b>
+                  <p>
+                    Ninguém precifica a glosa — a parte da conta que a operadora nega. Antecipar sem
+                    modelar glosa é vender default disfarçado de crédito.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span className="vd-num">04</span>
+                <div className="vd-row-body">
+                  <b>O que mata a ideia</b>
+                  <p>
+                    Operadoras e grupos que compram carteira já adiantam com capital mais barato — e
+                    enxergam a glosa antes de você.
+                  </p>
+                </div>
+                <span className="vd-flag vd-flag-risk">ameaça</span>
+              </li>
+              <li className="vd-verdict-row">
+                <span className="vd-num">05</span>
+                <div className="vd-row-body">
+                  <b>Go / no-go / pivot</b>
+                  <p>
+                    Pivot: entre pelo software de gestão de convênio, onde a glosa nasce, e vire a
+                    antecipação um botão. Ganha quem tem o fluxo, não o menor custo de capital.
+                  </p>
+                </div>
+              </li>
+            </ol>
+            <div className="vd-foot">
+              Cada linha carrega a fonte. <b>Conexão sem fonte não aparece.</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- o cruzamento (o MEIO, não o fim) ---------- */}
       <section className="band reveal" id="cruzamento">
         <div className="wrap">
           <div className="sec-head">
-            <h2>Notícia é commodity. A conexão entre setores, não.</h2>
+            <h2>O cruzamento não é o produto. É como a IA acha o seu ângulo.</h2>
             <p>
-              O Stalo pega dois setores que você segue e mostra onde eles se tocam. É ali que mora a
-              ideia que ainda não é óbvia.
+              Você traz a tese; o Stalo cruza os setores que ela toca pra achar onde está o espaço.
+              O grafo é a evidência navegável — a prova por trás do veredito, não o fim em si.
             </p>
           </div>
 
@@ -455,12 +544,11 @@ export default function Landing({ authed }: { authed: boolean }) {
       <section className="band reveal" id="pra-quem">
         <div className="wrap">
           <div className="sec-head">
-            <h2>O mesmo radar. Quem olha muda o que importa.</h2>
-            <p>O radar é o mesmo pra todo mundo. Muda o que sobe pro topo do card.</p>
+            <h2>Feito pra quem constrói.</h2>
+            <p>Uma ferramenta com um público: o founder que precisa saber se a aposta é real antes de gastar meses construindo.</p>
           </div>
 
-          <div className="lanes">
-            {/* founder */}
+          <div className="founder-showcase">
             <article className="lane founder">
               <span className="lane-kicker">Founder</span>
               <h3>Pra achar a próxima ideia pronta pra construir.</h3>
@@ -474,6 +562,12 @@ export default function Landing({ authed }: { authed: boolean }) {
                 <li>O “e daí?” acionável, não escondido</li>
                 <li>Mergulho: passos de validação com gente real</li>
               </ul>
+            </article>
+
+            {/* a prova concreta, promovida a coluna própria: o mesmo card "e daí?"
+                do produto, com um shimmer de radar sutil (prefers-reduced-motion) */}
+            <div className="founder-proof">
+              <span className="fp-label">Um exemplo do seu brief</span>
               <div className="mini">
                 <div className="m-top">
                   <span className="cd" style={{ background: "var(--cyan)" }} />
@@ -486,63 +580,10 @@ export default function Landing({ authed }: { authed: boolean }) {
                   integradores.
                 </div>
               </div>
-            </article>
-
-            {/* investidor */}
-            <article className="lane investor">
-              <span className="lane-kicker">Investidor</span>
-              <h3>Pra enxergar a categoria antes de virar óbvia.</h3>
-              <p className="who">Quem precisa achar o deal antes da manada.</p>
-              <p className="desc">
-                Os <em>gaps de mercado</em> lideram — o espaço em branco antes de ter nome. No mergulho,
-                vira diligência: quem já está lá e o tamanho da janela.
+              <p className="fp-note">
+                No radar, cada oportunidade chega assim: o ângulo, o “e daí?” e o próximo passo.
               </p>
-              <ul>
-                <li>Gaps de mercado lideram o seu brief</li>
-                <li>Cada tese com as fontes que a sustentam</li>
-                <li>Mergulho: diligência e o que separa o vencedor</li>
-              </ul>
-              <div className="mini">
-                <div className="m-top">
-                  <span className="cd" style={{ background: "var(--cyan)" }} />
-                  IA<span className="mx">×</span>
-                  <span className="cd" style={{ background: "var(--mint)" }} />
-                  Energia · gap
-                </div>
-                <div className="m-body">
-                  <b>O deal →</b> “Energy-for-compute” virando categoria. Já se move lá fora, ninguém no
-                  BR ainda.
-                </div>
-              </div>
-            </article>
-
-            {/* explorador */}
-            <article className="lane explorer">
-              <span className="lane-kicker">Explorador</span>
-              <h3>Pra entender pra onde a tecnologia está indo.</h3>
-              <p className="who">Quem quer se posicionar cedo, sem precisar construir ou investir.</p>
-              <p className="desc">
-                As <em>tendências</em> sobem primeiro. No mergulho, os sinais a acompanhar pra saber se a
-                onda se confirma — ou esfria.
-              </p>
-              <ul>
-                <li>Tendências lideram o seu brief</li>
-                <li>A leitura do movimento, com o timing</li>
-                <li>Mergulho: sinais a monitorar, não achismo</li>
-              </ul>
-              <div className="mini">
-                <div className="m-top">
-                  <span className="cd" style={{ background: "var(--cyan)" }} />
-                  IA<span className="mx">×</span>
-                  <span className="cd" style={{ background: "var(--mint)" }} />
-                  Energia · tendência
-                </div>
-                <div className="m-body">
-                  <b>A leitura →</b> Energia vira o gargalo do compute. Acompanhe PPAs e leilões pra ver
-                  se acelera.
-                </div>
-              </div>
-            </article>
+            </div>
           </div>
         </div>
       </section>
@@ -608,7 +649,7 @@ export default function Landing({ authed }: { authed: boolean }) {
               <div className="flow-text">
                 <span className="flow-num">03</span>
                 <h4>Você guarda e age</h4>
-                <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo e exporte o memo, sempre com as fontes.</p>
+                <p>Salve a tendência, o gap ou a oportunidade. Mergulhe fundo e exporte o resumo, sempre com as fontes.</p>
               </div>
             </div>
           </div>
@@ -620,10 +661,11 @@ export default function Landing({ authed }: { authed: boolean }) {
         <div className="wrap evidence">
           <div className="sec-head">
             <span className="eyebrow">confiança por construção</span>
-            <h2>Insight sem fonte é chute bonito.</h2>
+            <h2>Conexão sem fonte não aparece.</h2>
             <p>
-              Todo cruzamento carrega as notícias que o sustentam: veículo original, data e link. A
-              evidência vem junto, não depois.
+              É a regra dura — e é exatamente onde o ChatGPT alucina. Todo cruzamento carrega as
+              notícias que o sustentam: veículo, data e link. E como a busca é sempre por notícia
+              fresca, você vê o que um LLM genérico ainda não sabe.
             </p>
           </div>
 
@@ -652,6 +694,74 @@ export default function Landing({ authed }: { authed: boolean }) {
               <span className="txt">“energy is the new bottleneck”</span>
               <span className="date">há 11 dias</span>
             </div>
+            <div className="ev-discarded">3 conexões sem fonte foram descartadas</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- planos ---------- */}
+      <section className="band reveal" id="planos">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow">preço</span>
+            <h2>Comece de graça. Assine quando virar rotina.</h2>
+            <p>
+              No grátis você sente o radar rodando ao vivo. No pago ele vira <em>seu</em>: vários
+              temas, um boletim semanal sobre o que é seu, e o histórico crescendo.
+            </p>
+          </div>
+
+          <div className="plans">
+            <article className="plan">
+              <span className="plan-tag">Grátis</span>
+              <div className="plan-price">
+                <span className="pp-num">R$0</span>
+              </div>
+              <p className="plan-lede">
+                Sinta o produto: um radar ao vivo, um boletim toda semana e um mergulho pra
+                experimentar.
+              </p>
+              <ul>
+                <li>
+                  Boletim semanal de uma trilha à sua escolha no cadastro (IA, SaaS, creator
+                  economy…)
+                </li>
+                <li>
+                  1 radar sobre um tema seu, ao vivo, veja os itens se movendo e o tema sendo
+                  monitorado de verdade.
+                </li>
+                <li>1 mergulho completo pra experimentar. Sinta o valor uma vez, depois trava.</li>
+              </ul>
+              <Link className="btn btn-ghost plan-cta" href={authed ? "/radar" : "/signup"}>
+                {authed ? "Ir ao radar" : "Criar conta grátis"}
+              </Link>
+            </article>
+
+            <article className="plan plan-featured">
+              <span className="plan-badge">Recomendado</span>
+              <span className="plan-tag">Assinatura</span>
+              <div className="plan-price">
+                <span className="pp-num">R$39</span>
+                <span className="pp-unit">/mês</span>
+              </div>
+              <p className="plan-annual">ou R$390/ano — 2 meses grátis</p>
+              <p className="plan-lede">O radar inteiro, e um boletim que fala do que é seu.</p>
+              <ul>
+                <li>Radar cheio: vários temas, configurados no onboarding.</li>
+                <li>
+                  Boletim semanal <em>personalizado</em> sobre o seu radar — “3 coisas mexeram no seu
+                  tema essa semana”, não uma trilha genérica.
+                </li>
+                <li>Mergulhos à vontade — até 10 por mês.</li>
+                <li>
+                  Histórico e workspace acumulando: mergulhos salvos, radar crescendo, temas
+                  ajustados ao longo do tempo.
+                </li>
+              </ul>
+              <Link className="btn btn-primary plan-cta" href={authed ? "/radar" : "/signup"}>
+                {authed ? "Ir ao radar" : "Assinar o Stalo"}
+              </Link>
+            </article>
           </div>
         </div>
       </section>
@@ -659,8 +769,8 @@ export default function Landing({ authed }: { authed: boolean }) {
       {/* ---------- cta final ---------- */}
       <section className="band final reveal" id="comecar">
         <div className="wrap">
-          <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
-          <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
+          <h2>Escreva sua tese. Deixe o radar dar o veredito.</h2>
+          <p>Você já tem a ideia. Falta o parecer com evidência que você pode checar.</p>
           <div className="cta-row">
             {authed ? (
               <Link className="btn btn-primary" href="/radar">
@@ -671,8 +781,8 @@ export default function Landing({ authed }: { authed: boolean }) {
                 Criar conta grátis
               </Link>
             )}
-            <a className="btn btn-ghost" href="#pra-quem">
-              Ver qual lente é a minha
+            <a className="btn btn-ghost" href="#veredito">
+              Ver como é o veredito
             </a>
           </div>
         </div>

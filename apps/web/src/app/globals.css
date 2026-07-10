@@ -1078,6 +1078,10 @@ header {
   .ideas-reopen-chevron {
     transform: rotate(-90deg);
   }
+  /* empilhado, a tese fica acima do centro: a seta do chamado aponta pra cima */
+  .center-cta-arrow {
+    transform: rotate(90deg);
+  }
 }
 
 /* ---- Mergulhar (deep dive) — tela imersiva ---- */
@@ -1685,6 +1689,48 @@ a.dive-player:hover .dive-player-src {
   color: var(--text-dim);
   font-size: 13.5px;
   line-height: 1.6;
+}
+
+/* chamado do centro antes do primeiro veredito: sem abas, só o convite pra
+   escrever a tese à esquerda. A seta aponta pro compositor. */
+.center-cta {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 40px;
+}
+.center-cta-arrow {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--amber);
+  opacity: 0.75;
+}
+/* seletor com a classe do pai pra vencer .panel h2 (que senão força mono/caixa
+   alta 11px neste h2 dentro do .center-panel) */
+.center-cta .center-cta-title {
+  font-family: var(--font-display), sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  margin: 0;
+}
+.center-cta-text {
+  max-width: 440px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0;
+}
+.center-cta-text strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .brief-card {
@@ -2458,3 +2504,558 @@ p.story-para {
     animation-duration: 1.4s;
   }
 }
+
+/* ==== Compositor da tese (ThesisPanel) ====================================
+   Refino opcional do radar: "quero construir [X] para [Y]". Os setores são o
+   input principal (visível no topo); a tese vive recolhida no <details>. */
+.thesis-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.thesis-line {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.thesis-lead {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.thesis-field {
+  width: 100%;
+  resize: vertical;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.thesis-field:focus {
+  outline: none;
+  border-color: var(--amber-dim);
+  background: var(--panel);
+}
+.thesis-field::placeholder {
+  color: var(--text-dim);
+  opacity: 0.65;
+}
+.refine {
+  margin: 16px 0 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.refine > summary {
+  cursor: pointer;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  list-style: none;
+  padding: 3px 0;
+}
+.refine > summary::-webkit-details-marker { display: none; }
+.refine > summary::before {
+  content: "+ ";
+  color: var(--text-dim);
+}
+.refine[open] > summary::before { content: "− "; }
+.refine > summary:hover { color: var(--text); }
+.refine[open] > summary { margin-bottom: 12px; }
+
+/* ==== Veredito (VerdictView) ==============================================
+   A saída veredito-primeiro, uma página. Vive em .center-body (inset:0). O
+   acento --call vem do parecer: go=verde, pivot=âmbar, no-go=coral — a mesma
+   paleta neon dos insights. A FONTE é o átomo de destaque: cada afirmação
+   carrega veículo, data e link (evidência checável). */
+.verdict {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 22px 48px;
+  --call: var(--amber);
+}
+.verdict-go { --call: #3ddc97; }
+.verdict-pivot { --call: #ffb13d; }
+.verdict-no-go { --call: #ff6b6b; }
+.verdict > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.v-example {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  background: var(--panel-alt);
+}
+.v-example strong { color: var(--text); }
+
+/* cabeçalho: a tese como um masthead. Só o kicker + a frase estruturada; os
+   conectores apagados, as partes que o founder escreve realçadas por um marca-
+   texto âmbar sutil (a "lacuna preenchida"). Sem cor de veredito aqui — o
+   parecer só aparece no fim. */
+.v-seal {
+  /* display:block sobrescreve o `header { display:flex }` global — sem ele o
+     kicker e a tese ficam lado a lado e o kicker espreme em 3 linhas. Aqui
+     o kicker senta ACIMA da tese, e a tese ocupa a largura toda. */
+  display: block;
+  padding: 28px 28px 30px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    radial-gradient(130% 150% at 0% 0%, rgba(232, 162, 61, 0.08), transparent 52%),
+    linear-gradient(135deg, var(--panel), var(--bg));
+  margin-bottom: 10px;
+}
+.v-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.v-eyebrow::before {
+  content: "";
+  width: 20px;
+  height: 1px;
+  background: var(--amber);
+}
+/* A tese como um formulário respondido: o template ("Quero construir ___
+   para ___") recuado e apagado, e as duas partes que o founder escreveu
+   grandes, claras e sublinhadas em âmbar. Três degraus INEQUÍVOCOS de
+   hierarquia — kicker mono minúsculo → conectores pequenos e apagados →
+   chaves enormes e brilhantes. O tamanho já separa os degraus; a cor e o
+   marca-texto só reforçam.
+   Seletor escopado em .v-seal de propósito: o veredito é renderizado dentro
+   de .panel, e .panel h2 (font-size:11px, mono, --text-dim) tem prioridade
+   sobre .v-thesis sozinho — era ISSO que achatava a tese em texto mono
+   minúsculo. .v-seal .v-thesis vence o cascade sem tocar na regra
+   compartilhada .panel h2. */
+.v-seal .v-thesis {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(27px, 5vw, 35px);
+  line-height: 1.32;
+  font-weight: 650;
+  margin: 20px 0 0;
+  color: var(--text);
+  /* masthead em caixa-alta: explícito aqui pra não depender do
+     text-transform herdado de .panel h2 — é uma decisão de design, não acaso. */
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.v-thesis-con {
+  font-size: 0.5em;
+  font-weight: 400;
+  color: rgba(139, 150, 174, 0.7);
+  letter-spacing: 0.2px;
+}
+.v-thesis-key {
+  color: var(--text);
+  font-weight: 650;
+  background: linear-gradient(var(--amber), var(--amber));
+  background-size: 100% 3px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-bottom: 3px;
+}
+.v-call-badge {
+  display: inline-block;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 5px 15px;
+  border-radius: 999px;
+  color: #0f1729;
+  background: var(--call);
+  box-shadow: 0 0 18px -4px var(--call);
+}
+
+.v-sections { margin-top: 4px; }
+.v-sec {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+}
+.v-sec-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+.v-sec-num {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--call);
+  padding-top: 2px;
+}
+.v-sec h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+}
+.v-sec-sub {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 3px 0 0;
+}
+
+/* a fonte, primeira classe: o átomo "evidência que você pode checar" */
+.v-src {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.v-src:hover {
+  border-color: var(--call);
+  transform: translateX(2px);
+  background: var(--panel);
+}
+.v-src-outlet {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.v-src-says {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.v-src-meta {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.v-src-arrow { opacity: 0.7; }
+
+/* (01) players */
+.v-players { display: flex; flex-direction: column; gap: 12px; }
+.v-player {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.v-player-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.v-player-name {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--text);
+}
+.v-rel {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.v-rel-direto { color: #ff6b6b; background: rgba(255, 107, 107, 0.12); }
+.v-rel-adjacente { color: var(--text-dim); background: var(--panel-alt); }
+.v-player-what {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* (02) o que mudou */
+.v-shifts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.v-shift { display: flex; gap: 13px; }
+.v-shift-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--call);
+  margin-top: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px var(--call);
+}
+.v-shift-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0 0 9px;
+}
+
+/* (03) o gap */
+.v-gap-text { font-size: 14px; line-height: 1.6; color: var(--text); margin: 0 0 16px; }
+.v-gap-src { display: flex; flex-direction: column; gap: 8px; }
+.v-gap-src-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+/* (04) o que mata — sempre lido como risco (coral), independe do parecer */
+.v-sec-threat .v-sec-num { color: #ff6b6b; }
+.v-threat-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 14px;
+  border-left: 2px solid rgba(255, 107, 107, 0.45);
+  padding-left: 14px;
+}
+
+/* (05) go / no-go / pivot */
+.v-final { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
+.v-final-call { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; width: 130px; }
+.v-call-badge-lg { font-size: 15px; padding: 7px 18px; align-self: flex-start; }
+.v-call-sub { font-size: 11.5px; line-height: 1.4; color: var(--text-dim); }
+.v-final-rationale { font-size: 14px; line-height: 1.6; color: var(--text); margin: 0; }
+.v-pivot {
+  border: 1px solid var(--call);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--call) 9%, transparent);
+}
+.v-pivot-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--call);
+  display: block;
+  margin-bottom: 6px;
+}
+.v-pivot p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text); }
+
+.v-foot {
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.v-evidence-btn {
+  font-family: var(--font-body), sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.v-evidence-btn:hover { border-color: var(--call); background: var(--panel); }
+.v-discarded {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .v-src { grid-template-columns: 1fr; gap: 5px; }
+  .v-src-meta { justify-self: start; }
+  .v-final { flex-direction: column; gap: 12px; }
+  .v-final-call { flex-direction: row; align-items: center; gap: 12px; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-src { transition: none; }
+}
+
+/* ==== Últimas atualizações na gringa (GringaFeed) ==========================
+   Feed sempre navegável do que já se move lá fora. Mesma linguagem do veredito:
+   vive em .center-body (inset:0), rola por dentro, a FONTE em destaque e o card
+   inteiro abre a origem. A defasagem pro BR é o selo colorido (paleta neon dos
+   insights: verde = ninguém aqui ainda, âmbar = chegando, dim = já chegou). */
+
+/* pílula sempre presente do feed: empurrada pra direita, separada das abas do
+   veredito pelo espaço (quando elas existem) ou sozinha na barra (pré-veredito) */
+.gringa-tab { margin-left: auto; }
+
+.gringa {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 22px 48px;
+}
+.gringa > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.gringa-head { margin-bottom: 16px; }
+/* seletor com a classe do pai pra vencer .panel h2 (que senão força mono/caixa
+   alta 11px neste h2 dentro do .center-panel) */
+.gringa .gringa-title {
+  font-family: var(--font-display), sans-serif;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  margin: 14px 0 8px;
+}
+.gringa-sub {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 560px;
+}
+.gringa-note {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 18px;
+  background: var(--panel-alt);
+}
+.gringa-note strong { color: var(--text); }
+
+.gringa-list { display: flex; flex-direction: column; gap: 12px; }
+.gringa-item {
+  --lag: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.gringa-item:hover {
+  border-color: var(--lag);
+  transform: translateX(2px);
+  background: var(--panel-alt);
+}
+.gringa-item.lag-nao-chegou { --lag: #3ddc97; }
+.gringa-item.lag-chegando { --lag: #ffb13d; }
+.gringa-item.lag-ja-chegou { --lag: var(--text-dim); }
+
+.gringa-item-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.gringa-outlet {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.gringa-region {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.3px;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gringa-meta {
+  margin-left: auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.gringa .gringa-item-title {
+  font-family: var(--font-display), sans-serif;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  margin: 0;
+}
+.gringa-item-sum {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+.gringa-lag {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--lag);
+  background: color-mix(in oklab, var(--lag) 12%, transparent);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.gringa-lag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lag);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gringa-item { transition: border-color 0.15s ease; }
+}
+/* fim GringaFeed */
