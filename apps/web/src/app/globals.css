@@ -2911,6 +2911,199 @@ p.story-para {
   .v-src { transition: none; }
 }
 
+/* ==== Skeleton do veredito (VerdictSkeleton) ==============================
+   Enquanto o POST bloqueante roda (Coletor → Parecerista), mostramos a MESMA
+   estrutura do resultado com placeholders shimmer + um progresso honesto de 2
+   fases. Números e títulos das seções vêm reais: a tela "já parece" o veredito
+   se formando. Tudo escopado em .v-skeleton / .v-sk-* de propósito — seletor
+   genérico clobbera classe de componente por especificidade (ver .panel h2). */
+.v-skeleton {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 22px 48px;
+  --call: var(--amber);
+}
+.v-skeleton > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* a barra base: o átomo shimmer reusado em todo lugar */
+.v-sk-bar {
+  display: block;
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    rgba(139, 150, 174, 0.1) 30%,
+    rgba(139, 150, 174, 0.22) 50%,
+    rgba(139, 150, 174, 0.1) 70%
+  );
+  background-size: 200% 100%;
+  animation: v-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes v-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* (A) progresso de 2 fases */
+.v-sk-progress {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--panel), var(--bg));
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.v-sk-progress-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-sk-spinner {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--amber-dim);
+  border-top-color: var(--amber);
+  animation: spin 0.8s linear infinite;
+}
+.v-sk-progress-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.v-sk-phase-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  animation: loading-text-in 0.4s ease;
+}
+.v-sk-phase-hint {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.v-sk-step {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.v-sk-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.v-sk-dot {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.4s ease;
+}
+.v-sk-dot.is-active { background: var(--amber); }
+
+/* selo da tese: quando vazio, dois placeholders no lugar da headline */
+.v-sk-seal-ph {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+.v-sk-seal-ph .v-sk-bar { height: 26px; }
+.v-sk-key-ph {
+  display: inline-block;
+  width: 160px;
+  height: 0.7em;
+  border-radius: 6px;
+  vertical-align: middle;
+  background: linear-gradient(
+    100deg,
+    rgba(232, 162, 61, 0.18) 30%,
+    rgba(232, 162, 61, 0.34) 50%,
+    rgba(232, 162, 61, 0.18) 70%
+  );
+  background-size: 200% 100%;
+  animation: v-shimmer 1.4s ease-in-out infinite;
+}
+
+/* cabeçalho de seção: título real + subtítulo shimmer */
+.v-sk-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v-sk-head-text h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+}
+.v-sk-head-text .v-sk-bar { height: 9px; }
+
+/* conteúdo shimmer por tipo de seção */
+.v-sk-players { display: flex; flex-direction: column; gap: 12px; }
+.v-sk-player {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.v-sk-player-top { display: flex; justify-content: space-between; gap: 12px; }
+.v-sk-player-top .v-sk-bar { height: 13px; }
+
+.v-sk-lines { display: flex; flex-direction: column; gap: 14px; }
+.v-sk-line { display: flex; gap: 12px; }
+.v-sk-line-mark {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--amber-dim);
+}
+.v-sk-line-body { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.v-sk-para { display: flex; flex-direction: column; gap: 9px; }
+
+.v-sk-call { display: flex; align-items: flex-start; gap: 16px; }
+.v-sk-badge {
+  flex-shrink: 0;
+  width: 74px;
+  height: 30px;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    rgba(232, 162, 61, 0.18) 30%,
+    rgba(232, 162, 61, 0.34) 50%,
+    rgba(232, 162, 61, 0.18) 70%
+  );
+  background-size: 200% 100%;
+  animation: v-shimmer 1.4s ease-in-out infinite;
+}
+.v-sk-call .v-sk-para { flex: 1; }
+
+/* respeita quem pediu menos movimento: sem shimmer nem giro, placeholders
+   estáticos e legíveis */
+@media (prefers-reduced-motion: reduce) {
+  .v-sk-bar,
+  .v-sk-key-ph,
+  .v-sk-badge { animation: none; background: rgba(139, 150, 174, 0.16); }
+  .v-sk-key-ph,
+  .v-sk-badge { background: rgba(232, 162, 61, 0.24); }
+  .v-sk-spinner { animation: none; }
+}
+
 /* ==== Últimas atualizações na gringa (GringaFeed) ==========================
    Feed sempre navegável do que já se move lá fora. Mesma linguagem do veredito:
    vive em .center-body (inset:0), rola por dentro, a FONTE em destaque e o card

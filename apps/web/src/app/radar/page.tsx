@@ -11,6 +11,7 @@ import { Toast, type ToastAction } from "@/components/Toast";
 import { DeepDiveView } from "@/components/DeepDiveView";
 import { Brief } from "@/components/Brief";
 import { VerdictView } from "@/components/VerdictView";
+import { VerdictSkeleton } from "@/components/VerdictSkeleton";
 import { GringaFeed } from "@/components/GringaFeed";
 import { verdictToScan } from "@/lib/verdict";
 import { takePendingThesis } from "@/lib/thesisHandoff";
@@ -448,7 +449,7 @@ export default function Home() {
               verdict ? (
                 <VerdictView verdict={verdict} onSeeEvidence={() => setView("rede")} isExample={false} />
               ) : loading ? (
-                <div className="brief-empty">Cruzando as fontes atrás do veredito…</div>
+                <VerdictSkeleton build={thesisBuild} forWhom={thesisFor} />
               ) : (
                 <div className="center-cta">
                   <span className="center-cta-arrow" aria-hidden="true">
