@@ -326,7 +326,6 @@ export default function Landing({ authed }: { authed: boolean }) {
             <a href="#veredito">O veredito</a>
             <a href="#evidencia">Evidência</a>
             <a href="#pra-quem">Pra quem</a>
-            <a href="#planos">Preço</a>
           </div>
           <div className="nav-cta">
             {authed ? (
@@ -695,73 +694,6 @@ export default function Landing({ authed }: { authed: boolean }) {
               <span className="date">há 11 dias</span>
             </div>
             <div className="ev-discarded">3 conexões sem fonte foram descartadas</div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- planos ---------- */}
-      <section className="band reveal" id="planos">
-        <div className="wrap">
-          <div className="sec-head">
-            <span className="eyebrow">preço</span>
-            <h2>Comece de graça. Assine quando virar rotina.</h2>
-            <p>
-              No grátis você sente o radar rodando ao vivo. No pago ele vira <em>seu</em>: vários
-              temas, um boletim semanal sobre o que é seu, e o histórico crescendo.
-            </p>
-          </div>
-
-          <div className="plans">
-            <article className="plan">
-              <span className="plan-tag">Grátis</span>
-              <div className="plan-price">
-                <span className="pp-num">R$0</span>
-              </div>
-              <p className="plan-lede">
-                Sinta o produto: um radar ao vivo, um boletim toda semana e um mergulho pra
-                experimentar.
-              </p>
-              <ul>
-                <li>
-                  Boletim semanal de uma trilha à sua escolha no cadastro (IA, SaaS, creator
-                  economy…)
-                </li>
-                <li>
-                  1 radar sobre um tema seu, ao vivo, veja os itens se movendo e o tema sendo
-                  monitorado de verdade.
-                </li>
-                <li>1 mergulho completo pra experimentar. Sinta o valor uma vez, depois trava.</li>
-              </ul>
-              <Link className="btn btn-ghost plan-cta" href={authed ? "/radar" : "/signup"}>
-                {authed ? "Ir ao radar" : "Criar conta grátis"}
-              </Link>
-            </article>
-
-            <article className="plan plan-featured">
-              <span className="plan-badge">Recomendado</span>
-              <span className="plan-tag">Assinatura</span>
-              <div className="plan-price">
-                <span className="pp-num">R$39</span>
-                <span className="pp-unit">/mês</span>
-              </div>
-              <p className="plan-annual">ou R$390/ano — 2 meses grátis</p>
-              <p className="plan-lede">O radar inteiro, e um boletim que fala do que é seu.</p>
-              <ul>
-                <li>Radar cheio: vários temas, configurados no onboarding.</li>
-                <li>
-                  Boletim semanal <em>personalizado</em> sobre o seu radar — “3 coisas mexeram no seu
-                  tema essa semana”, não uma trilha genérica.
-                </li>
-                <li>Mergulhos à vontade — até 10 por mês.</li>
-                <li>
-                  Histórico e workspace acumulando: mergulhos salvos, radar crescendo, temas
-                  ajustados ao longo do tempo.
-                </li>
-              </ul>
-              <Link className="btn btn-primary plan-cta" href={authed ? "/radar" : "/signup"}>
-                {authed ? "Ir ao radar" : "Assinar o Stalo"}
-              </Link>
-            </article>
           </div>
         </div>
       </section>
