@@ -135,7 +135,12 @@ export default function Home() {
               if (!cancelled) setLoading(false);
             }
           } else if (latestVerdict) {
-            // sem tese nova: restaura o último veredito do workspace e sua evidência.
+            // sem tese nova: restaura o último veredito do workspace, sua evidência
+            // e a TESE que o gerou — o compositor reflete o veredito à vista. A
+            // fonte durável da tese é o backend (este veredito salvo), não mais só
+            // o localStorage do handoff.
+            setThesisBuild(latestVerdict.thesis.build);
+            setThesisFor(latestVerdict.thesis.forWhom);
             setVerdict(latestVerdict);
             setGraph(buildGraph(verdictToScan(latestVerdict), latestVerdict.sectors));
             setLastUpdated(new Date().toISOString());

@@ -1,7 +1,10 @@
-// Handoff SÓ-FRONTEND da tese do onboarding pro radar. Sem API/BD: a tese escrita
-// no onboarding é guardada no localStorage e consumida UMA vez no radar (pré-
-// preenche o compositor e abre o primeiro veredito). localStorage em vez de query
-// param pra não poluir a URL nem exigir encode de texto livre com aspas/acentos.
+// Handoff da tese do onboarding pro radar: pré-preenchimento OTIMISTA. A tese
+// escrita no onboarding é guardada no localStorage e consumida UMA vez no radar
+// (pré-preenche o compositor e dispara o primeiro veredito na chegada). Desde que
+// o veredito passou a ser persistido no backend, a fonte DURÁVEL da tese é o
+// último veredito salvo (restaurado via GET /api/verdict/latest) — este handoff é
+// só a ponte imediata onboarding→radar, antes de o banco responder. localStorage
+// em vez de query param pra não poluir a URL nem exigir encode de texto livre.
 
 const KEY = "stalo:pending-thesis";
 
