@@ -37,12 +37,12 @@ O boletim aparece nos DOIS planos, mas são coisas diferentes — e essa distin�
 
 | | Grátis | Pago |
 |---|---|---|
-| Boletim | Editorial, aquisição, **igual pra todos** (broadcast) | **Personalizado** sobre o radar do próprio usuário |
-| Depende de | Só email (mailing list) | Login durável + scan por usuário |
+| Boletim | Editorial, aquisição, **por setor** (o assinante escolhe as trilhas) | **Personalizado** sobre o radar do próprio usuário |
+| Depende de | Email + setores escolhidos (mailing list) | Login durável + scan por usuário |
 | Papel | Topo de funil, traz gente nova | Retenção / valor de ferramenta de trabalho |
 
-- A **newsletter grátis (broadcast)** é o que está sendo planejado agora (ver a nota "newsletter-plano-de-implem" no Maestri) — não precisa de pagamento nem de login.
-- O **digest pago personalizado** é feature futura, entra junto com login + pagamento (este doc).
+- A **newsletter grátis (por setor)** é o que está sendo planejado agora (ver a nota "newsletter-plano-de-implem" no Maestri) — não precisa de pagamento nem de login: o assinante dá o email e escolhe setores de um menu curado. A coleta usa **RSS híbrido** (feeds curados por setor + LLM só na síntese dos insights — ver `arquiteturad.md §7`).
+- O **digest pago personalizado** é feature futura, entra junto com login + pagamento (este doc). A diferença: o grátis cruza os setores que você **escolhe**; o pago cruza o **seu próprio radar/tese**.
 
 ## Pré-requisitos pra tirar do papel
 
