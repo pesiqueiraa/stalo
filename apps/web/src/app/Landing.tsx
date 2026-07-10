@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { NewsletterPopup } from "@/components/NewsletterPopup";
 import "./landing.css"; // pra-quem colapsado no founder (lente única)
 
 // Landing pública. `authed` vem do server component (page.tsx): quem já tem
@@ -729,6 +730,9 @@ export default function Landing({ authed }: { authed: boolean }) {
           <img className="lp-logo" src="/logo-branca.svg" alt="Stalo" />
         </div>
       </div>
+
+      {/* mock do cadastro da newsletter: popup ao chegar no fim da página */}
+      <NewsletterPopup />
     </div>
   );
 }

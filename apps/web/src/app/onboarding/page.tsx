@@ -5,27 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createTopic } from "@/lib/api";
 import { savePendingThesis } from "@/lib/thesisHandoff";
+import { SUGGESTED_SECTORS as SUGGESTED } from "@/lib/sectors";
 import "./onboarding.css";
 
 // Paleta de setores (mesma linguagem do radar). Cada setor escolhido ganha uma
 // cor distinta enquanto houver disponível.
 const COLORS = ["#5ec8d8", "#63d29b", "#e8a23d", "#a68bff", "#ef6d7e"];
 const MAX = 5;
-
-const SUGGESTED = [
-  "Inteligência Artificial",
-  "Energia",
-  "Fintech",
-  "Biotecnologia",
-  "Semicondutores",
-  "Cibersegurança",
-  "Robótica",
-  "Espaço",
-  "Clima",
-  "Saúde digital",
-  "Mobilidade",
-  "Web3",
-];
 
 // As cinco seções que o veredito responde — as mesmas do VerdictView no radar.
 // No fim do onboarding elas viram a "prévia enxuta": o que o parecer vai cobrir,
