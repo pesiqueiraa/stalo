@@ -432,6 +432,7 @@ export default function Landing({ authed }: { authed: boolean }) {
           <div className="verdict-demo">
             <div className="vd-head">
               <div className="vd-head-main">
+                <span className="demo-badge">Exemplo ilustrativo</span>
                 <span className="vd-eyebrow">Veredito sobre a sua tese</span>
                 <strong className="vd-thesis">
                   Antecipação de recebíveis de convênio para clínicas e consultórios pequenos.
@@ -533,7 +534,7 @@ export default function Landing({ authed }: { authed: boolean }) {
             <span className="flow-op">=</span>
             <div className="flow-card result">
               <span className="fc-label">O cruzamento</span>
-              <strong>“Energy-for-compute” vira categoria, e ninguém vende isso pronto no Brasil ainda.</strong>
+              <strong>“Energy-for-compute” começa a virar categoria — e no Brasil ainda é começo de curva.</strong>
             </div>
           </div>
         </div>
@@ -662,13 +663,14 @@ export default function Landing({ authed }: { authed: boolean }) {
             <span className="eyebrow">confiança por construção</span>
             <h2>Conexão sem fonte não aparece.</h2>
             <p>
-              É a regra dura — e é exatamente onde o ChatGPT alucina. Todo cruzamento carrega as
+              É a regra dura — e é exatamente onde um chatbot genérico inventa. Todo cruzamento carrega as
               notícias que o sustentam: veículo, data e link. E como a busca é sempre por notícia
               fresca, você vê o que um LLM genérico ainda não sabe.
             </p>
           </div>
 
           <div className="ev-demo">
+            <span className="demo-badge">Exemplo ilustrativo</span>
             <div className="ed-top">
               <span className="tag">
                 <span className="d" style={{ background: "var(--mint)" }} /> oportunidade
@@ -677,7 +679,7 @@ export default function Landing({ authed }: { authed: boolean }) {
                 <span className="d" style={{ background: "var(--cyan)" }} /> IA × Energia
               </span>
             </div>
-            <h4>Data centers de IA vão brigar por energia firme, e ninguém vende isso pronto pra eles</h4>
+            <h4>Data centers de IA vão brigar por energia firme — e a oferta pronta pra isso ainda é rara</h4>
             <div className="ev-src">
               <span className="name">Reuters</span>
               <span className="txt">hyperscaler fecha PPA de 1,2 GW</span>
@@ -725,14 +727,6 @@ export default function Landing({ authed }: { authed: boolean }) {
         <div className="wrap foot">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="lp-logo" src="/logo-branca.svg" alt="Stalo" />
-          <a
-            className="foot-link"
-            href="https://www.linkedin.com/in/pedrosiqueirasouza/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            LinkedIn
-          </a>
         </div>
       </div>
     </div>

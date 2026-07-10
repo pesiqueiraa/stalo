@@ -399,6 +399,20 @@
     0 30px 80px -46px rgba(0, 0, 0, 0.85),
     0 0 64px -42px rgba(232, 162, 61, 0.32);
 }
+/* selo de "exemplo ilustrativo": marca os demos que mostram nomes/fontes
+   fabricados pra ilustrar o formato — não são fato de mercado curado. */
+.lp .demo-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 0.22em 0.62em;
+  margin-bottom: 0.7rem;
+}
 .lp .vd-head {
   display: flex;
   justify-content: space-between;
