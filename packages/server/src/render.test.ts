@@ -228,6 +228,28 @@ describe("renderBoletim — layout hero + grade", () => {
   });
 });
 
+describe("renderBoletim — header/logo", () => {
+  it("com logoUrl usa <img> com alt e estilos de texto no próprio img (fallback do alt)", () => {
+    const html = renderBoletim(brEdition([imgItem("h")]), { logoUrl: "https://cdn.example/logo-email.png" });
+    expect(html).toContain('src="https://cdn.example/logo-email.png"');
+    expect(html).toContain('alt="Stalo"');
+    // o Gmail estiliza o ALT pelos estilos de texto no <img> quando a imagem falha
+    expect(html).toMatch(/<img[^>]+alt="Stalo"[^>]+font-weight:800/);
+    expect(html).toMatch(/<img[^>]+alt="Stalo"[^>]+font-size:24px/);
+  });
+
+  it("sem logoUrl mantém o wordmark em texto (preview local não depende de rede)", () => {
+    const html = renderBoletim(brEdition([imgItem("h")]));
+    expect(html).not.toContain('alt="Stalo"'); // nenhum <img> de logo
+    expect(html).toContain("Stalo<span"); // wordmark em texto com o ponto âmbar
+  });
+
+  it("fecha o header com um fio de toque âmbar", () => {
+    const html = renderBoletim(brEdition([imgItem("h")]));
+    expect(html).toContain("linear-gradient(90deg,#e8a23d");
+  });
+});
+
 describe("sampleEdition", () => {
   it("devolve uma edição válida com as duas seções (BR e gringa)", () => {
     const edition = sampleEdition();

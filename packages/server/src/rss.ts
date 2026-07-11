@@ -43,13 +43,47 @@ export async function parseFeed(url: string): Promise<RssItem[]> {
 
 // ---------- mapeamento puro (sem rede) ----------
 
-// tira tags HTML, colapsa espaços e trunca ~300 chars.
-function stripHtml(raw: string): string {
-  const text = raw
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length > 300 ? `${text.slice(0, 300).trimEnd()}…` : text;
+// teto do resumo; e piso pra aceitar um corte em fim de frase (abaixo disso, um
+// fim de frase encurtaria demais o resumo — melhor cortar em palavra com "…").
+const SUMMARY_LIMIT = 300;
+const MIN_SENTENCE = 140;
+
+// reticências que o PRÓPRIO feed manda no fim ("...", "…", "[…]", "[...]", com
+// espaços/colchetes) viram uma única "…". Só mexe no FIM da string.
+function tidyEllipsis(text: string): string {
+  return text.replace(/\s*(?:\[\s*(?:\.{2,}|…)\s*\]|\.{2,}|…)\s*$/u, "…");
+}
+
+// índice do ÚLTIMO fim de frase (. ! ? …) seguido de espaço/fim dentro de `s`;
+// -1 se não houver. O "seguido de espaço/fim" evita cortar em "U.S." ou "3.5".
+function lastSentenceEnd(s: string): number {
+  let idx = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if ((c === "." || c === "!" || c === "?" || c === "…") && (s[i + 1] === undefined || s[i + 1] === " ")) {
+      idx = i;
+    }
+  }
+  return idx;
+}
+
+// tira tags HTML, colapsa espaços e resume com corte "limpo": frase completa que
+// cabe fica inteira (sem "…"); se exceder o teto, corta no último fim de frase
+// dentro do limite (se não encurtar demais) e, senão, no último espaço com "…".
+export function stripHtml(raw: string): string {
+  const text = tidyEllipsis(raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+  if (text.length <= SUMMARY_LIMIT) return text;
+
+  const window = text.slice(0, SUMMARY_LIMIT);
+  const end = lastSentenceEnd(window);
+  if (end >= MIN_SENTENCE) {
+    // fim de frase bom o bastante: resumo fecha numa frase completa, sem "…".
+    return tidyEllipsis(window.slice(0, end + 1).trimEnd());
+  }
+  // sem fim de frase útil: corta no último espaço e sinaliza a continuação com "…".
+  const lastSpace = window.lastIndexOf(" ");
+  const cut = (lastSpace > 0 ? window.slice(0, lastSpace) : window).replace(/[\s.,;:!?…]+$/u, "");
+  return `${cut}…`;
 }
 
 // url canônica: host em minúsculas, sem query nem hash, sem barra final. É a

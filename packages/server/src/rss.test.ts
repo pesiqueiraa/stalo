@@ -6,6 +6,7 @@ import {
   MAX_NEWSLETTER_ITEMS,
   parseGoogleNewsTitle,
   PER_FEED_CAP,
+  stripHtml,
   type RssItem,
 } from "./rss";
 
@@ -157,6 +158,44 @@ describe("rss google-news (parte pura, sem rede)", () => {
     expect(items[0].source).toBe("Finsiders");
     expect(items[0].title).toBe("Notícia nativa - com traço no título");
     expect(items[0].summary).toBe("Resumo de verdade do veículo.");
+  });
+});
+
+describe("rss stripHtml (resumo com corte limpo)", () => {
+  it("frase completa que cabe fica inteira, SEM reticências", () => {
+    expect(stripHtml("Uma frase curta e completa.")).toBe("Uma frase curta e completa.");
+    // texto vazio continua vazio
+    expect(stripHtml("")).toBe("");
+    // tags são removidas
+    expect(stripHtml("<p>Com <b>tag</b> dentro.</p>")).toBe("Com tag dentro.");
+  });
+
+  it("normaliza reticências que o feed manda no fim ('...', '[...]', '[…]') para um único '…'", () => {
+    expect(stripHtml("Resumo cortado pelo feed...")).toBe("Resumo cortado pelo feed…");
+    expect(stripHtml("Resumo cortado [...]")).toBe("Resumo cortado…");
+    expect(stripHtml("Resumo cortado […]")).toBe("Resumo cortado…");
+    // um ponto final normal (frase completa) NÃO vira reticências
+    expect(stripHtml("Frase normal.")).toBe("Frase normal.");
+  });
+
+  it("acima do limite, corta no ÚLTIMO fim de frase dentro da janela (sem '…')", () => {
+    // 1ª frase passa do piso (140) e termina em ponto; depois vem enchimento longo
+    // sem pontuação que estoura os 300 chars.
+    const first =
+      "Primeira frase bem completa que vai ser o ponto de corte escolhido porque termina exatamente aqui e ja passou com folga do piso de cento e quarenta caracteres exigido.";
+    expect(first.length).toBeGreaterThanOrEqual(140);
+    const text = `${first} ${"palavra ".repeat(40)}fim.`;
+    const out = stripHtml(text);
+    expect(out).toBe(first); // fecha na 1ª frase, inteira
+    expect(out.endsWith("…")).toBe(false);
+  });
+
+  it("sem fim de frase útil, corta no último espaço e sinaliza com '…' (não parte palavra)", () => {
+    const noPunct = "palavra ".repeat(60).trim(); // ~479 chars, nenhuma pontuação
+    const out = stripHtml(noPunct);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out).toMatch(/palavra…$/); // termina numa palavra inteira + '…'
+    expect(out.length).toBeLessThanOrEqual(301); // ~300 + '…'
   });
 });
 
