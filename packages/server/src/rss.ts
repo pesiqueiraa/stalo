@@ -8,7 +8,8 @@
 
 import Parser from "rss-parser";
 import type { NewsletterItem } from "@stalo/shared";
-import { feedsFor, type FeedSource, type Origem } from "./feeds";
+import { feedsFor, type FeedSource, type FeedTipo, type Origem } from "./feeds";
+import { enrichItems } from "./enrich";
 
 // timeout por feed: um feed lento não pode segurar o lote inteiro.
 const FEED_TIMEOUT_MS = 10_000;
@@ -95,14 +96,51 @@ function extractImage(raw: RssItem): string | undefined {
   );
 }
 
+// título do Google News vem com sufixo " - Veículo" (ex.: "Nubank cresce - Valor
+// Econômico"). Separa no ÚLTIMO " - " pra não errar em títulos que têm " - " no
+// meio. Devolve o título limpo e o veículo real (null se não houver sufixo).
+export function parseGoogleNewsTitle(rawTitle: string): { title: string; source: string | null } {
+  const title = rawTitle.trim();
+  const idx = title.lastIndexOf(" - ");
+  if (idx <= 0) return { title, source: null };
+  const clean = title.slice(0, idx).trim();
+  const source = title.slice(idx + 3).trim();
+  // guarda: se um dos lados ficou vazio, não corta (título degenerado).
+  if (!clean || !source) return { title, source: null };
+  return { title: clean, source };
+}
+
 // um item cru → NewsletterItem SEM id (o id é atribuído no finalize, após dedupe
 // e cap, para ficar estável na ordem final).
-function toNewsletterItem(raw: RssItem, setor: string, veiculo: string): Omit<NewsletterItem, "id"> {
+//
+// Para feed google-news o RSS é "pobre": o título carrega o veículo no sufixo e
+// a description só repete título+fonte. Então, para esse tipo: extrai o veículo
+// real do sufixo (vira o `source`, no lugar de "Google News"), limpa o título e
+// ZERA o summary redundante (summary vazio já renderiza ok no template). A URL de
+// redirect e a imagem ausente são resolvidas depois, na etapa de enrich (rede).
+function toNewsletterItem(
+  raw: RssItem,
+  setor: string,
+  veiculo: string,
+  tipo: FeedTipo,
+): Omit<NewsletterItem, "id"> {
+  const rawTitle = (raw.title ?? "").trim();
+  let title = rawTitle;
+  let source = veiculo;
+  let summary = stripHtml(raw.contentSnippet || raw.content || "");
+
+  if (tipo === "google-news") {
+    const parsed = parseGoogleNewsTitle(rawTitle);
+    title = parsed.title;
+    if (parsed.source) source = parsed.source;
+    summary = ""; // description do GN é só título+fonte repetidos → sem valor.
+  }
+
   return {
     topic: setor,
-    title: (raw.title ?? "").trim(),
-    summary: stripHtml(raw.contentSnippet || raw.content || ""),
-    source: veiculo,
+    title,
+    summary,
+    source,
     url: canonicalUrl(raw.link ?? ""),
     entities: [],
     publishedAt: toIsoDate(raw),
@@ -135,10 +173,11 @@ export function capFeedItems(
   veiculo: string,
   days: number,
   cap = PER_FEED_CAP,
+  tipo: FeedTipo = "nativo",
 ): Omit<NewsletterItem, "id">[] {
   const cutoff = Date.now() - days * MS_PER_DAY;
   return rawItems
-    .map((r) => toNewsletterItem(r, setor, veiculo))
+    .map((r) => toNewsletterItem(r, setor, veiculo, tipo))
     .filter((it) => isRecent(it, cutoff))
     .sort(byDateDesc)
     .slice(0, cap);
@@ -178,8 +217,9 @@ export function mapItems(
   setor: string,
   veiculo: string,
   days: number,
+  tipo: FeedTipo = "nativo",
 ): NewsletterItem[] {
-  return finalize(rawItems.map((r) => toNewsletterItem(r, setor, veiculo)), days);
+  return finalize(rawItems.map((r) => toNewsletterItem(r, setor, veiculo, tipo)), days);
 }
 
 // ---------- ingestão (com rede) ----------
@@ -196,13 +236,16 @@ async function ingestFrom(sources: FeedSource[], days: number): Promise<Newslett
     const f = sources[i];
     if (res.status === "fulfilled") {
       // cap POR FEED antes de juntar: nenhuma fonte domina a seção.
-      mapped.push(...capFeedItems(res.value, f.setor, f.veiculo, days));
+      mapped.push(...capFeedItems(res.value, f.setor, f.veiculo, days, PER_FEED_CAP, f.tipo));
     } else {
       console.warn(`[rss] feed pulado (${f.veiculo} · ${f.url}): ${String(res.reason)}`);
     }
   });
 
-  return finalize(mapped, days);
+  // enrich (rede) só sobre o lote FINAL (≤12 itens) — não sobre o cru: resolve o
+  // link de redirect do Google News e busca og:image de quem está sem imagem.
+  // Best-effort: item que não enriquece volta intacto (nunca é descartado).
+  return enrichItems(finalize(mapped, days));
 }
 
 // coleta todos os feeds de UM (setor, origem) e devolve o lote limpo.
