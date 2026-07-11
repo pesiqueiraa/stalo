@@ -96,6 +96,19 @@ export async function fetchGringa(): Promise<GringaItem[]> {
   return data.items ?? [];
 }
 
+// ---------- newsletter ----------
+
+// Assina a newsletter (email + setores) via POST /api/newsletter. Só resolve em
+// sucesso; em erro lança Error com mensagem pra UI (nunca falha em silêncio).
+export async function subscribeNewsletter(email: string, sectors: string[]): Promise<void> {
+  const res = await fetch("/api/newsletter", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, sectors }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, "Falha ao concluir a inscrição."));
+}
+
 // ---------- saved ideas ----------
 
 export interface NewIdeaPayload {

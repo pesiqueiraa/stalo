@@ -21,6 +21,42 @@ export interface NewsItem {
   publishedAt: string;
 }
 
+// Item de notícia vindo da INGESTÃO de RSS da newsletter (não do scan/LLM).
+// É um NewsItem com uma imagem opcional. `imageUrl` é ENRIQUECIMENTO visual,
+// NUNCA critério de filtro — item sem imagem entra normalmente.
+export interface NewsletterItem extends NewsItem {
+  imageUrl?: string;
+}
+
+// Um "combo" da edição semanal: o resultado de cruzar um conjunto de setores
+// numa origem (BR/gringa) — os itens da ingestão + os insights do Analista.
+// Preenchido sob demanda e cacheado por combo na edição.
+export interface NewsletterCombo {
+  items: NewsletterItem[];
+  insights: Insight[];
+}
+
+// Uma seção da edição montada (uma por origem), pronta pra renderizar.
+export interface NewsletterSection {
+  origem: "BR" | "GRINGA";
+  items: NewsletterItem[];
+  insights: Insight[];
+}
+
+// A edição montada para um conjunto de setores: as seções BR e gringa da semana.
+export interface AssembledEdition {
+  weekStart: string; // segunda-feira da semana (YYYY-MM-DD, UTC)
+  sectors: string[];
+  sections: NewsletterSection[];
+}
+
+// A linha persistida da edição da semana: os combos já calculados, indexados por
+// "comboKey|origem" (cache sob demanda — cada combo roda o LLM só uma vez).
+export interface NewsletterEdition {
+  weekStart: string;
+  combos: Record<string, NewsletterCombo>;
+}
+
 export interface Insight {
   id: string;
   type: InsightType;
