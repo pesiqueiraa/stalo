@@ -4,6 +4,7 @@ import {
   createParser,
   mapItems,
   MAX_NEWSLETTER_ITEMS,
+  parseGoogleNewsTitle,
   PER_FEED_CAP,
   type RssItem,
 } from "./rss";
@@ -106,6 +107,56 @@ describe("rss mapItems", () => {
     const items = mapItems(raw, SETOR, VEICULO, 7);
     expect(items).toHaveLength(MAX_NEWSLETTER_ITEMS); // cap aplicado
     expect(items.every((i) => i.publishedAt === "")).toBe(true);
+  });
+});
+
+describe("rss google-news (parte pura, sem rede)", () => {
+  it("parseGoogleNewsTitle separa o veículo no ÚLTIMO ' - '", () => {
+    expect(parseGoogleNewsTitle("Nubank cresce - Valor Econômico")).toEqual({
+      title: "Nubank cresce",
+      source: "Valor Econômico",
+    });
+    // ' - ' no meio do título: usa o último como separador do veículo
+    expect(parseGoogleNewsTitle("IA generativa - o que muda - Folha de S.Paulo")).toEqual({
+      title: "IA generativa - o que muda",
+      source: "Folha de S.Paulo",
+    });
+    // sem sufixo → não corta
+    expect(parseGoogleNewsTitle("Título sem fonte")).toEqual({ title: "Título sem fonte", source: null });
+  });
+
+  it("mapItems tipo google-news: veículo real do título vira source, título limpo, summary zerado", () => {
+    const raw: RssItem[] = [
+      {
+        title: "Drex entra em nova fase - Valor Econômico",
+        link: "https://news.google.com/rss/articles/CBMiabc123",
+        pubDate: NOW,
+        // no GN a description só repete título+fonte — deve ser zerada
+        contentSnippet: "Drex entra em nova fase - Valor Econômico",
+      },
+    ];
+    const items = mapItems(raw, "Fintech", "Google News", 7, "google-news");
+    expect(items).toHaveLength(1);
+    expect(items[0].source).toBe("Valor Econômico"); // não "Google News"
+    expect(items[0].title).toBe("Drex entra em nova fase"); // sufixo removido
+    expect(items[0].summary).toBe(""); // redundante → zerado (template lida ok)
+    // a URL de redirect fica pro enrich (não é resolvida no map puro)
+    expect(items[0].url).toContain("news.google.com");
+  });
+
+  it("mapItems tipo nativo (default) NÃO mexe em título/summary/source", () => {
+    const raw: RssItem[] = [
+      {
+        title: "Notícia nativa - com traço no título",
+        link: "https://veiculo.com/x",
+        pubDate: NOW,
+        contentSnippet: "Resumo de verdade do veículo.",
+      },
+    ];
+    const items = mapItems(raw, "Fintech", "Finsiders", 7); // tipo default = nativo
+    expect(items[0].source).toBe("Finsiders");
+    expect(items[0].title).toBe("Notícia nativa - com traço no título");
+    expect(items[0].summary).toBe("Resumo de verdade do veículo.");
   });
 });
 
