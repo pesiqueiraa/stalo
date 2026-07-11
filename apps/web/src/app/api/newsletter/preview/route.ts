@@ -1,4 +1,4 @@
-import { assemble, renderBoletim, sampleEdition } from "@stalo/server";
+import { assemble, renderBoasVindas, renderBoletim, sampleEdition } from "@stalo/server";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 // GET /api/newsletter/preview — renderiza o boletim na tela, SOB DEMANDA, pro
@@ -27,16 +27,9 @@ function htmlResponse(html: string): Response {
 // no wordmark em texto — o preview não passa a depender de rede.
 const logoUrl = process.env.APP_URL ? `${process.env.APP_URL}/logo-email.png` : undefined;
 
-export async function GET(request: Request) {
-  const raw = new URL(request.url).searchParams.get("sectors");
-
-  // modo AMOSTRA: sem ?sectors, renderiza a amostra (sem IA, sem banco).
-  if (!raw) {
-    return htmlResponse(renderBoletim(sampleEdition(), { logoUrl }));
-  }
-
-  // modo REAL: parseia os setores (split, trim, remove vazio, dedupe, cap 5).
-  const sectors = Array.from(
+// setores: split, trim, remove vazio, dedupe, cap.
+function parseSectors(raw: string): string[] {
+  return Array.from(
     new Set(
       raw
         .split(",")
@@ -44,6 +37,26 @@ export async function GET(request: Request) {
         .filter((s) => s.length > 0),
     ),
   ).slice(0, MAX_SECTORS);
+}
+
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const raw = params.get("sectors");
+
+  // modo WELCOME: ?template=welcome renderiza o boas-vindas (setores de ?sectors
+  // ou um exemplo). Sem IA, sem banco.
+  if (params.get("template") === "welcome") {
+    const sectors = raw ? parseSectors(raw) : ["Inteligência Artificial", "Fintech"];
+    return htmlResponse(renderBoasVindas({ sectors, logoUrl }));
+  }
+
+  // modo AMOSTRA: sem ?sectors, renderiza a amostra (sem IA, sem banco).
+  if (!raw) {
+    return htmlResponse(renderBoletim(sampleEdition(), { logoUrl }));
+  }
+
+  // modo REAL: parseia os setores (split, trim, remove vazio, dedupe, cap 5).
+  const sectors = parseSectors(raw);
   if (sectors.length === 0) {
     return new Response("Passe ao menos um setor em ?sectors=IA,Fintech.", {
       status: 400,

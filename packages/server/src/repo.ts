@@ -338,13 +338,41 @@ export async function setLens(wid: string, lens: Lens): Promise<void> {
 // Captura um assinante da newsletter. NÃO é workspace-scoped (ver arquiteturad
 // §4): o email é a identidade. Re-assinar faz upsert por email — atualiza os
 // setores, reativa o status e toca updated_at, sem duplicar linha.
-export async function saveSubscriber(email: string, sectors: string[]): Promise<void> {
-  await sql`
-    INSERT INTO subscribers (email, sectors)
-    VALUES (${email}, ${sectors})
-    ON CONFLICT (email) DO UPDATE
-      SET sectors = EXCLUDED.sectors, status = 'active', updated_at = now()
+// Resultado do upsert, pra rota decidir se manda o e-mail de boas-vindas:
+//   • "new"         → e-mail nunca visto (INSERT de fato aconteceu);
+//   • "reactivated" → já existia mas estava 'unsubscribed' e voltou a 'active';
+//   • "unchanged"   → já estava 'active' (re-submit do popup) → NÃO reenviar.
+export type SubscribeOutcome = "new" | "reactivated" | "unchanged";
+
+// Upsert por email + detecção do estado ANTERIOR, numa query só. O truque:
+//   • `(xmax = 0)` distingue INSERT (xmax=0) de UPDATE — vira `inserted`;
+//   • a CTE `prev` lê o status ANTES do upsert (todas as CTEs enxergam o mesmo
+//     snapshot do início do statement), então dá pra saber se a linha existente
+//     estava 'unsubscribed' (reativação) ou 'active' (nada muda).
+export async function saveSubscriber(
+  email: string,
+  sectors: string[],
+): Promise<{ id: string; outcome: SubscribeOutcome }> {
+  const [row] = await sql<{ id: string; inserted: boolean; prev_status: string | null }[]>`
+    WITH prev AS (
+      SELECT status FROM subscribers WHERE email = ${email}
+    ),
+    up AS (
+      INSERT INTO subscribers (email, sectors)
+      VALUES (${email}, ${sectors})
+      ON CONFLICT (email) DO UPDATE
+        SET sectors = EXCLUDED.sectors, status = 'active', updated_at = now()
+      RETURNING id, (xmax = 0) AS inserted
+    )
+    SELECT up.id, up.inserted, prev.status AS prev_status
+    FROM up LEFT JOIN prev ON true
   `;
+  const outcome: SubscribeOutcome = row.inserted
+    ? "new"
+    : row.prev_status === "unsubscribed"
+      ? "reactivated"
+      : "unchanged";
+  return { id: row.id, outcome };
 }
 
 // Assinantes ATIVOS, para o envio semanal do boletim. Quem descadastrou

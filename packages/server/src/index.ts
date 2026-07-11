@@ -8,7 +8,7 @@ export { isValidScanResult } from "./validate";
 export { checkRateLimit, type RateLimitResult } from "./rateLimit";
 export { ingest, ingestSectors, parseFeed } from "./rss";
 export { weekStart, comboKey, assemble } from "./newsletter";
-export { renderBoletim, sampleEdition } from "./render";
+export { renderBoletim, renderBoasVindas, sampleEdition } from "./render";
 export { sendBoletim } from "./send";
 export {
   MAX_TOPICS,

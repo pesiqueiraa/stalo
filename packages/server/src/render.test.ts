@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AssembledEdition } from "@stalo/shared";
 // render.ts é PURO (sem server-only/rede/db), então importa direto — sem mocks.
-import { renderBoletim, sampleEdition } from "./render";
+import { renderBoasVindas, renderBoletim, sampleEdition } from "./render";
 
 // Fixture enxuta: duas origens; um item COM imagem, um SEM; título com caractere
 // especial (<, &, ") pra exercitar o escape; os três tipos de insight.
@@ -248,6 +248,69 @@ describe("renderBoletim — header/logo", () => {
   it("fecha o header com um fio de toque âmbar", () => {
     const html = renderBoletim(brEdition([imgItem("h")]));
     expect(html).toContain("linear-gradient(90deg,#e8a23d");
+  });
+});
+
+describe("renderBoasVindas", () => {
+  it("é um documento HTML completo com a abertura e o preheader", () => {
+    const html = renderBoasVindas({ sectors: ["Inteligência Artificial", "Fintech"] });
+    expect(html.startsWith("<!doctype html>")).toBe(true);
+    expect(html.trimEnd().endsWith("</html>")).toBe(true);
+    expect(html).toContain("Você tá dentro.");
+    expect(html).toContain('width="600"'); // container "carta", mais estreito
+  });
+
+  it("renderiza os chips dos setores com esc() e cores estáveis por ordem", () => {
+    const html = renderBoasVindas({ sectors: ["IA", "Fintech & Cia", "IA"] });
+    // esc() no setor com &
+    expect(html).toContain("Fintech &amp; Cia");
+    expect(html).not.toContain("Fintech & Cia");
+    // cores estáveis: 1º setor = 1ª cor da paleta (#5ec8d8), 2º = 2ª (#63d29b)
+    expect(html).toContain("border:1px solid #5ec8d8;color:#5ec8d8;");
+    expect(html).toContain("border:1px solid #63d29b;color:#63d29b;");
+  });
+
+  it("omite o bloco de chips quando sectors está vazio (não quebra)", () => {
+    const html = renderBoasVindas({ sectors: [] });
+    expect(html).not.toContain("Seus setores");
+    expect(html.startsWith("<!doctype html>")).toBe(true);
+    expect(html).toContain("Você tá dentro."); // resto continua
+  });
+
+  it("traz o card 'O que chega' com os três glifos/rótulos de insight", () => {
+    const html = renderBoasVindas({ sectors: ["IA"] });
+    expect(html).toContain("O que chega pra você");
+    ["▲", "★", "◆", "TENDÊNCIA", "OPORTUNIDADE", "GAP"].forEach((t) => expect(html).toContain(t));
+    expect(html).toContain("segunda, 9h de Brasília");
+  });
+
+  it("com logoUrl usa <img> (alt estilizado); sem, wordmark em texto", () => {
+    const withLogo = renderBoasVindas({ sectors: ["IA"], logoUrl: "https://cdn.example/logo-email.png" });
+    expect(withLogo).toContain('src="https://cdn.example/logo-email.png"');
+    expect(withLogo).toMatch(/<img[^>]+alt="Stalo"[^>]+font-weight:800/);
+
+    const noLogo = renderBoasVindas({ sectors: ["IA"] });
+    expect(noLogo).not.toContain('alt="Stalo"');
+    expect(noLogo).toContain("Stalo<span");
+  });
+
+  it("deriva o link do radar do host do unsubscribeUrl; sem ele, cai em /radar", () => {
+    const abs = renderBoasVindas({
+      sectors: ["IA"],
+      unsubscribeUrl: "https://stalo.dev/api/newsletter/unsubscribe?id=abc",
+    });
+    expect(abs).toContain('href="https://stalo.dev/radar"');
+    // e o descadastro usa a URL passada
+    expect(abs).toContain('href="https://stalo.dev/api/newsletter/unsubscribe?id=abc"');
+
+    const rel = renderBoasVindas({ sectors: ["IA"] });
+    expect(rel).toContain('href="/radar"');
+  });
+
+  it("mostra o email no rodapé quando informado", () => {
+    const html = renderBoasVindas({ sectors: ["IA"], email: "a@b.com" });
+    expect(html).toContain("Você assinou com o email");
+    expect(html).toContain("a@b.com");
   });
 });
 
