@@ -424,8 +424,9 @@ function radarHref(unsubscribeUrl?: string): string {
 
 // E-mail de BOAS-VINDAS, disparado quando alguém assina a newsletter. Mesma
 // linguagem visual do boletim (dark, âmbar, tabelas + inline), mas em formato
-// "carta": container mais estreito (600px) e tom direto de agradecimento. MÓDULO
-// PURO — sem rede/banco; o disparo fica na rota.
+// "carta": container mais estreito (640px) e tom de conversa, sem travessão nem
+// frase de efeito (feedback do Pedro: natural, não "cara de IA"). MÓDULO PURO —
+// sem rede/banco; o disparo fica na rota.
 export function renderBoasVindas(opts: {
   sectors: string[];
   email?: string;
@@ -470,16 +471,16 @@ export function renderBoasVindas(opts: {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Stalo — Você tá dentro</title>
+    <title>Stalo · Você tá dentro</title>
   </head>
   <body style="margin:0;padding:0;background:${BG};">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${BG};">
-      Você tá dentro. Toda segunda, o que mexeu nos seus setores — no Brasil e na gringa — e o que isso conecta.
+      Você tá dentro. Toda segunda chega o que mexeu nos seus setores, no Brasil e na gringa.
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};">
       <tr>
         <td align="center" style="padding:32px 14px;">
-          <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:${PANEL};border:1px solid ${BORDER};border-radius:18px;overflow:hidden;font-family:${SANS};">
+          <table role="presentation" class="container" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:100%;background:${PANEL};border:1px solid ${BORDER};border-radius:18px;overflow:hidden;font-family:${SANS};">
 
             <!-- header: logo + fio âmbar -->
             <tr>
@@ -494,7 +495,7 @@ export function renderBoasVindas(opts: {
               <td style="padding:30px 40px 0;">
                 <div style="font-size:29px;font-weight:800;letter-spacing:-0.02em;line-height:1.12;color:${INK};">Você tá dentro.</div>
                 <div style="font-size:16.5px;line-height:1.6;color:${BODY};margin-top:16px;">
-                  Obrigado por assinar. A partir de agora, a gente vasculha o que se move nos seus setores — no Brasil e lá fora — pra te entregar não só o que aconteceu, mas o fio que liga uma coisa na outra. Sem ruído, sem release requentado.
+                  Valeu por assinar! Toda semana a gente lê um monte de notícia dos seus setores, daqui e de fora, e separa o que vale seu tempo. Aí te conta o que essas histórias têm a ver umas com as outras. Você só abre o email e pronto.
                 </div>
               </td>
             </tr>
@@ -504,10 +505,10 @@ ${pillsBlock}
               <td style="padding:28px 40px 0;">
                 <div style="background:${CARD};border:1px solid ${BORDER_SOFT};border-radius:14px;padding:22px 24px;">
                   <div style="font-size:16px;font-weight:700;color:${INK};">O que chega pra você</div>
-                  <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 18px;">Toda <strong style="color:${BODY};">segunda, 9h de Brasília</strong>: as notícias do Brasil e da gringa dos seus setores — e, no fim de cada bloco, o que elas conectam.</div>
-                  ${insightLine(t, "O movimento que se repete e vira direção.", false)}
-                  ${insightLine(o, "A brecha que dá pra transformar em negócio.", false)}
-                  ${insightLine(g, "O que já existe lá fora e ainda falta aqui.", true)}
+                  <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 18px;">Toda <strong style="color:${BODY};">segunda, 9h de Brasília</strong>: as notícias da semana nos seus setores, do Brasil e da gringa. No fim de cada bloco, a nossa leitura do que elas conectam.</div>
+                  ${insightLine(t, "Um movimento que apareceu mais de uma vez na semana e merece atenção.", false)}
+                  ${insightLine(o, "Uma brecha que alguém podia transformar em negócio.", false)}
+                  ${insightLine(g, "Algo que já funciona lá fora e ninguém trouxe pra cá.", true)}
                 </div>
               </td>
             </tr>
@@ -519,7 +520,7 @@ ${pillsBlock}
                   <tr>
                     <td style="padding:24px 26px;">
                       <div style="font-size:16px;font-weight:700;color:${INK};">Enquanto a segunda não chega</div>
-                      <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 16px;">A newsletter é o gostinho. No radar você escreve uma tese e recebe o veredito — quem já faz, o gap e o go/no-go — com a fonte atrás de cada linha.</div>
+                      <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 16px;">A newsletter é só uma parte da Stalo. No radar, você escreve sua ideia de negócio e recebe um veredito: quem já faz algo parecido, o que ainda falta no mercado e se vale a pena apostar. Cada linha vem com a fonte.</div>
                       <a href="${radar}" style="display:inline-block;background:${AMBER};color:#1a1205;font-size:15px;font-weight:700;text-decoration:none;padding:13px 24px;border-radius:11px;">Conhecer o radar →</a>
                     </td>
                   </tr>
