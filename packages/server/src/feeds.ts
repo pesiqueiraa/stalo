@@ -11,9 +11,9 @@
 // feed. (Quando SUGGESTED_SECTORS virar tipo compartilhado em @stalo/shared,
 // trocar as strings soltas por ele.)
 //
-// Nuance conhecida (refinar depois): alguns nativos de BR (Tecnoblog, Canaltech,
-// InfoMoney) são de tech/negócios em geral, não puros do setor — servem como
-// proxy do setor; a precisão fina vem do feed google-news correspondente.
+// Relevância: só entram nativos ESPECÍFICOS do setor (categoria/nicho). Feeds de
+// notícia geral foram removidos por trazerem item fora do tema. Além disso, a
+// ingestão aplica um cap POR FEED (rss.ts) pra nenhuma fonte dominar a seção.
 
 export type Origem = "BR" | "GRINGA";
 export type FeedTipo = "nativo" | "google-news";
@@ -32,15 +32,15 @@ const GN_BR = "&hl=pt-BR&gl=BR&ceid=BR:pt-419";
 const GN_US = "&hl=en-US&gl=US&ceid=US:en";
 
 export const FEEDS: FeedSource[] = [
-  // ---------- nativos verificados (IA / Fintech / Energia) ----------
+  // ---------- nativos verificados (só fontes ESPECÍFICAS do setor) ----------
+  // Feeds de notícia GERAL (InfoMoney, NeoFeed, Tecnoblog, Canaltech) foram
+  // removidos: enchiam a seção de item fora do tema (política, esporte). A
+  // cobertura ampla por setor vem do Google News por tópico (abaixo), que é
+  // escopado por assunto; os nativos aqui são só os de nicho, com categoria certa.
   // IA
-  { origem: "BR", setor: "Inteligência Artificial", veiculo: "Tecnoblog", url: "https://tecnoblog.net/feed/", tipo: "nativo" },
-  { origem: "BR", setor: "Inteligência Artificial", veiculo: "Canaltech", url: "https://canaltech.com.br/rss/", tipo: "nativo" },
   { origem: "GRINGA", setor: "Inteligência Artificial", veiculo: "TechCrunch (IA)", url: "https://techcrunch.com/category/artificial-intelligence/feed/", tipo: "nativo" },
   { origem: "GRINGA", setor: "Inteligência Artificial", veiculo: "VentureBeat (IA)", url: "https://venturebeat.com/category/ai/feed/", tipo: "nativo" },
   // Fintech
-  { origem: "BR", setor: "Fintech", veiculo: "InfoMoney", url: "https://www.infomoney.com.br/feed/", tipo: "nativo" },
-  { origem: "BR", setor: "Fintech", veiculo: "NeoFeed", url: "https://neofeed.com.br/feed/", tipo: "nativo" },
   { origem: "BR", setor: "Fintech", veiculo: "Finsiders Brasil", url: "https://finsidersbrasil.com.br/feed/", tipo: "nativo" },
   { origem: "GRINGA", setor: "Fintech", veiculo: "TechCrunch (fintech)", url: "https://techcrunch.com/category/fintech/feed/", tipo: "nativo" },
   { origem: "GRINGA", setor: "Fintech", veiculo: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", tipo: "nativo" },
