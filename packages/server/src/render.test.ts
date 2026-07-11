@@ -257,7 +257,9 @@ describe("renderBoasVindas", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true);
     expect(html.trimEnd().endsWith("</html>")).toBe(true);
     expect(html).toContain("Você tá dentro.");
-    expect(html).toContain('width="600"'); // container "carta", mais estreito
+    expect(html).toContain('width="640"'); // container "carta", mais estreito que o boletim (720)
+    // copy sem travessão (feedback do Pedro: texto natural, sem cara de IA)
+    expect(html).not.toContain("—");
   });
 
   it("renderiza os chips dos setores com esc() e cores estáveis por ordem", () => {
