@@ -6,6 +6,10 @@
 export { runScan, runDeepDive, runFinancials } from "./scan";
 export { isValidScanResult } from "./validate";
 export { checkRateLimit, type RateLimitResult } from "./rateLimit";
+export { ingest, ingestSectors, parseFeed } from "./rss";
+export { weekStart, comboKey, assemble } from "./newsletter";
+export { renderBoletim, renderBoasVindas, sampleEdition } from "./render";
+export { sendBoletim } from "./send";
 export {
   MAX_TOPICS,
   listTopics,
@@ -22,4 +26,10 @@ export {
   saveFinancials,
   getLens,
   setLens,
+  saveSubscriber,
+  getActiveSubscribers,
+  unsubscribe,
+  getEdition,
+  ensureEdition,
+  saveCombo,
 } from "./repo";

@@ -1,0 +1,214 @@
+import { describe, expect, it } from "vitest";
+import {
+  capFeedItems,
+  createParser,
+  mapItems,
+  MAX_NEWSLETTER_ITEMS,
+  parseGoogleNewsTitle,
+  PER_FEED_CAP,
+  stripHtml,
+  type RssItem,
+} from "./rss";
+
+// Fixture RSS montado à mão (sem rede): cobre parse+map, recência, dedupe,
+// extração de imagem (media:content) e atribuição de ids. Datas são calculadas
+// em runtime pra o teste de recência não "envelhecer".
+const SETOR = "Inteligência Artificial";
+const VEICULO = "Feed de Teste";
+
+const rfc = (d: Date) => d.toUTCString();
+const NOW = rfc(new Date());
+const OLD = rfc(new Date(Date.now() - 60 * 86_400_000)); // 60 dias atrás
+
+const FIXTURE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Feed de Teste</title>
+    <item>
+      <title>  Alpha lança modelo  </title>
+      <link>https://EX.com/a</link>
+      <pubDate>${NOW}</pubDate>
+      <description>&lt;p&gt;Alpha &lt;b&gt;lança&lt;/b&gt; um modelo grande.&lt;/p&gt;</description>
+      <media:content url="https://img.example/a.jpg" />
+    </item>
+    <item>
+      <title>Alpha manchete duplicada</title>
+      <link>https://ex.com/a/</link>
+      <pubDate>${NOW}</pubDate>
+      <description>mesma URL canônica que o item Alpha</description>
+    </item>
+    <item>
+      <title>Beta antigo</title>
+      <link>https://ex.com/b</link>
+      <pubDate>${OLD}</pubDate>
+      <description>notícia velha, fora da janela</description>
+    </item>
+    <item>
+      <title>Delta novidade</title>
+      <link>https://ex.com/d</link>
+      <pubDate>${NOW}</pubDate>
+      <description>sem imagem nenhuma</description>
+    </item>
+  </channel>
+</rss>`;
+
+async function parseFixture(): Promise<RssItem[]> {
+  const feed = await createParser().parseString(FIXTURE_XML);
+  return feed.items;
+}
+
+describe("rss mapItems", () => {
+  it("faz parse e mapeia para NewsletterItem (topic/source/título/url canônica/summary sem HTML)", async () => {
+    const items = mapItems(await parseFixture(), SETOR, VEICULO, 7);
+    const alpha = items.find((i) => i.title.startsWith("Alpha"));
+    expect(alpha).toBeDefined();
+    expect(alpha!.topic).toBe(SETOR);
+    expect(alpha!.source).toBe(VEICULO);
+    expect(alpha!.title).toBe("Alpha lança modelo"); // trim
+    expect(alpha!.url).toBe("https://ex.com/a"); // host minúsculo, sem barra final
+    expect(alpha!.entities).toEqual([]);
+    expect(alpha!.summary).not.toContain("<"); // HTML stripado
+    expect(alpha!.summary).toContain("Alpha");
+  });
+
+  it("descarta item mais velho que a janela (recência) mantendo os recentes", async () => {
+    const items = mapItems(await parseFixture(), SETOR, VEICULO, 7);
+    expect(items.some((i) => i.title === "Beta antigo")).toBe(false);
+    expect(items.some((i) => i.title === "Delta novidade")).toBe(true);
+  });
+
+  it("deduplica por url canônica (barra final / host), mantendo o primeiro", async () => {
+    const items = mapItems(await parseFixture(), SETOR, VEICULO, 7);
+    expect(items.filter((i) => i.url === "https://ex.com/a")).toHaveLength(1);
+    // o 1º item (com imagem) é o mantido, não o duplicado
+    expect(items.find((i) => i.url === "https://ex.com/a")!.title).toBe("Alpha lança modelo");
+  });
+
+  it("extrai imagem de media:content; item sem imagem fica com imageUrl undefined", async () => {
+    const items = mapItems(await parseFixture(), SETOR, VEICULO, 7);
+    const alpha = items.find((i) => i.url === "https://ex.com/a");
+    const delta = items.find((i) => i.title === "Delta novidade");
+    expect(alpha!.imageUrl).toBe("https://img.example/a.jpg");
+    expect(delta!.imageUrl).toBeUndefined();
+  });
+
+  it("atribui ids locais r1..rN na ordem final (após dedupe/cap)", async () => {
+    const items = mapItems(await parseFixture(), SETOR, VEICULO, 7);
+    // sobram Alpha e Delta (Beta é velho, a duplicata some) → r1, r2
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.id)).toEqual(["r1", "r2"]);
+  });
+
+  it("mantém item sem data parseável (leniente) e respeita o cap", async () => {
+    const raw: RssItem[] = Array.from({ length: MAX_NEWSLETTER_ITEMS + 4 }, (_, i) => ({
+      title: `Item ${i}`,
+      link: `https://ex.com/n${i}`,
+      // sem pubDate/isoDate → data não parseável, deve ser mantido
+    }));
+    const items = mapItems(raw, SETOR, VEICULO, 7);
+    expect(items).toHaveLength(MAX_NEWSLETTER_ITEMS); // cap aplicado
+    expect(items.every((i) => i.publishedAt === "")).toBe(true);
+  });
+});
+
+describe("rss google-news (parte pura, sem rede)", () => {
+  it("parseGoogleNewsTitle separa o veículo no ÚLTIMO ' - '", () => {
+    expect(parseGoogleNewsTitle("Nubank cresce - Valor Econômico")).toEqual({
+      title: "Nubank cresce",
+      source: "Valor Econômico",
+    });
+    // ' - ' no meio do título: usa o último como separador do veículo
+    expect(parseGoogleNewsTitle("IA generativa - o que muda - Folha de S.Paulo")).toEqual({
+      title: "IA generativa - o que muda",
+      source: "Folha de S.Paulo",
+    });
+    // sem sufixo → não corta
+    expect(parseGoogleNewsTitle("Título sem fonte")).toEqual({ title: "Título sem fonte", source: null });
+  });
+
+  it("mapItems tipo google-news: veículo real do título vira source, título limpo, summary zerado", () => {
+    const raw: RssItem[] = [
+      {
+        title: "Drex entra em nova fase - Valor Econômico",
+        link: "https://news.google.com/rss/articles/CBMiabc123",
+        pubDate: NOW,
+        // no GN a description só repete título+fonte — deve ser zerada
+        contentSnippet: "Drex entra em nova fase - Valor Econômico",
+      },
+    ];
+    const items = mapItems(raw, "Fintech", "Google News", 7, "google-news");
+    expect(items).toHaveLength(1);
+    expect(items[0].source).toBe("Valor Econômico"); // não "Google News"
+    expect(items[0].title).toBe("Drex entra em nova fase"); // sufixo removido
+    expect(items[0].summary).toBe(""); // redundante → zerado (template lida ok)
+    // a URL de redirect fica pro enrich (não é resolvida no map puro)
+    expect(items[0].url).toContain("news.google.com");
+  });
+
+  it("mapItems tipo nativo (default) NÃO mexe em título/summary/source", () => {
+    const raw: RssItem[] = [
+      {
+        title: "Notícia nativa - com traço no título",
+        link: "https://veiculo.com/x",
+        pubDate: NOW,
+        contentSnippet: "Resumo de verdade do veículo.",
+      },
+    ];
+    const items = mapItems(raw, "Fintech", "Finsiders", 7); // tipo default = nativo
+    expect(items[0].source).toBe("Finsiders");
+    expect(items[0].title).toBe("Notícia nativa - com traço no título");
+    expect(items[0].summary).toBe("Resumo de verdade do veículo.");
+  });
+});
+
+describe("rss stripHtml (resumo com corte limpo)", () => {
+  it("frase completa que cabe fica inteira, SEM reticências", () => {
+    expect(stripHtml("Uma frase curta e completa.")).toBe("Uma frase curta e completa.");
+    // texto vazio continua vazio
+    expect(stripHtml("")).toBe("");
+    // tags são removidas
+    expect(stripHtml("<p>Com <b>tag</b> dentro.</p>")).toBe("Com tag dentro.");
+  });
+
+  it("normaliza reticências que o feed manda no fim ('...', '[...]', '[…]') para um único '…'", () => {
+    expect(stripHtml("Resumo cortado pelo feed...")).toBe("Resumo cortado pelo feed…");
+    expect(stripHtml("Resumo cortado [...]")).toBe("Resumo cortado…");
+    expect(stripHtml("Resumo cortado […]")).toBe("Resumo cortado…");
+    // um ponto final normal (frase completa) NÃO vira reticências
+    expect(stripHtml("Frase normal.")).toBe("Frase normal.");
+  });
+
+  it("acima do limite, corta no ÚLTIMO fim de frase dentro da janela (sem '…')", () => {
+    // 1ª frase passa do piso (140) e termina em ponto; depois vem enchimento longo
+    // sem pontuação que estoura os 300 chars.
+    const first =
+      "Primeira frase bem completa que vai ser o ponto de corte escolhido porque termina exatamente aqui e ja passou com folga do piso de cento e quarenta caracteres exigido.";
+    expect(first.length).toBeGreaterThanOrEqual(140);
+    const text = `${first} ${"palavra ".repeat(40)}fim.`;
+    const out = stripHtml(text);
+    expect(out).toBe(first); // fecha na 1ª frase, inteira
+    expect(out.endsWith("…")).toBe(false);
+  });
+
+  it("sem fim de frase útil, corta no último espaço e sinaliza com '…' (não parte palavra)", () => {
+    const noPunct = "palavra ".repeat(60).trim(); // ~479 chars, nenhuma pontuação
+    const out = stripHtml(noPunct);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out).toMatch(/palavra…$/); // termina numa palavra inteira + '…'
+    expect(out.length).toBeLessThanOrEqual(301); // ~300 + '…'
+  });
+});
+
+describe("rss capFeedItems (cap por feed)", () => {
+  it("limita cada feed a PER_FEED_CAP itens, os mais recentes", () => {
+    const raw: RssItem[] = Array.from({ length: PER_FEED_CAP + 3 }, (_, i) => ({
+      title: `Item ${i}`,
+      link: `https://ex.com/c${i}`,
+      pubDate: rfc(new Date(Date.now() - i * 86_400_000)), // Item 0 = mais recente
+    }));
+    const capped = capFeedItems(raw, SETOR, VEICULO, 7);
+    expect(capped).toHaveLength(PER_FEED_CAP);
+    expect(capped[0].title).toBe("Item 0"); // ordenado desc: mais recente primeiro
+    expect(capped.some((i) => i.title === `Item ${PER_FEED_CAP + 2}`)).toBe(false);
+  });
+});

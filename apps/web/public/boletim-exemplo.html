@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Stalo — Boletim semanal (exemplo)</title>
+  </head>
+  <!--
+    MOCK / exemplo ilustrativo do boletim (tarefa 73, v2).
+    Estrutura: duas seções por ORIGEM (No Brasil / Na gringa). Cada notícia tem
+    imagem (thumbnail). Cada seção fecha com 3 insights (tendência/gap/
+    oportunidade), a mesma leitura da plataforma. Sem tag de "lag".
+    Imagens: picsum.photos (placeholder) — em produção viriam do og:image/
+    thumbnail RSS da notícia. Glifos em Unicode (▲◆★) pra renderizar no email.
+    Dados não são reais. Servido em localhost:3000/boletim-exemplo.html.
+  -->
+  <body style="margin:0;padding:0;background:#070b14;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#070b14;">
+      No Brasil e lá fora — o que mexeu essa semana nos seus setores, e o que isso conecta.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#070b14;">
+      <tr>
+        <td align="center" style="padding:28px 14px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#0d1220;border:1px solid #1b2537;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+            <!-- header -->
+            <tr>
+              <td style="padding:26px 30px 6px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="font-size:19px;font-weight:700;letter-spacing:-0.02em;color:#f3f6fc;">Stalo</td>
+                    <td align="right" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#e8a23d;">Boletim semanal</td>
+                  </tr>
+                </table>
+                <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.06em;color:#7d8aa3;margin-top:6px;">10 de julho de 2026 · edição #1 · exemplo ilustrativo</div>
+              </td>
+            </tr>
+
+            <!-- intro editorial -->
+            <tr>
+              <td style="padding:16px 30px 4px;">
+                <div style="font-size:15.5px;line-height:1.6;color:#c3cdde;">
+                  Semana de infraestrutura. No Brasil, o assunto foi o encanamento — energia, trilha de auditoria, liquidação. Lá fora, o valor voltou a se mexer na pilha. Puxamos o fio nos seus setores e, no fim de cada bloco, o que a gente lê nisso.
+                </div>
+              </td>
+            </tr>
+
+            <!-- ============================ SEÇÃO: NO BRASIL ============================ -->
+            <tr>
+              <td style="padding:26px 30px 0;">
+                <div style="border-top:1px solid #1b2537;padding-top:20px;">
+                  <span style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#63d29b;">No Brasil</span>
+                  <div style="font-size:13px;color:#8a97ae;margin-top:5px;">O que se moveu por aqui.</div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- item BR 1 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ia-br/208/156" width="92" height="69" alt="Sala de servidores de um banco" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#5ec8d8;">● Inteligência Artificial</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Bancos põem copilot pra rodar internamente e o regulador já pede rastro de auditoria.</div>
+                    <a href="https://example.com/ia-br" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Valor Econômico · há 3 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item BR 2 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/fin-br/208/156" width="92" height="69" alt="Cédulas e um celular com app financeiro" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#63d29b;">● Fintech</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Drex avança de fase e a liquidação de recebível on-chain deixa de ser teoria.</div>
+                    <a href="https://example.com/fintech-br" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Brazil Journal · há 5 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item BR 3 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ener-br/208/156" width="92" height="69" alt="Linhas de transmissão ao pôr do sol" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#e8a23d;">● Energia</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Leilão no Nordeste começa a atrair data center atrás de energia firme.</div>
+                    <a href="https://example.com/energia-br" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Reuters · há 6 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item BR 4 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ia2-br/208/156" width="92" height="69" alt="Painel com logs de auditoria de um modelo" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#5ec8d8;">● Inteligência Artificial</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Fornecedor de LLM passa a vender log de decisão e rastro de auditoria como item à parte da licença.</div>
+                    <a href="https://example.com/ia-br-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">MIT Technology Review Brasil · há 2 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item BR 5 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/fin2-br/208/156" width="92" height="69" alt="Recepção de clínica com terminal de pagamento" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#63d29b;">● Fintech</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Fintech de crédito começa a antecipar recebível de clínica — o trilho de saúde entra na conta.</div>
+                    <a href="https://example.com/fintech-br-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">NeoFeed · há 4 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item BR 6 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ener2-br/208/156" width="92" height="69" alt="Sala de controle de um operador de energia" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#e8a23d;">● Energia</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Consumo de data center entra pela primeira vez no planejamento de carga do operador nacional.</div>
+                    <a href="https://example.com/energia-br-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Epbr · há 7 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- insights BR -->
+            <tr><td style="padding:22px 30px 0;">
+              <div style="background:#0a0f1b;border:1px solid #1b2537;border-radius:12px;padding:16px 18px;">
+                <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#7d8aa3;margin-bottom:12px;">O que isso conecta</div>
+                <div style="margin-bottom:12px;">
+                  <span style="color:#63d29b;font-size:12px;">▲</span>
+                  <span style="font-size:11px;color:#63d29b;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">TENDÊNCIA</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">O Brasil está montando o encanamento da nuvem: energia firme e rastro de auditoria são o mesmo movimento visto de dois ângulos.</div>
+                </div>
+                <div style="margin-bottom:12px;">
+                  <span style="color:#e8a23d;font-size:12px;">★</span>
+                  <span style="font-size:11px;color:#e8a23d;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">OPORTUNIDADE</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">Observabilidade de LLM pra banco regulado: a exigência de auditoria vira demanda antes de virar produto.</div>
+                </div>
+                <div>
+                  <span style="color:#ef6d7e;font-size:12px;">◆</span>
+                  <span style="font-size:11px;color:#ef6d7e;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">GAP</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">O Drex liga o trilho, mas ninguém conectou a liquidação on-chain ao recebível de saúde de verdade.</div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- ============================ SEÇÃO: NA GRINGA ============================ -->
+            <tr>
+              <td style="padding:30px 30px 0;">
+                <div style="border-top:1px solid #1b2537;padding-top:20px;">
+                  <span style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#5ec8d8;">Na gringa</span>
+                  <div style="font-size:13px;color:#8a97ae;margin-top:5px;">O que já anda lá fora e ainda não chegou aqui.</div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- item GR 1 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ia-gr/208/156" width="92" height="69" alt="Data center com racks iluminados" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#5ec8d8;">🇺🇸 ● Inteligência Artificial</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Contexto longo virou commodity. A briga migrou pra memória que persiste entre sessões.</div>
+                    <a href="https://example.com/ia-gringa" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">The Information · há 4 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item GR 2 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/fin-gr/208/156" width="92" height="69" alt="Tela de trading com stablecoins" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#63d29b;">🇺🇸 ● Fintech</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Stablecoin de tesouraria deixou a mesa de câmbio e virou produto de PME.</div>
+                    <a href="https://example.com/fintech-gringa" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Bloomberg · há 8 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item GR 3 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ener-gr/208/156" width="92" height="69" alt="Painéis solares ao lado de um data center" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#e8a23d;">🇺🇸 ● Energia</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">“Energy-for-compute” começou a virar um tipo de contrato próprio.</div>
+                    <a href="https://example.com/energia-gringa" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Canary Media · há 11 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item GR 4 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ia2-gr/208/156" width="92" height="69" alt="Diagrama de memória de agente em uma tela" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#5ec8d8;">🇺🇸 ● Inteligência Artificial</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Provedores começam a cobrar à parte por memória persistente e “estado” do agente.</div>
+                    <a href="https://example.com/ia-gringa-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Stratechery · há 5 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item GR 5 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/fin2-gr/208/156" width="92" height="69" alt="Fachada de um banco regional americano" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#63d29b;">🇺🇸 ● Fintech</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Bancos regionais nos EUA passam a oferecer conta em stablecoin pra importador de pequeno porte.</div>
+                    <a href="https://example.com/fintech-gringa-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Fintech Business Weekly · há 9 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- item GR 6 -->
+            <tr><td style="padding:16px 30px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="104" valign="top" style="width:104px;">
+                    <img src="https://picsum.photos/seed/ener2-gr/208/156" width="92" height="69" alt="Turbinas eólicas ao lado de um galpão de data center" style="display:block;width:92px;height:69px;border-radius:8px;object-fit:cover;border:1px solid #223049;" />
+                  </td>
+                  <td valign="top">
+                    <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#e8a23d;">🇺🇸 ● Energia</div>
+                    <div style="font-size:14.5px;font-weight:600;line-height:1.35;color:#e9eefb;margin-top:5px;">Hyperscaler assina PPA que amarra energia contratada a capacidade de compute reservada.</div>
+                    <a href="https://example.com/energia-gringa-2" style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#e8a23d;text-decoration:none;">Latitude Media · há 12 dias ↗</a>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+
+            <!-- insights GR -->
+            <tr><td style="padding:22px 30px 0;">
+              <div style="background:#0a0f1b;border:1px solid #1b2537;border-radius:12px;padding:16px 18px;">
+                <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#7d8aa3;margin-bottom:12px;">O que isso conecta</div>
+                <div style="margin-bottom:12px;">
+                  <span style="color:#63d29b;font-size:12px;">▲</span>
+                  <span style="font-size:11px;color:#63d29b;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">TENDÊNCIA</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">O valor sobe e desce a pilha ao mesmo tempo: o que era diferencial no meio (contexto, câmbio) virou commodity; a margem foi pra memória e pra energia.</div>
+                </div>
+                <div style="margin-bottom:12px;">
+                  <span style="color:#e8a23d;font-size:12px;">★</span>
+                  <span style="font-size:11px;color:#e8a23d;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">OPORTUNIDADE</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">Stablecoin de tesouraria pra PME brasileira: virou padrão lá fora, não tem versão local.</div>
+                </div>
+                <div>
+                  <span style="color:#ef6d7e;font-size:12px;">◆</span>
+                  <span style="font-size:11px;color:#ef6d7e;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:0.04em;">GAP</span>
+                  <div style="font-size:13.5px;color:#e9eefb;line-height:1.45;margin-top:3px;">Contrato de energy-for-compute nasceu nos EUA; aqui ainda não há quem estruture o mesmo trato.</div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- CTA -->
+            <tr>
+              <td style="padding:28px 30px 6px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg,#141a2b,#0d1220);border:1px solid #26324a;border-radius:14px;">
+                  <tr>
+                    <td style="padding:20px 22px;">
+                      <div style="font-size:15px;font-weight:700;color:#f3f6fc;">Alguma dessas é a sua aposta?</div>
+                      <div style="font-size:13px;line-height:1.5;color:#9aa7bd;margin:5px 0 14px;">Escreva a tese e o radar devolve o veredito: quem já faz, o gap e o go/no-go, com a fonte atrás de cada linha.</div>
+                      <a href="https://example.com/radar" style="display:inline-block;background:#e8a23d;color:#1a1205;font-size:13.5px;font-weight:700;text-decoration:none;padding:11px 20px;border-radius:10px;">Gerar meu veredito →</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- footer -->
+            <tr>
+              <td style="padding:20px 30px 28px;">
+                <div style="border-top:1px solid #1b2537;padding-top:16px;font-size:11.5px;line-height:1.6;color:#6f7c94;">
+                  Você recebe porque assinou o boletim da Stalo com os setores <span style="color:#9aa7bd;">IA, Fintech e Energia</span>.<br />
+                  <a href="https://example.com/unsubscribe" style="color:#8b98af;text-decoration:underline;">Descadastrar</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://example.com/preferencias" style="color:#8b98af;text-decoration:underline;">Trocar setores</a>
+                  &nbsp;·&nbsp; exemplo ilustrativo, dados não reais
+                </div>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

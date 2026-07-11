@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createTopic, saveLens } from "@/lib/api";
 import { LENS_LEAD_CATEGORY } from "@/lib/ui";
 import type { Lens } from "@stalo/shared";
+import { SUGGESTED_SECTORS as SUGGESTED } from "@/lib/sectors";
 import "./onboarding.css";
 
 // Paleta de setores (mesma linguagem do radar). Cada setor escolhido ganha uma
@@ -13,21 +14,6 @@ import "./onboarding.css";
 const COLORS = ["#5ec8d8", "#63d29b", "#e8a23d", "#a68bff", "#ef6d7e"];
 const MIN = 2;
 const MAX = 5;
-
-const SUGGESTED = [
-  "Inteligência Artificial",
-  "Energia",
-  "Fintech",
-  "Biotecnologia",
-  "Semicondutores",
-  "Cibersegurança",
-  "Robótica",
-  "Espaço",
-  "Clima",
-  "Saúde digital",
-  "Mobilidade",
-  "Web3",
-];
 
 // As três lentes do produto: a mesma engine, mas o que o radar destaca muda por
 // objetivo. Cada card: ícone + nome + uma frase clara (sem excesso de texto).

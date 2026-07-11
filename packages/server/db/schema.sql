@@ -93,6 +93,30 @@ CREATE TABLE IF NOT EXISTS workspace_settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- assinantes da newsletter (captura de email + setores no popup da landing).
+-- NÃO é workspace-scoped: um assinante é um email numa mailing list, não um
+-- visitante do app — o que identifica o registro é o email (UNIQUE), não um
+-- workspace_id (ver arquiteturad.md §4). Re-assinar faz upsert por email.
+CREATE TABLE IF NOT EXISTS subscribers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  sectors TEXT[] NOT NULL DEFAULT '{}',  -- setores escolhidos no popup
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','unsubscribed')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- edição semanal da newsletter: o conteúdo montado por semana. GLOBAL (não
+-- workspace-scoped) — cada email só seleciona os setores do assinante desta
+-- edição, sem re-rodar a IA por pessoa (ver arquiteturad.md §4). 1 linha/semana.
+CREATE TABLE IF NOT EXISTS newsletter_editions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  week_start DATE NOT NULL UNIQUE,     -- segunda-feira da semana; identifica a edição
+  combos JSONB NOT NULL DEFAULT '{}',  -- mapa "comboKey|origem" -> { items: NewsletterItem[], insights: Insight[] } (pronto pra renderizar; preenchido sob demanda)
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...), para proteger os endpoints de IA de abuso de
 -- custo agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -118,6 +142,7 @@ CREATE INDEX IF NOT EXISTS scans_workspace_created_idx ON scans (workspace_id, c
 CREATE INDEX IF NOT EXISTS news_items_scan_id_idx ON news_items (scan_id);
 CREATE INDEX IF NOT EXISTS insights_scan_id_idx ON insights (scan_id);
 CREATE INDEX IF NOT EXISTS saved_ideas_workspace_saved_idx ON saved_ideas (workspace_id, saved_at DESC);
+CREATE INDEX IF NOT EXISTS subscribers_status_idx ON subscribers (status);
 
 -- Sem seed de temas: com isolamento por workspace, cada visitante começa com o
 -- radar vazio e adiciona os próprios temas (um seed global não faz mais sentido).
