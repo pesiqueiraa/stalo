@@ -16,7 +16,7 @@ const EDITION: AssembledEdition = {
           id: "br1",
           topic: "IA",
           title: "Copilot & auditoria: bancos <internos> pedem \"rastro\".",
-          summary: "",
+          summary: "Copilots internos entraram em produção e o BC quer log de cada sugestão.",
           source: "Valor",
           url: "https://example.com/br1",
           entities: [],
@@ -123,6 +123,13 @@ describe("renderBoletim", () => {
     // o título cru NÃO deve aparecer com < & " brutos; deve vir escapado
     expect(html).toContain("Copilot &amp; auditoria: bancos &lt;internos&gt; pedem &quot;rastro&quot;.");
     expect(html).not.toContain("bancos <internos>");
+  });
+
+  it("renderiza o resumo quando presente e omite a linha quando vazio", () => {
+    // br1 tem summary → aparece (escapado); br2 tem summary vazio → sem linha extra
+    expect(html).toContain("Copilots internos entraram em produção e o BC quer log de cada sugestão.");
+    // o item SEM summary continua renderizando normalmente (título presente)
+    expect(html).toContain("Drex avanca sem imagem nenhuma.");
   });
 
   it("omite o bloco de insights de uma seção sem insights", () => {
