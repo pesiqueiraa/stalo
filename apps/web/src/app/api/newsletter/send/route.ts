@@ -21,8 +21,9 @@ export async function GET(request: Request) {
     });
   }
 
-  // base dos links absolutos (descadastro) no email. APP_URL opcional.
+  // base dos links absolutos (descadastro) e do logo no email. APP_URL opcional.
   const base = process.env.APP_URL ?? "https://stalo.dev";
+  const logoUrl = `${base}/logo-email.png`;
 
   const subs = await getActiveSubscribers();
   let sent = 0;
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
       const html = renderBoletim(edition, {
         email: sub.email,
         unsubscribeUrl: `${base}/api/newsletter/unsubscribe?id=${sub.id}`,
+        logoUrl,
       });
       await sendBoletim({ to: sub.email, subject: SUBJECT, html });
       sent++;

@@ -261,12 +261,21 @@ function renderSection(
 
 export function renderBoletim(
   edition: AssembledEdition,
-  opts: { email?: string; unsubscribeUrl?: string } = {},
+  opts: { email?: string; unsubscribeUrl?: string; logoUrl?: string } = {},
 ): string {
   const colorFor = makeTopicColorer();
   const sections = edition.sections.map((s) => renderSection(s, colorFor)).join("");
   const dateStr = formatWeek(edition.weekStart);
   const sectorsStr = formatSectors(edition.sectors);
+
+  // LOGO do header. Com logoUrl → <img> do PNG hospedado (Gmail não renderiza SVG
+  // em email; o caminho é PNG + alt). Os estilos de TEXTO no próprio <img>
+  // (font-size/weight/color/family) são o que o Gmail usa pra estilizar o ALT
+  // quando a imagem não carrega — fallback bonito antes do deploy hospedar o PNG.
+  // Sem logoUrl → wordmark em texto (o preview local não depende de rede).
+  const logoCell = opts.logoUrl
+    ? `<img src="${esc(opts.logoUrl)}" alt="Stalo" width="96" height="58" style="display:block;border:0;outline:none;text-decoration:none;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};" />`
+    : `<div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};">Stalo<span style="color:${AMBER};">.</span></div>`;
   // links relativos por ora (preview no próprio app); a etapa do ESP injeta URLs
   // absolutas + token de descadastro por assinante.
   const emailNote = opts.email
@@ -305,16 +314,24 @@ export function renderBoletim(
         <td align="center" style="padding:32px 14px;">
           <table role="presentation" class="container" width="720" cellpadding="0" cellspacing="0" style="width:720px;max-width:100%;background:${PANEL};border:1px solid ${BORDER};border-radius:18px;overflow:hidden;font-family:${SANS};">
 
-            <!-- header -->
+            <!-- header: logo à esquerda, badge + data à direita -->
             <tr>
-              <td style="padding:32px 36px 8px;">
+              <td style="padding:32px 36px 18px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="font-size:23px;font-weight:700;letter-spacing:-0.02em;color:${INK};">Stalo</td>
-                    <td align="right" style="font-family:${MONO};font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:${AMBER};">Boletim semanal</td>
+                    <td valign="middle">${logoCell}</td>
+                    <td align="right" valign="middle">
+                      <div style="font-family:${MONO};font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:${AMBER};">Boletim semanal</div>
+                      <div style="font-family:${MONO};font-size:12px;letter-spacing:0.06em;color:${DIM};margin-top:6px;">${esc(dateStr)}</div>
+                    </td>
                   </tr>
                 </table>
-                <div style="font-family:${MONO};font-size:12px;letter-spacing:0.06em;color:${DIM};margin-top:8px;">${esc(dateStr)}</div>
+              </td>
+            </tr>
+            <!-- fio divisório com toque âmbar (solid = fallback; gradiente por cima) -->
+            <tr>
+              <td style="padding:0 36px;">
+                <div style="height:2px;line-height:2px;font-size:0;background:${BORDER_SOFT};background-image:linear-gradient(90deg,${AMBER},${BORDER_SOFT} 42%);">&nbsp;</div>
               </td>
             </tr>
 

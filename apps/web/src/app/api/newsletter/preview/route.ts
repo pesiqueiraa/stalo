@@ -23,12 +23,16 @@ function htmlResponse(html: string): Response {
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
+// logo hospedado no mesmo host do app; sem APP_URL (ex.: dev local) o render cai
+// no wordmark em texto — o preview não passa a depender de rede.
+const logoUrl = process.env.APP_URL ? `${process.env.APP_URL}/logo-email.png` : undefined;
+
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get("sectors");
 
   // modo AMOSTRA: sem ?sectors, renderiza a amostra (sem IA, sem banco).
   if (!raw) {
-    return htmlResponse(renderBoletim(sampleEdition()));
+    return htmlResponse(renderBoletim(sampleEdition(), { logoUrl }));
   }
 
   // modo REAL: parseia os setores (split, trim, remove vazio, dedupe, cap 5).
@@ -57,7 +61,7 @@ export async function GET(request: Request) {
 
   try {
     const edition = await assemble(sectors);
-    return htmlResponse(renderBoletim(edition));
+    return htmlResponse(renderBoletim(edition, { logoUrl }));
   } catch (err) {
     // erro cru só no log do servidor; o Pedro vê uma mensagem amigável (nunca
     // falha em silêncio — CLAUDE.md).

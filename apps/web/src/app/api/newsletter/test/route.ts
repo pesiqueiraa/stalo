@@ -70,10 +70,13 @@ export async function POST(request: Request) {
   );
   if (limited) return limited;
 
+  // logo hospedado no mesmo host do app; sem APP_URL o render usa o wordmark texto.
+  const logoUrl = process.env.APP_URL ? `${process.env.APP_URL}/logo-email.png` : undefined;
+
   try {
     const html = useSample
-      ? renderBoletim(sampleEdition(), { email })
-      : renderBoletim(await assemble(sectorList), { email });
+      ? renderBoletim(sampleEdition(), { email, logoUrl })
+      : renderBoletim(await assemble(sectorList), { email, logoUrl });
     const { id } = await sendBoletim({ to: email, subject: SUBJECT, html });
     return json({ ok: true, id });
   } catch (err) {
