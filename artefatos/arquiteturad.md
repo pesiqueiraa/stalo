@@ -126,6 +126,29 @@ CREATE TABLE workspace_settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- assinantes da newsletter (captura de email + setores no popup da landing).
+-- NÃO é workspace-scoped: um assinante é um email numa mailing list, não um
+-- visitante do app (ver blockquote abaixo). Re-assinar faz upsert por email.
+CREATE TABLE subscribers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  sectors TEXT[] NOT NULL DEFAULT '{}',  -- setores escolhidos no popup
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','unsubscribed')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- edição semanal da newsletter: o conteúdo montado por semana. GLOBAL (não
+-- workspace-scoped) — cada email só seleciona os setores do assinante desta
+-- edição, sem re-rodar a IA por pessoa. Uma linha por semana (ver blockquote).
+CREATE TABLE newsletter_editions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  week_start DATE NOT NULL UNIQUE,     -- segunda-feira da semana; identifica a edição
+  combos JSONB NOT NULL DEFAULT '{}',  -- mapa "comboKey|origem" -> { items: NewsletterItem[], insights: Insight[] } (pronto pra renderizar; preenchido sob demanda)
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- rate limiting (infra, não domínio): contador de janela fixa por chave
 -- ("scan:<ip>", "dive:<ip>", ...) para proteger os endpoints de IA de abuso de
 -- custo, agora que o app é público. Uma linha por chave, atualizada no lugar.
@@ -144,6 +167,10 @@ CREATE TABLE rate_limits (
 > o `ScanResult` no formato exato que o `buildGraph()` do frontend espera, sem tradução de
 > ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
 
+> **Assinantes (`subscribers`):** EXCEÇÃO deliberada ao padrão "tudo é workspace-scoped". Um assinante é um **email externo numa mailing list**, não um visitante/workspace do app: a mesma pessoa pode assinar de qualquer navegador, sem cookie de workspace, e o que identifica o registro é o `email` (UNIQUE), não um `workspace_id`. Por isso a tabela não tem `workspace_id` e a função de repo não recebe `wid`. Re-assinar é **upsert por email** (`ON CONFLICT (email) DO UPDATE`): atualiza `sectors`, reativa (`status = 'active'`) e toca `updated_at`, sem criar linha duplicada. Escopo atual é só CAPTURA/persistência — sem envio de email nem ESP; `status` já prevê o `unsubscribe` futuro. Não é autenticação (mailing list não é login, ver `produto.md` §2 / CLAUDE.md regra 2).
+
+> **Edição da newsletter (`newsletter_editions`):** 2ª EXCEÇÃO deliberada ao workspace-scoping (como `subscribers`). O conteúdo semanal é igual pra todos os assinantes — o que muda por pessoa é só QUAIS setores aparecem —, então é global, **uma linha por semana** (`week_start` UNIQUE, a segunda-feira da edição). `combos` (JSONB) mapeia `comboKey|origem` → `{ items: NewsletterItem[], insights: Insight[] }` **pronto pra renderizar** (`comboKey` = os setores do assinante ordenados e concatenados), preenchido **sob demanda**: o 1º assinante de um combo dispara a ingestão RSS + o Analista (`analyze()`) sobre os itens combinados (ids reatribuídos), e os demais do mesmo combo reusam. Assim a IA roda **por combo único, não por assinante**. Reaproveita os contratos `NewsItem`/`Insight` de `@stalo/shared`: na newsletter a ingestão RSS substitui só a ETAPA DE COLETA do scan; o Analista e a validação (`validate.ts`) seguem iguais.
+
 > **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `apps/web/src/proxy.ts` (convenção "proxy" do Next 16, ex-middleware), lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação: quando contas reais (magic link) entrarem, `workspace_id` vira `user_id` com FK para uma tabela `users`, sem reescrever as queries.
 
 ## 5. Endpoints propostos
@@ -158,6 +185,7 @@ CREATE TABLE rate_limits (
 | `POST` | `/api/ideas` | Salva uma ideia a partir de um insight |
 | `GET` | `/api/ideas` | Lista ideias salvas |
 | `DELETE` | `/api/ideas/:id` | Remove uma ideia salva |
+| `POST` | `/api/newsletter` | Captura assinante da newsletter (email + setores) — valida e faz upsert em `subscribers`. Não é workspace-scoped; só captura, sem envio |
 
 ## 6. Fluxo de um scan (ponta a ponta)
 

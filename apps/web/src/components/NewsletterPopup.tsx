@@ -1,12 +1,14 @@
 "use client";
 
-// MOCK do cadastro da newsletter — só frontend, sem backend/persistência/envio.
-// Aparece uma vez por sessão ao chegar no fim da landing e leva por email ->
-// setores -> sucesso. Quando o motor real existir, o "Assinar" passa a chamar a
-// rota de assinatura; por ora só ecoa o que o usuário escolheu.
+// Cadastro da newsletter. Aparece uma vez por sessão ao chegar no fim da landing
+// e leva por email -> setores -> sucesso. O "Assinar" PERSISTE de verdade: chama
+// POST /api/newsletter (upsert em `subscribers`). Só captura email + setores;
+// nada de envio de email/ESP por ora. Sucesso avança pro "done"; erro fica
+// visível e permite tentar de novo (nunca falha em silêncio — CLAUDE.md).
 
 import { useEffect, useRef, useState } from "react";
 import { SUGGESTED_SECTORS } from "@/lib/sectors";
+import { subscribeNewsletter } from "@/lib/api";
 
 const SEEN_KEY = "nl_popup_seen"; // uma vez por sessão
 const MAX_SECTORS = 5;
@@ -25,6 +27,8 @@ export function NewsletterPopup() {
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // dispara ao chegar no fim da landing (observa o footer) — uma vez por sessão.
@@ -80,6 +84,29 @@ export function NewsletterPopup() {
       if (prev.length >= MAX_SECTORS) return prev;
       return [...prev, name];
     });
+  }
+
+  // Persiste o assinante e só então avança pro "done". Em erro, mostra a mensagem
+  // e mantém o passo pra pessoa tentar de novo (nunca falha em silêncio).
+  async function handleSubscribe() {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await subscribeNewsletter(email.trim(), selected);
+      setStage("done");
+      try {
+        sessionStorage.setItem(SEEN_KEY, "1");
+      } catch {
+        /* ok */
+      }
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Não consegui concluir sua inscrição agora.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (!open) return null;
@@ -211,23 +238,27 @@ export function NewsletterPopup() {
                 );
               })}
             </div>
+            {submitError && <p className="nl-err">{submitError}</p>}
             <div className="nl-actions">
-              <button className="btn btn-ghost" onClick={() => setStage("email")}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setStage("email")}
+                disabled={submitting}
+              >
                 voltar
               </button>
               <button
                 className="btn btn-primary nl-grow"
-                onClick={() => {
-                  setStage("done");
-                  try {
-                    sessionStorage.setItem(SEEN_KEY, "1");
-                  } catch {
-                    /* ok */
-                  }
-                }}
-                disabled={selected.length === 0}
+                onClick={handleSubscribe}
+                disabled={selected.length === 0 || submitting}
               >
-                Assinar <span className="arrow">→</span>
+                {submitting ? (
+                  "Assinando…"
+                ) : (
+                  <>
+                    Assinar <span className="arrow">→</span>
+                  </>
+                )}
               </button>
             </div>
           </>

@@ -171,8 +171,9 @@ async function collect(topics: string[], days: number | null): Promise<NewsItem[
   return res.output_parsed?.items ?? [];
 }
 
-// ② ANALISTA — cruza as notícias já coletadas (sem busca web).
-async function analyze(items: NewsItem[]): Promise<Insight[]> {
+// ② ANALISTA — cruza as notícias já coletadas (sem busca web). Exportado para o
+// engine da newsletter reusar o mesmo Analista sobre os itens da ingestão RSS.
+export async function analyze(items: NewsItem[]): Promise<Insight[]> {
   const res = await client.responses.parse({
     model: ANALYZE_MODEL,
     max_output_tokens: ANALYZE_MAX_TOKENS,

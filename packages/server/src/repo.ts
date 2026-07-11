@@ -6,6 +6,8 @@ import type {
   Insight,
   Lens,
   NewsItem,
+  NewsletterCombo,
+  NewsletterEdition,
   SavedIdea,
   ScanResult,
   Topic,
@@ -328,5 +330,54 @@ export async function setLens(wid: string, lens: Lens): Promise<void> {
     INSERT INTO workspace_settings (workspace_id, lens, updated_at)
     VALUES (${wid}, ${lens}, now())
     ON CONFLICT (workspace_id) DO UPDATE SET lens = ${lens}, updated_at = now()
+  `;
+}
+
+// ---------- newsletter (mailing list global) ----------
+
+// Captura um assinante da newsletter. NÃO é workspace-scoped (ver arquiteturad
+// §4): o email é a identidade. Re-assinar faz upsert por email — atualiza os
+// setores, reativa o status e toca updated_at, sem duplicar linha.
+export async function saveSubscriber(email: string, sectors: string[]): Promise<void> {
+  await sql`
+    INSERT INTO subscribers (email, sectors)
+    VALUES (${email}, ${sectors})
+    ON CONFLICT (email) DO UPDATE
+      SET sectors = EXCLUDED.sectors, status = 'active', updated_at = now()
+  `;
+}
+
+// ---------- newsletter editions (edição semanal global) ----------
+
+// A edição da semana NÃO é workspace-scoped: uma linha por semana (week_start),
+// com os combos calculados sob demanda em `combos` JSONB. Sem workspace_id.
+export async function getEdition(weekStart: string): Promise<NewsletterEdition | null> {
+  const [row] = await sql<{ combos: Record<string, NewsletterCombo> | null }[]>`
+    SELECT combos FROM newsletter_editions WHERE week_start = ${weekStart} LIMIT 1
+  `;
+  if (!row) return null;
+  return { weekStart, combos: row.combos ?? {} };
+}
+
+// garante que a linha da semana exista antes de fazer merge de combos; idempotente.
+export async function ensureEdition(weekStart: string): Promise<void> {
+  await sql`
+    INSERT INTO newsletter_editions (week_start) VALUES (${weekStart})
+    ON CONFLICT (week_start) DO NOTHING
+  `;
+}
+
+// faz merge de UM combo na edição da semana. O `||` do jsonb mescla a chave sem
+// tocar nos outros combos já calculados.
+export async function saveCombo(
+  weekStart: string,
+  key: string,
+  combo: NewsletterCombo,
+): Promise<void> {
+  await sql`
+    UPDATE newsletter_editions
+    SET combos = combos || ${sql.json({ [key]: combo } as unknown as Parameters<typeof sql.json>[0])},
+        updated_at = now()
+    WHERE week_start = ${weekStart}
   `;
 }
