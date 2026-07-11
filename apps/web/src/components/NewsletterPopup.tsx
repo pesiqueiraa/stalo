@@ -31,8 +31,9 @@ export function NewsletterPopup() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // dispara ao chegar no fim da landing (observa o footer) — uma vez por sessão.
-  // Observer próprio: não toca no observer de reveal que já existe no Landing.
+  // dispara na ABERTURA do site (pequeno delay pra landing renderizar antes) —
+  // uma vez por sessão. Antes era ao chegar no fim da página (footer), mas o
+  // popup ficava invisível pra quem não rolava até lá.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -40,19 +41,8 @@ export function NewsletterPopup() {
     } catch {
       /* sessionStorage indisponível: segue e mostra */
     }
-    const footer = document.querySelector(".lp-footer");
-    if (!footer || !("IntersectionObserver" in window)) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setOpen(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.25 },
-    );
-    io.observe(footer);
-    return () => io.disconnect();
+    const t = window.setTimeout(() => setOpen(true), 1200);
+    return () => window.clearTimeout(t);
   }, []);
 
   function dismiss() {
