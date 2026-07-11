@@ -14,6 +14,9 @@ import { feedsFor, type FeedSource, type Origem } from "./feeds";
 const FEED_TIMEOUT_MS = 10_000;
 // teto do lote por seção — o resto é ruído para uma newsletter.
 export const MAX_NEWSLETTER_ITEMS = 12;
+// teto POR FEED — impede que uma fonte de alto volume (ex.: feed geral) domine a
+// seção e sufoque a diversidade de fontes.
+export const PER_FEED_CAP = 4;
 const MS_PER_DAY = 86_400_000;
 
 // campos de imagem que o rss-parser não traz por padrão (namespace media:*).
@@ -107,19 +110,45 @@ function toNewsletterItem(raw: RssItem, setor: string, veiculo: string): Omit<Ne
   };
 }
 
-// recência → dedupe → ordena desc → cap → ids. Puro, roda sobre itens de 1 ou
-// vários feeds já mapeados.
+// recência (leniente): item sem data parseável é MANTIDO; só descarta o que tem
+// data comprovadamente mais velha que a janela.
+function isRecent(it: Omit<NewsletterItem, "id">, cutoff: number): boolean {
+  if (!it.publishedAt) return true;
+  const t = new Date(it.publishedAt).getTime();
+  if (Number.isNaN(t)) return true;
+  return t >= cutoff;
+}
+
+// ordena por data desc; item sem data vai pro fim.
+function byDateDesc(a: Omit<NewsletterItem, "id">, b: Omit<NewsletterItem, "id">): number {
+  if (!a.publishedAt && !b.publishedAt) return 0;
+  if (!a.publishedAt) return 1;
+  if (!b.publishedAt) return -1;
+  return a.publishedAt < b.publishedAt ? 1 : a.publishedAt > b.publishedAt ? -1 : 0;
+}
+
+// mapeia UM feed → itens, filtra recência, ordena desc e limita a `cap` — pra uma
+// fonte de alto volume não dominar a seção. Puro (testável sem rede).
+export function capFeedItems(
+  rawItems: RssItem[],
+  setor: string,
+  veiculo: string,
+  days: number,
+  cap = PER_FEED_CAP,
+): Omit<NewsletterItem, "id">[] {
+  const cutoff = Date.now() - days * MS_PER_DAY;
+  return rawItems
+    .map((r) => toNewsletterItem(r, setor, veiculo))
+    .filter((it) => isRecent(it, cutoff))
+    .sort(byDateDesc)
+    .slice(0, cap);
+}
+
+// recência → dedupe → ordena desc → cap global → ids. Puro, roda sobre itens de 1
+// ou vários feeds já mapeados.
 function finalize(items: Omit<NewsletterItem, "id">[], days: number): NewsletterItem[] {
   const cutoff = Date.now() - days * MS_PER_DAY;
-
-  // RECÊNCIA (leniente): item sem data parseável é MANTIDO; só descarta o que
-  // tem data comprovadamente mais velha que a janela.
-  const recent = items.filter((it) => {
-    if (!it.publishedAt) return true;
-    const t = new Date(it.publishedAt).getTime();
-    if (Number.isNaN(t)) return true;
-    return t >= cutoff;
-  });
+  const recent = items.filter((it) => isRecent(it, cutoff));
 
   // DEDUPE: por url canônica e depois por título normalizado; mantém o 1º.
   const seenUrls = new Set<string>();
@@ -135,13 +164,8 @@ function finalize(items: Omit<NewsletterItem, "id">[], days: number): Newsletter
     deduped.push(it);
   }
 
-  // ordena por data desc (sem data vai pro fim), cap e atribui ids r1..rN.
-  deduped.sort((a, b) => {
-    if (!a.publishedAt && !b.publishedAt) return 0;
-    if (!a.publishedAt) return 1;
-    if (!b.publishedAt) return -1;
-    return a.publishedAt < b.publishedAt ? 1 : a.publishedAt > b.publishedAt ? -1 : 0;
-  });
+  // ordena por data desc, cap global e atribui ids r1..rN.
+  deduped.sort(byDateDesc);
   return deduped
     .slice(0, MAX_NEWSLETTER_ITEMS)
     .map((it, i) => ({ ...it, id: `r${i + 1}` }));
@@ -171,7 +195,8 @@ async function ingestFrom(sources: FeedSource[], days: number): Promise<Newslett
   settled.forEach((res, i) => {
     const f = sources[i];
     if (res.status === "fulfilled") {
-      for (const raw of res.value) mapped.push(toNewsletterItem(raw, f.setor, f.veiculo));
+      // cap POR FEED antes de juntar: nenhuma fonte domina a seção.
+      mapped.push(...capFeedItems(res.value, f.setor, f.veiculo, days));
     } else {
       console.warn(`[rss] feed pulado (${f.veiculo} · ${f.url}): ${String(res.reason)}`);
     }

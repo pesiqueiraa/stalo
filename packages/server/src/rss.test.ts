@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createParser, mapItems, MAX_NEWSLETTER_ITEMS, type RssItem } from "./rss";
+import {
+  capFeedItems,
+  createParser,
+  mapItems,
+  MAX_NEWSLETTER_ITEMS,
+  PER_FEED_CAP,
+  type RssItem,
+} from "./rss";
 
 // Fixture RSS montado à mão (sem rede): cobre parse+map, recência, dedupe,
 // extração de imagem (media:content) e atribuição de ids. Datas são calculadas
@@ -99,5 +106,19 @@ describe("rss mapItems", () => {
     const items = mapItems(raw, SETOR, VEICULO, 7);
     expect(items).toHaveLength(MAX_NEWSLETTER_ITEMS); // cap aplicado
     expect(items.every((i) => i.publishedAt === "")).toBe(true);
+  });
+});
+
+describe("rss capFeedItems (cap por feed)", () => {
+  it("limita cada feed a PER_FEED_CAP itens, os mais recentes", () => {
+    const raw: RssItem[] = Array.from({ length: PER_FEED_CAP + 3 }, (_, i) => ({
+      title: `Item ${i}`,
+      link: `https://ex.com/c${i}`,
+      pubDate: rfc(new Date(Date.now() - i * 86_400_000)), // Item 0 = mais recente
+    }));
+    const capped = capFeedItems(raw, SETOR, VEICULO, 7);
+    expect(capped).toHaveLength(PER_FEED_CAP);
+    expect(capped[0].title).toBe("Item 0"); // ordenado desc: mais recente primeiro
+    expect(capped.some((i) => i.title === `Item ${PER_FEED_CAP + 2}`)).toBe(false);
   });
 });
