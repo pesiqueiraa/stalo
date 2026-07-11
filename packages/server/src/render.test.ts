@@ -163,12 +163,13 @@ const imgItem = (label: string): AssembledEdition["sections"][number]["items"][n
 });
 
 describe("renderBoletim — layout hero + grade", () => {
-  it("a faixa da seção traz o título grande e o subtítulo (presença)", () => {
+  it("a faixa da seção traz SÓ o título grande, sem subtítulo", () => {
     const html = renderBoletim(brEdition([imgItem("h")]));
     expect(html).toContain("No Brasil");
-    expect(html).toContain("O que mexeu por aqui essa semana."); // subtítulo da faixa
-    // barra vertical de cor da seção (BR = verde) na faixa
-    expect(html).toContain("border-left:5px solid #63d29b");
+    expect(html).not.toContain("O que mexeu por aqui essa semana."); // subtítulo removido
+    // barra vertical de cor da seção (BR = verde) na faixa + gradiente com fallback sólido
+    expect(html).toContain('width="6" style="width:6px;background:#63d29b');
+    expect(html).toContain("background-image:linear-gradient(90deg,");
   });
 
   it("hero SEM imagem vira card de texto — não some e não gera <img>", () => {

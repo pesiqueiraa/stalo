@@ -4,7 +4,7 @@
 //
 // LAYOUT "capa editorial" (não feed vertical): container largo (720px), e cada
 // seção por ORIGEM (No Brasil / Na gringa) abre com uma FAIXA de destaque (barra
-// de cor + título grande + subtítulo). A 1ª notícia vira HERO (imagem em largura
+// de cor + título grande, sem subtítulo). A 1ª notícia vira HERO (imagem em largura
 // total + título grande + resumo), e as demais entram numa GRADE de 2 colunas de
 // cards. A seção fecha com o card de insights "O que isso conecta". A paleta é a
 // do app (globals.css). Compat de email: só tabelas aninhadas + estilo inline; a
@@ -56,9 +56,9 @@ const INSIGHT_META: Record<Insight["type"], { glyph: string; color: string; labe
   gap: { glyph: "◆", color: "#ef6d7e", label: "GAP" },
 };
 
-const SECTION_META: Record<NewsletterSection["origem"], { label: string; color: string; sub: string }> = {
-  BR: { label: "No Brasil", color: "#63d29b", sub: "O que mexeu por aqui essa semana." },
-  GRINGA: { label: "Na gringa", color: "#5ec8d8", sub: "O que já rola lá fora e ainda não chegou aqui." },
+const SECTION_META: Record<NewsletterSection["origem"], { label: string; color: string }> = {
+  BR: { label: "No Brasil", color: "#63d29b" },
+  GRINGA: { label: "Na gringa", color: "#5ec8d8" },
 };
 
 const MESES = [
@@ -131,17 +131,24 @@ function summaryBlock(item: NewsletterItem, size: number): string {
     : "";
 }
 
-// faixa de abertura da seção: barra vertical de 5px na cor + título GRANDE +
-// subtítulo, sobre um fundo levemente tingido (hex pré-misturado com o panel).
-function renderSectionHeader(meta: { label: string; color: string; sub: string }): string {
-  const tint = mixHex(meta.color, PANEL, 0.12);
+// faixa de abertura da seção: SÓ o título, grande, sobre uma faixa com a cor da
+// seção esmaecendo pro panel (gradiente com fallback sólido pré-misturado — email
+// sem suporte a gradiente mostra o tom chapado) + barra vertical na cor e um
+// ponto na cor fechando à direita.
+function renderSectionHeader(meta: { label: string; color: string }): string {
+  const tint = mixHex(meta.color, PANEL, 0.14);
+  const tintStrong = mixHex(meta.color, PANEL, 0.24);
+  const edge = mixHex(meta.color, PANEL, 0.45);
   return `
-            <tr><td style="padding:40px 36px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${tint};border-radius:12px;">
-                <tr><td style="padding:20px 24px;border-left:5px solid ${meta.color};border-radius:12px;">
-                  <div style="font-size:24px;font-weight:800;line-height:1.15;letter-spacing:-0.01em;color:${meta.color};">${meta.label}</div>
-                  <div style="font-size:14.5px;line-height:1.5;color:${DIM};margin-top:7px;">${meta.sub}</div>
-                </td></tr>
+            <tr><td style="padding:44px 36px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:14px;background-color:${tint};background-image:linear-gradient(90deg,${tintStrong},${PANEL} 88%);border:1px solid ${edge};">
+                <tr>
+                  <td width="6" style="width:6px;background:${meta.color};border-radius:14px 0 0 14px;font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="padding:18px 24px;">
+                    <span style="font-size:27px;font-weight:800;line-height:1.1;letter-spacing:-0.015em;color:${meta.color};">${meta.label}</span>
+                  </td>
+                  <td align="right" style="padding:18px 26px 18px 0;font-size:20px;line-height:1;color:${meta.color};">●</td>
+                </tr>
               </table>
             </td></tr>`;
 }
