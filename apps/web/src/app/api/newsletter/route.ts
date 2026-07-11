@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { saveSubscriber } from "@stalo/server";
+import { renderBoasVindas, saveSubscriber, sendBoletim } from "@stalo/server";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 // POST /api/newsletter — captura um assinante da newsletter (email + setores)
-// vindo do popup da landing e faz upsert em `subscribers`. Só CAPTURA/persiste:
-// nada de envio de email nem ESP por ora. NÃO é workspace-scoped — o assinante é
-// um email numa mailing list, não um visitante do app (arquiteturad §4), então
-// não usa getWorkspaceId.
+// vindo do popup da landing e faz upsert em `subscribers`. Persiste e, se for
+// cadastro novo ou reativação, dispara o e-mail de boas-vindas (best-effort). NÃO
+// é workspace-scoped — o assinante é um email numa mailing list, não um visitante
+// do app (arquiteturad §4), então não usa getWorkspaceId.
+
+const SUBJECT_WELCOME = "Stalo · Você tá dentro";
 
 const MAX_SECTORS = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,7 +54,26 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    await saveSubscriber(emailStr, sectorList);
+    const { id, outcome } = await saveSubscriber(emailStr, sectorList);
+
+    // BOAS-VINDAS: só em cadastro novo ou reativação (submit duplicado do popup,
+    // "unchanged", não reenvia). BEST-EFFORT — uma falha no email (Resend fora,
+    // domínio não verificado) NUNCA derruba o cadastro: log e segue com sucesso.
+    if (outcome === "new" || outcome === "reactivated") {
+      try {
+        const base = process.env.APP_URL ?? "https://stalo.dev";
+        const html = renderBoasVindas({
+          sectors: sectorList,
+          email: emailStr,
+          unsubscribeUrl: `${base}/api/newsletter/unsubscribe?id=${id}`,
+          logoUrl: `${base}/logo-email.png`,
+        });
+        await sendBoletim({ to: emailStr, subject: SUBJECT_WELCOME, html });
+      } catch (mailErr) {
+        console.error("welcome email failed (cadastro segue ok)", mailErr);
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     // o erro cru (Postgres/infra) fica só no log do servidor; o usuário recebe

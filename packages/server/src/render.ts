@@ -110,6 +110,24 @@ function mixHex(fg: string, bg: string, alpha: number): string {
   return `#${ch(r1, r2)}${ch(g1, g2)}${ch(b1, b2)}`;
 }
 
+// LOGO do header (compartilhado boletim + boas-vindas). Com logoUrl → <img> do
+// PNG hospedado (Gmail não renderiza SVG em email; o caminho é PNG + alt). Os
+// estilos de TEXTO no próprio <img> (font-size/weight/color/family) são o que o
+// Gmail usa pra estilizar o ALT quando a imagem não carrega — fallback bonito
+// antes do deploy hospedar o PNG. Sem logoUrl → wordmark em texto (o preview
+// local não depende de rede).
+function logoCell(logoUrl?: string): string {
+  return logoUrl
+    ? `<img src="${esc(logoUrl)}" alt="Stalo" width="96" height="58" style="display:block;border:0;outline:none;text-decoration:none;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};" />`
+    : `<div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};">Stalo<span style="color:${AMBER};">.</span></div>`;
+}
+
+// fio divisório fino com toque âmbar (solid = fallback; gradiente por cima pra
+// quem suporta). Fecha o header nos dois templates.
+function amberRule(): string {
+  return `<div style="height:2px;line-height:2px;font-size:0;background:${BORDER_SOFT};background-image:linear-gradient(90deg,${AMBER},${BORDER_SOFT} 42%);">&nbsp;</div>`;
+}
+
 // --- blocos ------------------------------------------------------------------
 
 // eyebrow "● Setor" na cor do setor — reutilizado por hero e cards da grade.
@@ -275,14 +293,7 @@ export function renderBoletim(
   const dateStr = formatWeek(edition.weekStart);
   const sectorsStr = formatSectors(edition.sectors);
 
-  // LOGO do header. Com logoUrl → <img> do PNG hospedado (Gmail não renderiza SVG
-  // em email; o caminho é PNG + alt). Os estilos de TEXTO no próprio <img>
-  // (font-size/weight/color/family) são o que o Gmail usa pra estilizar o ALT
-  // quando a imagem não carrega — fallback bonito antes do deploy hospedar o PNG.
-  // Sem logoUrl → wordmark em texto (o preview local não depende de rede).
-  const logoCell = opts.logoUrl
-    ? `<img src="${esc(opts.logoUrl)}" alt="Stalo" width="96" height="58" style="display:block;border:0;outline:none;text-decoration:none;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};" />`
-    : `<div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:${INK};font-family:${SANS};">Stalo<span style="color:${AMBER};">.</span></div>`;
+  const header = logoCell(opts.logoUrl);
   // links relativos por ora (preview no próprio app); a etapa do ESP injeta URLs
   // absolutas + token de descadastro por assinante.
   const emailNote = opts.email
@@ -326,7 +337,7 @@ export function renderBoletim(
               <td style="padding:32px 36px 18px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td valign="middle">${logoCell}</td>
+                    <td valign="middle">${header}</td>
                     <td align="right" valign="middle">
                       <div style="font-family:${MONO};font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:${AMBER};">Boletim semanal</div>
                       <div style="font-family:${MONO};font-size:12px;letter-spacing:0.06em;color:${DIM};margin-top:6px;">${esc(dateStr)}</div>
@@ -335,11 +346,9 @@ export function renderBoletim(
                 </table>
               </td>
             </tr>
-            <!-- fio divisório com toque âmbar (solid = fallback; gradiente por cima) -->
+            <!-- fio divisório com toque âmbar -->
             <tr>
-              <td style="padding:0 36px;">
-                <div style="height:2px;line-height:2px;font-size:0;background:${BORDER_SOFT};background-image:linear-gradient(90deg,${AMBER},${BORDER_SOFT} 42%);">&nbsp;</div>
-              </td>
+              <td style="padding:0 36px;">${amberRule()}</td>
             </tr>
 
             <!-- intro editorial -->
@@ -374,6 +383,156 @@ ${sections}
                   <a href="${unsubscribeHref}" style="color:${DIM};text-decoration:underline;">Descadastrar</a>
                   &nbsp;·&nbsp;
                   <a href="/preferencias" style="color:${DIM};text-decoration:underline;">Trocar setores</a>
+                </div>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+// --- boas-vindas -------------------------------------------------------------
+
+// chips (pills) dos setores escolhidos, cada um na sua cor estável (o mesmo
+// colorer do boletim). Vazio → "" (o chamador omite o bloco). esc() em cada setor.
+function renderSectorPills(sectors: string[], colorFor: (topic: string) => string): string {
+  const clean = sectors.map((s) => s.trim()).filter(Boolean);
+  if (clean.length === 0) return "";
+  return clean
+    .map((s) => {
+      const c = colorFor(s);
+      const bg = mixHex(c, PANEL, 0.16);
+      return `<span style="display:inline-block;background:${bg};border:1px solid ${c};color:${c};font-size:13px;font-weight:600;line-height:1;padding:8px 14px;border-radius:999px;margin:0 8px 8px 0;">${esc(s)}</span>`;
+    })
+    .join("");
+}
+
+// base do link do radar: derivada do host do unsubscribeUrl (o envio real passa a
+// URL absoluta); sem ela, cai no relativo "/radar" (preview local). Não inventa env.
+function radarHref(unsubscribeUrl?: string): string {
+  if (!unsubscribeUrl) return "/radar";
+  try {
+    return `${new URL(unsubscribeUrl).origin}/radar`;
+  } catch {
+    return "/radar";
+  }
+}
+
+// E-mail de BOAS-VINDAS, disparado quando alguém assina a newsletter. Mesma
+// linguagem visual do boletim (dark, âmbar, tabelas + inline), mas em formato
+// "carta": container mais estreito (600px) e tom direto de agradecimento. MÓDULO
+// PURO — sem rede/banco; o disparo fica na rota.
+export function renderBoasVindas(opts: {
+  sectors: string[];
+  email?: string;
+  unsubscribeUrl?: string;
+  logoUrl?: string;
+}): string {
+  const colorFor = makeTopicColorer();
+  const pills = renderSectorPills(opts.sectors, colorFor);
+  const pillsBlock = pills
+    ? `
+            <tr>
+              <td style="padding:26px 40px 0;">
+                <div style="font-family:${MONO};font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:${DIM};margin-bottom:14px;">Seus setores</div>
+                ${pills}
+              </td>
+            </tr>`
+    : "";
+
+  // 3 linhas do card, com os glifos/cores dos insights (mesma taxonomia do boletim).
+  const t = INSIGHT_META.tendencia;
+  const o = INSIGHT_META.oportunidade;
+  const g = INSIGHT_META.gap;
+  const insightLine = (
+    meta: { glyph: string; color: string; label: string },
+    text: string,
+    last: boolean,
+  ): string => `
+                <div style="border-left:3px solid ${meta.color};padding-left:16px;${last ? "" : "margin-bottom:16px;"}">
+                  <span style="font-family:${MONO};font-size:12px;letter-spacing:0.06em;color:${meta.color};">${meta.glyph} ${meta.label}</span>
+                  <div style="font-size:14.5px;color:${BODY};line-height:1.5;margin-top:5px;">${text}</div>
+                </div>`;
+
+  const emailNote = opts.email
+    ? `Você assinou com o email <span style="color:${DIM};">${esc(opts.email)}</span>.<br />`
+    : "";
+  const unsubscribeHref = opts.unsubscribeUrl ? esc(opts.unsubscribeUrl) : "#";
+  const radar = esc(radarHref(opts.unsubscribeUrl));
+
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Stalo — Você tá dentro</title>
+  </head>
+  <body style="margin:0;padding:0;background:${BG};">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${BG};">
+      Você tá dentro. Toda segunda, o que mexeu nos seus setores — no Brasil e na gringa — e o que isso conecta.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};">
+      <tr>
+        <td align="center" style="padding:32px 14px;">
+          <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:${PANEL};border:1px solid ${BORDER};border-radius:18px;overflow:hidden;font-family:${SANS};">
+
+            <!-- header: logo + fio âmbar -->
+            <tr>
+              <td style="padding:32px 40px 18px;">${logoCell(opts.logoUrl)}</td>
+            </tr>
+            <tr>
+              <td style="padding:0 40px;">${amberRule()}</td>
+            </tr>
+
+            <!-- abertura -->
+            <tr>
+              <td style="padding:30px 40px 0;">
+                <div style="font-size:29px;font-weight:800;letter-spacing:-0.02em;line-height:1.12;color:${INK};">Você tá dentro.</div>
+                <div style="font-size:16.5px;line-height:1.6;color:${BODY};margin-top:16px;">
+                  Obrigado por assinar. A partir de agora, a gente vasculha o que se move nos seus setores — no Brasil e lá fora — pra te entregar não só o que aconteceu, mas o fio que liga uma coisa na outra. Sem ruído, sem release requentado.
+                </div>
+              </td>
+            </tr>
+${pillsBlock}
+            <!-- card: o que chega -->
+            <tr>
+              <td style="padding:28px 40px 0;">
+                <div style="background:${CARD};border:1px solid ${BORDER_SOFT};border-radius:14px;padding:22px 24px;">
+                  <div style="font-size:16px;font-weight:700;color:${INK};">O que chega pra você</div>
+                  <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 18px;">Toda <strong style="color:${BODY};">segunda, 9h de Brasília</strong>: as notícias do Brasil e da gringa dos seus setores — e, no fim de cada bloco, o que elas conectam.</div>
+                  ${insightLine(t, "O movimento que se repete e vira direção.", false)}
+                  ${insightLine(o, "A brecha que dá pra transformar em negócio.", false)}
+                  ${insightLine(g, "O que já existe lá fora e ainda falta aqui.", true)}
+                </div>
+              </td>
+            </tr>
+
+            <!-- CTA -->
+            <tr>
+              <td style="padding:28px 40px 0;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg,${PANEL_ALT},${PANEL});border:1px solid ${BORDER};border-radius:16px;">
+                  <tr>
+                    <td style="padding:24px 26px;">
+                      <div style="font-size:16px;font-weight:700;color:${INK};">Enquanto a segunda não chega</div>
+                      <div style="font-size:14px;line-height:1.55;color:${DIM};margin:8px 0 16px;">A newsletter é o gostinho. No radar você escreve uma tese e recebe o veredito — quem já faz, o gap e o go/no-go — com a fonte atrás de cada linha.</div>
+                      <a href="${radar}" style="display:inline-block;background:${AMBER};color:#1a1205;font-size:15px;font-weight:700;text-decoration:none;padding:13px 24px;border-radius:11px;">Conhecer o radar →</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- footer -->
+            <tr>
+              <td style="padding:28px 40px 36px;">
+                <div style="border-top:1px solid ${BORDER_SOFT};padding-top:22px;font-size:12.5px;line-height:1.6;color:${FAINT};">
+                  ${emailNote}
+                  <a href="${unsubscribeHref}" style="color:${DIM};text-decoration:underline;">Descadastrar</a>
                 </div>
               </td>
             </tr>
