@@ -159,7 +159,10 @@ function renderSection(
 
 // --- documento ---------------------------------------------------------------
 
-export function renderBoletim(edition: AssembledEdition, opts: { email?: string } = {}): string {
+export function renderBoletim(
+  edition: AssembledEdition,
+  opts: { email?: string; unsubscribeUrl?: string } = {},
+): string {
   const colorFor = makeTopicColorer();
   const sections = edition.sections.map((s) => renderSection(s, colorFor)).join("");
   const dateStr = formatWeek(edition.weekStart);
@@ -172,6 +175,9 @@ export function renderBoletim(edition: AssembledEdition, opts: { email?: string 
   const footerSectors = sectorsStr
     ? `Você recebe porque assinou o boletim da Stalo com os setores <span style="color:#9aa7bd;">${sectorsStr}</span>.<br />`
     : "";
+  // link de descadastro: usa a URL por-assinante (com o id como token) quando o
+  // envio a fornece; no preview/sem-URL mantém o placeholder "#".
+  const unsubscribeHref = opts.unsubscribeUrl ? esc(opts.unsubscribeUrl) : "#";
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -232,7 +238,7 @@ ${sections}
               <td style="padding:20px 30px 28px;">
                 <div style="border-top:1px solid #1b2537;padding-top:16px;font-size:11.5px;line-height:1.6;color:#6f7c94;">
                   ${emailNote}${footerSectors}
-                  <a href="#" style="color:#8b98af;text-decoration:underline;">Descadastrar</a>
+                  <a href="${unsubscribeHref}" style="color:#8b98af;text-decoration:underline;">Descadastrar</a>
                   &nbsp;·&nbsp;
                   <a href="/preferencias" style="color:#8b98af;text-decoration:underline;">Trocar setores</a>
                 </div>
@@ -245,4 +251,143 @@ ${sections}
     </table>
   </body>
 </html>`;
+}
+
+// Amostra ilustrativa da edição — 2 seções (BR/gringa), ~4 itens (1 SEM imageUrl,
+// pra exercitar a regra dura) e 3 insights cada. Reutilizada pelo preview e pelo
+// envio de teste, pra que os dois mostrem exatamente o mesmo boletim (DRY).
+// Dados fictícios; não é feed real.
+export function sampleEdition(): AssembledEdition {
+  return {
+    weekStart: "2026-07-06",
+    sectors: ["Inteligência Artificial", "Fintech", "Energia"],
+    sections: [
+      {
+        origem: "BR",
+        items: [
+          {
+            id: "br1",
+            topic: "Inteligência Artificial",
+            title:
+              "Bancos põem copilot pra rodar internamente e o regulador já pede rastro de auditoria.",
+            summary: "",
+            source: "Valor Econômico",
+            url: "https://example.com/ia-br",
+            entities: [],
+            publishedAt: "2026-07-08",
+            imageUrl: "https://picsum.photos/seed/ia-br/208/156",
+          },
+          {
+            // SEM imageUrl de propósito: precisa renderizar normalmente.
+            id: "br2",
+            topic: "Fintech",
+            title: "Drex avança de fase e a liquidação de recebível on-chain deixa de ser teoria.",
+            summary: "",
+            source: "Brazil Journal",
+            url: "https://example.com/fintech-br",
+            entities: [],
+            publishedAt: "2026-07-06",
+          },
+        ],
+        insights: [
+          {
+            id: "br-i1",
+            type: "tendencia",
+            title: "Encanamento da nuvem",
+            description:
+              "O Brasil está montando o encanamento da nuvem: energia firme e rastro de auditoria são o mesmo movimento visto de dois ângulos.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+          {
+            id: "br-i2",
+            type: "oportunidade",
+            title: "Observabilidade de LLM",
+            description:
+              "Observabilidade de LLM pra banco regulado: a exigência de auditoria vira demanda antes de virar produto.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+          {
+            id: "br-i3",
+            type: "gap",
+            title: "Liquidação on-chain",
+            description:
+              "O Drex liga o trilho, mas ninguém conectou a liquidação on-chain ao recebível de saúde de verdade.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+        ],
+      },
+      {
+        origem: "GRINGA",
+        items: [
+          {
+            id: "gr1",
+            topic: "Inteligência Artificial",
+            title:
+              "Contexto longo virou commodity. A briga migrou pra memória que persiste entre sessões.",
+            summary: "",
+            source: "The Information",
+            url: "https://example.com/ia-gringa",
+            entities: [],
+            publishedAt: "2026-07-07",
+            imageUrl: "https://picsum.photos/seed/ia-gr/208/156",
+          },
+          {
+            id: "gr2",
+            topic: "Fintech",
+            title: "Stablecoin de tesouraria deixou a mesa de câmbio e virou produto de PME.",
+            summary: "",
+            source: "Bloomberg",
+            url: "https://example.com/fintech-gringa",
+            entities: [],
+            publishedAt: "2026-07-03",
+            imageUrl: "https://picsum.photos/seed/fin-gr/208/156",
+          },
+        ],
+        insights: [
+          {
+            id: "gr-i1",
+            type: "tendencia",
+            title: "Valor sobe e desce a pilha",
+            description:
+              "O valor sobe e desce a pilha ao mesmo tempo: o que era diferencial no meio (contexto, câmbio) virou commodity; a margem foi pra memória e pra energia.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+          {
+            id: "gr-i2",
+            type: "oportunidade",
+            title: "Stablecoin pra PME",
+            description:
+              "Stablecoin de tesouraria pra PME brasileira: virou padrão lá fora, não tem versão local.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+          {
+            id: "gr-i3",
+            type: "gap",
+            title: "Energy-for-compute",
+            description:
+              "Contrato de energy-for-compute nasceu nos EUA; aqui ainda não há quem estruture o mesmo trato.",
+            rationale: "",
+            whyNow: "",
+            soWhat: "",
+            related_items: [],
+          },
+        ],
+      },
+    ],
+  };
 }

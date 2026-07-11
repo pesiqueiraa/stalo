@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AssembledEdition } from "@stalo/shared";
 // render.ts é PURO (sem server-only/rede/db), então importa direto — sem mocks.
-import { renderBoletim } from "./render";
+import { renderBoletim, sampleEdition } from "./render";
 
 // Fixture enxuta: duas origens; um item COM imagem, um SEM; título com caractere
 // especial (<, &, ") pra exercitar o escape; os três tipos de insight.
@@ -128,5 +128,20 @@ describe("renderBoletim", () => {
   it("omite o bloco de insights de uma seção sem insights", () => {
     // só a seção BR tem insights → uma única ocorrência do cabeçalho do bloco
     expect(html.match(/O que isso conecta/g)?.length).toBe(1);
+  });
+});
+
+describe("sampleEdition", () => {
+  it("devolve uma edição válida com as duas seções (BR e gringa)", () => {
+    const edition = sampleEdition();
+    expect(edition.sections).toHaveLength(2);
+    expect(edition.sections.map((s) => s.origem)).toEqual(["BR", "GRINGA"]);
+    // toda seção tem itens (senão o render omite a seção)
+    expect(edition.sections.every((s) => s.items.length > 0)).toBe(true);
+    // ao menos um item SEM imageUrl (exercita a regra dura)
+    const allItems = edition.sections.flatMap((s) => s.items);
+    expect(allItems.some((it) => it.imageUrl === undefined)).toBe(true);
+    // e renderiza sem quebrar
+    expect(renderBoletim(edition).startsWith("<!doctype html>")).toBe(true);
   });
 });

@@ -347,6 +347,25 @@ export async function saveSubscriber(email: string, sectors: string[]): Promise<
   `;
 }
 
+// Assinantes ATIVOS, para o envio semanal do boletim. Quem descadastrou
+// (status='unsubscribed') some do lote.
+export async function getActiveSubscribers(): Promise<
+  { id: string; email: string; sectors: string[] }[]
+> {
+  const rows = await sql<{ id: string; email: string; sectors: string[] | null }[]>`
+    SELECT id, email, sectors FROM subscribers WHERE status = 'active'
+  `;
+  return rows.map((r) => ({ id: r.id, email: r.email, sectors: r.sectors ?? [] }));
+}
+
+// Descadastra por id (o UUID do assinante é o token do link no boletim).
+// Idempotente: reaplicar não quebra se já estava descadastrado.
+export async function unsubscribe(id: string): Promise<void> {
+  await sql`
+    UPDATE subscribers SET status = 'unsubscribed', updated_at = now() WHERE id = ${id}
+  `;
+}
+
 // ---------- newsletter editions (edição semanal global) ----------
 
 // A edição da semana NÃO é workspace-scoped: uma linha por semana (week_start),
