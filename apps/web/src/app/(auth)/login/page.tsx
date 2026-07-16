@@ -16,19 +16,11 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
-  // conta que ainda não confirmou o e-mail (null = fluxo normal de erro)
-  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
-  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  // OAuth que falhou volta com ?error=oauth; link de confirmação expirado, com ?error=confirm
+  // OAuth que falhou volta com ?error=oauth
   useEffect(() => {
-    const err = new URLSearchParams(window.location.search).get("error");
-    if (err === "oauth") {
+    if (new URLSearchParams(window.location.search).get("error") === "oauth") {
       setErrors({ form: "Não consegui entrar com o Google. Tente de novo." });
-    } else if (err === "confirm") {
-      setErrors({
-        form: "Link de confirmação inválido ou expirado. Entre com e-mail e senha pra receber outro.",
-      });
     }
   }, []);
 
@@ -46,8 +38,6 @@ export default function LoginPage() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    setConfirmEmail(null);
-    setResendState("idle");
     setLoading(true);
     const supabase = createSupabaseBrowser();
     const { error } = await supabase.auth.signInWithPassword({
@@ -55,27 +45,13 @@ export default function LoginPage() {
       password,
     });
     if (error) {
-      const unconfirmed =
-        error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message);
-      if (unconfirmed) {
-        setConfirmEmail(email.trim());
-      } else {
-        // não revela qual campo falhou (segurança)
-        setErrors({ form: "E-mail ou senha inválidos." });
-      }
+      // não revela qual campo falhou (segurança)
+      setErrors({ form: "E-mail ou senha inválidos." });
       setLoading(false);
       return;
     }
     // novato (sem setores/lente) → onboarding; senão → radar
     router.push(await postAuthDestination());
-  }
-
-  async function resendConfirmation() {
-    if (!confirmEmail || resendState === "sending") return;
-    setResendState("sending");
-    const supabase = createSupabaseBrowser();
-    const { error } = await supabase.auth.resend({ type: "signup", email: confirmEmail });
-    setResendState(error ? "error" : "sent");
   }
 
   return (
@@ -147,28 +123,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {confirmEmail ? (
-          <div className="auth-notice">
-            Confirme seu e-mail pra entrar. Enviamos um link pra {confirmEmail}.{" "}
-            <button
-              type="button"
-              className="auth-link"
-              onClick={resendConfirmation}
-              disabled={resendState === "sending"}
-            >
-              {resendState === "sending"
-                ? "Reenviando…"
-                : resendState === "sent"
-                  ? "Link reenviado ✓"
-                  : "Reenviar link"}
-            </button>
-            {resendState === "error" && (
-              <span className="field-error"> Não consegui reenviar. Tente de novo.</span>
-            )}
-          </div>
-        ) : (
-          errors.form && <p className="auth-form-error">{errors.form}</p>
-        )}
+        {errors.form && <p className="auth-form-error">{errors.form}</p>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
           {loading ? (
