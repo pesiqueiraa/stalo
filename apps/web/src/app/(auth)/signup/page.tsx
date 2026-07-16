@@ -23,6 +23,7 @@ export default function SignupPage() {
   }>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   function validate() {
     const e: { name?: string; email?: string; password?: string } = {};
@@ -65,6 +66,14 @@ export default function SignupPage() {
       );
       setLoading(false);
     }
+  }
+
+  async function resendConfirmation() {
+    if (resendState === "sending") return;
+    setResendState("sending");
+    const supabase = createSupabaseBrowser();
+    const { error } = await supabase.auth.resend({ type: "signup", email: email.trim() });
+    setResendState(error ? "error" : "sent");
   }
 
   return (
@@ -155,7 +164,26 @@ export default function SignupPage() {
         </div>
 
         {errors.form && <p className="auth-form-error">{errors.form}</p>}
-        {notice && <p className="auth-notice">{notice}</p>}
+        {notice && (
+          <div className="auth-notice">
+            {notice}{" "}
+            <button
+              type="button"
+              className="auth-link"
+              onClick={resendConfirmation}
+              disabled={resendState === "sending"}
+            >
+              {resendState === "sending"
+                ? "Reenviando…"
+                : resendState === "sent"
+                  ? "Link reenviado ✓"
+                  : "Reenviar link"}
+            </button>
+            {resendState === "error" && (
+              <span className="field-error"> Não consegui reenviar. Tente de novo.</span>
+            )}
+          </div>
+        )}
 
         <button type="submit" className="auth-submit" disabled={loading || Boolean(notice)}>
           {loading ? (
