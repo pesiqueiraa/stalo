@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getLens, listTopics } from "@stalo/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getWorkspaceId } from "@/lib/workspace";
+import { postAuthDest } from "@/lib/postAuthDest";
 
 // Retorno do OAuth (Google): o Supabase manda o visitante de volta pra cá com um
 // ?code. Trocamos o code por sessão e decidimos pra onde ir — quem ainda não tem
@@ -19,14 +18,5 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.redirect(`${origin}/login?error=oauth`);
   }
-
-  let dest = "/radar";
-  try {
-    const wid = await getWorkspaceId();
-    const [topics, lens] = await Promise.all([listTopics(wid), getLens(wid)]);
-    if (topics.length === 0 && !lens) dest = "/onboarding";
-  } catch {
-    // se a checagem falhar, o radar é o destino seguro
-  }
-  return NextResponse.redirect(`${origin}${dest}`);
+  return NextResponse.redirect(`${origin}${await postAuthDest()}`);
 }
