@@ -1,5 +1,7 @@
 # Verificação de e-mail no auth + scan grátis único — Design
 
+> **STATUS (2026-07-16):** a Parte 1 (confirmação de e-mail) foi implementada e depois **revertida por decisão de produto** — a fricção no onboarding pesou mais que a validação do endereço. A Parte 2 (scan grátis único) está em produção. Se a Parte 1 voltar um dia, os commits revertidos servem de referência (`git log --grep "confirmação"`).
+
 **Data:** 2026-07-16
 **Branch:** `fix/auth-email-verification` (a partir de `main`)
 **Origem:** feedback de usuário — o cadastro não valida o e-mail (brecha de segurança e econômica: contas falsas viram workspaces que rodam scans pagos na OpenAI).
