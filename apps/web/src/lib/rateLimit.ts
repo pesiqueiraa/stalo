@@ -46,3 +46,33 @@ const HOUR = 3600;
 export const SCAN_LIMIT = { bucket: "scan", limit: 12, windowSeconds: HOUR };
 export const DIVE_LIMIT = { bucket: "dive", limit: 20, windowSeconds: HOUR };
 export const FINANCIALS_LIMIT = { bucket: "financials", limit: 20, windowSeconds: HOUR };
+
+// Brinde do visitante anônimo: 1 scan grátis por janela de 90 dias, amarrado
+// ao IP E ao workspace do cookie — apagar o cookie não renova o brinde (o IP
+// segura). Estourou → 401 com code "signup_required", que o frontend rende
+// como convite pra criar conta (não como erro técnico).
+export const FREE_SCAN = { bucket: "free-scan", limit: 1, windowSeconds: 90 * 24 * HOUR };
+
+export async function enforceFreeScanLimit(
+  request: Request,
+  workspaceId: string,
+): Promise<NextResponse | null> {
+  const keys = [
+    `${FREE_SCAN.bucket}:ip:${clientIp(request)}`,
+    `${FREE_SCAN.bucket}:wid:${workspaceId}`,
+  ];
+  try {
+    const results = await Promise.all(
+      keys.map((key) => checkRateLimit(key, FREE_SCAN.limit, FREE_SCAN.windowSeconds)),
+    );
+    if (results.every((r) => r.allowed)) return null;
+  } catch (err) {
+    // falha ABERTA, como no enforceRateLimit: infra fora não derruba o endpoint
+    console.error("free scan check failed (allowing request)", err);
+    return null;
+  }
+  return NextResponse.json(
+    { error: "Seu scan grátis já foi usado. Crie sua conta pra continuar.", code: "signup_required" },
+    { status: 401 },
+  );
+}

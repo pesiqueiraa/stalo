@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { runScan } from "@stalo/server";
 import { saveScan } from "@stalo/server";
-import { getWorkspaceId } from "@/lib/workspace";
-import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
+import { getAuthUserId, getWorkspaceId } from "@/lib/workspace";
+import { enforceFreeScanLimit, enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
 // POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
 // resultado (scans + news_items + insights) e devolve o ScanResult (items +
@@ -44,12 +44,21 @@ export async function POST(request: Request) {
   );
   if (limited) return limited;
 
+  // visitante anônimo tem direito a 1 scan grátis; depois disso, conta (com
+  // e-mail verificado). Usuário logado segue só com o limite por IP acima.
+  const userId = await getAuthUserId();
+  const workspaceId = userId ?? (await getWorkspaceId());
+  if (!userId) {
+    const gated = await enforceFreeScanLimit(request, workspaceId);
+    if (gated) return gated;
+  }
+
   try {
     const result = await runScan(topics, window);
     // persiste o scan para que /api/scan/latest o recupere ao recarregar a
     // página. Se a gravação falhar, o scan não é considerado bem-sucedido —
     // não falha silenciosamente (CLAUDE.md).
-    await saveScan(await getWorkspaceId(), topics, result);
+    await saveScan(workspaceId, topics, result);
     return NextResponse.json(result);
   } catch (err) {
     console.error("scan failed", err);

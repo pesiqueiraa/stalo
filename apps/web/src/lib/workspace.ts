@@ -9,8 +9,8 @@ import { WORKSPACE_COOKIE, WORKSPACE_COOKIE_MAX_AGE } from "./workspaceCookie";
 //   "workspace_id vira user_id"). Todo dado criado logado fica sob o user.
 // - Visitante SEM login: cai no workspace anônimo do cookie (produto.md §2) —
 //   comportamento original preservado como fallback.
-export async function getWorkspaceId(): Promise<string> {
-  // 1) sessão autenticada tem prioridade
+// Id do usuário autenticado (Supabase), ou null se a visita é anônima.
+export async function getAuthUserId(): Promise<string | null> {
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     try {
       const supabase = await createSupabaseServer();
@@ -19,9 +19,16 @@ export async function getWorkspaceId(): Promise<string> {
       } = await supabase.auth.getUser();
       if (user) return user.id;
     } catch {
-      // Supabase indisponível/erro de sessão: segue pro workspace anônimo
+      // Supabase indisponível/erro de sessão: trata como anônimo
     }
   }
+  return null;
+}
+
+export async function getWorkspaceId(): Promise<string> {
+  // 1) sessão autenticada tem prioridade
+  const userId = await getAuthUserId();
+  if (userId) return userId;
 
   // 2) fallback: workspace anônimo do cookie
   const store = await cookies();
