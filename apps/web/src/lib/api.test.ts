@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requestScan, SignupRequiredError } from "./api";
+import { requestScan } from "./api";
 
 function stubFetch(status: number, body: unknown) {
   vi.stubGlobal(
@@ -12,19 +12,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("requestScan — erros do gate", () => {
-  it("401 signup_required vira SignupRequiredError com a mensagem do servidor", async () => {
-    stubFetch(401, { error: "Seu scan grátis já foi usado.", code: "signup_required" });
-    const err = await requestScan(["IA"], null).catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(SignupRequiredError);
-    expect((err as Error).message).toBe("Seu scan grátis já foi usado.");
-  });
-
-  it("outros erros seguem como Error genérico (não SignupRequiredError)", async () => {
-    stubFetch(500, { error: "boom" });
+describe("requestScan — erros do servidor", () => {
+  it("erro com corpo JSON usa a mensagem do servidor (ex.: 429 do limite)", async () => {
+    stubFetch(429, { error: "Você usou seus 4 scans desta janela de 2 horas. Volte daqui a pouco." });
     const err = await requestScan(["IA"], null).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Error);
-    expect(err).not.toBeInstanceOf(SignupRequiredError);
-    expect((err as Error).message).toBe("boom");
+    expect((err as Error).message).toContain("4 scans");
+  });
+
+  it("erro sem mensagem cai no texto genérico", async () => {
+    stubFetch(500, {});
+    const err = await requestScan(["IA"], null).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toBe("Falha ao buscar notícias.");
   });
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { TOPIC_COLORS } from "@/lib/graph";
 import type { InsightType, Topic } from "@stalo/shared";
 import { labelForType } from "@/lib/ui";
@@ -24,9 +23,6 @@ interface TopicsPanelProps {
   onScan: () => void;
   loading: boolean;
   error: string | null;
-  // ação opcional dentro do banner de erro (ex.: convite pra criar conta
-  // quando o visitante anônimo gasta o scan grátis)
-  errorLink?: { href: string; label: string } | null;
   days: number | null;
   onDaysChange: (days: number | null) => void;
   settings: GraphSettings;
@@ -51,7 +47,6 @@ export function TopicsPanel({
   onScan,
   loading,
   error,
-  errorLink,
   days,
   onDaysChange,
   settings,
@@ -144,17 +139,7 @@ export function TopicsPanel({
           "Atualizar notícias"
         )}
       </button>
-      {error && (
-        <div className="error-banner">
-          {error}
-          {errorLink && (
-            <>
-              {" "}
-              <Link href={errorLink.href}>{errorLink.label}</Link>
-            </>
-          )}
-        </div>
-      )}
+      {error && <div className="error-banner">{error}</div>}
 
       {/* legenda só dos tipos de insight — as cores dos temas já aparecem nos
           chips de "Temas monitorados", então repeti-las aqui seria redundante.
