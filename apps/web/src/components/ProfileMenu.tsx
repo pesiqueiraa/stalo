@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { Lens } from "@stalo/shared";
 
 // As três lentes, com a mesma cor/ícone/voz do onboarding (fonte visual única do
@@ -47,15 +46,6 @@ function LensIcon({ id }: { id: Lens }) {
   );
 }
 
-type Identity = { name: string; email: string; avatar: string | null };
-
-function initialsOf(name: string, email: string): string {
-  const src = name.trim() || email.trim();
-  const parts = src.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return (src.slice(0, 2) || "?").toUpperCase();
-}
-
 interface ProfileMenuProps {
   lens: Lens | null;
   // Persiste a troca de lente (o pai faz setLens + saveLens). Rejeita em falha
@@ -63,46 +53,16 @@ interface ProfileMenuProps {
   onLensChange: (lens: Lens) => Promise<void>;
 }
 
-// Avatar no canto do header que abre a "tela de perfil": identidade (Google),
-// troca de lente e sair. A identidade é lida do próprio Supabase no client — sem
-// prop drilling a partir do servidor.
+// Botão no canto do header que abre as preferências do workspace: troca de lente.
 export function ProfileMenu({ lens, onLensChange }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [me, setMe] = useState<Identity | null>(null);
   const [savingLens, setSavingLens] = useState<Lens | null>(null);
   const [savedLens, setSavedLens] = useState<Lens | null>(null);
   const [lensError, setLensError] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Identidade: carrega uma vez. getUser valida a sessão; se algo falhar, o
-  // avatar cai no fallback de iniciais e o modal ainda funciona pra sair.
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const supabase = createSupabaseBrowser();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!alive || !user) return;
-        const m = user.user_metadata ?? {};
-        setMe({
-          name: (m.full_name as string) || (m.name as string) || "",
-          email: user.email ?? "",
-          avatar: (m.avatar_url as string) || (m.picture as string) || null,
-        });
-      } catch {
-        // segue sem identidade — o modal continua útil (trocar lente / sair)
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -145,18 +105,6 @@ export function ProfileMenu({ lens, onLensChange }: ProfileMenuProps) {
     }
   }
 
-  async function signOut() {
-    setSigningOut(true);
-    try {
-      await createSupabaseBrowser().auth.signOut();
-    } catch {
-      // mesmo se a chamada falhar, forçamos a saída limpando a navegação
-    }
-    // hard redirect: zera todo o estado do radar em memória e a landing
-    // (server) re-renderiza já deslogada.
-    window.location.assign("/");
-  }
-
   // a lente exibida como ativa acompanha o clique na hora (otimista), antes de o
   // pai propagar a prop
   const activeLens = savingLens ?? lens;
@@ -171,18 +119,13 @@ export function ProfileMenu({ lens, onLensChange }: ProfileMenuProps) {
         ref={triggerRef}
         type="button"
         className="pm-trigger"
-        style={{ ["--ring" as string]: activeColor }}
+        style={{ ["--ring" as string]: activeColor, ["--c" as string]: activeColor }}
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Abrir perfil"
+        aria-label="Abrir preferências"
       >
-        {me?.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={me.avatar} alt="" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="pm-initials">{me ? initialsOf(me.name, me.email) : "·"}</span>
-        )}
+        {activeLens ? <LensIcon id={activeLens} /> : <span className="pm-initials">·</span>}
       </button>
 
       {open && (
@@ -200,21 +143,12 @@ export function ProfileMenu({ lens, onLensChange }: ProfileMenuProps) {
               </svg>
             </button>
 
-            {/* identidade */}
             <div className="pm-id">
-              <span className="pm-avatar" style={{ ["--ring" as string]: activeColor }}>
-                {me?.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={me.avatar} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="pm-initials">{me ? initialsOf(me.name, me.email) : "·"}</span>
-                )}
-              </span>
               <div className="pm-id-text">
                 <h2 id="pm-title" className="pm-name">
-                  {me?.name || "Sua conta"}
+                  Preferências
                 </h2>
-                {me?.email && <p className="pm-email">{me.email}</p>}
+                <p className="pm-email">Como o radar prioriza o seu brief.</p>
               </div>
             </div>
 
@@ -255,11 +189,6 @@ export function ProfileMenu({ lens, onLensChange }: ProfileMenuProps) {
                 })}
               </div>
             </div>
-
-            {/* sair */}
-            <button type="button" className="pm-signout" onClick={signOut} disabled={signingOut}>
-              {signingOut ? "Saindo…" : "Sair da conta"}
-            </button>
           </div>
         </div>
       )}
