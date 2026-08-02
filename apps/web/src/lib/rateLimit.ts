@@ -43,36 +43,35 @@ export async function enforceRateLimit(
 
 // Limites por endpoint (por IP). Generosos para uso real, restritivos para bot.
 const HOUR = 3600;
-export const SCAN_LIMIT = { bucket: "scan", limit: 12, windowSeconds: HOUR };
 export const DIVE_LIMIT = { bucket: "dive", limit: 20, windowSeconds: HOUR };
 export const FINANCIALS_LIMIT = { bucket: "financials", limit: 20, windowSeconds: HOUR };
 
-// Brinde do visitante anônimo: 1 scan grátis por janela de 90 dias, amarrado
-// ao IP E ao workspace do cookie — apagar o cookie não renova o brinde (o IP
-// segura). Estourou → 401 com code "signup_required", que o frontend rende
-// como convite pra criar conta (não como erro técnico).
-export const FREE_SCAN = { bucket: "free-scan", limit: 1, windowSeconds: 90 * 24 * HOUR };
+// Limite do scan — o endpoint mais caro (busca web na OpenAI). Sem login, este
+// é o único freio de custo: 4 scans por janela de 2h, amarrados ao IP E ao
+// workspace do cookie — apagar o cookie não renova (o IP segura) e trocar de
+// IP não renova (o cookie segura).
+const SCAN = { bucket: "scan", limit: 4, windowSeconds: 2 * HOUR };
 
-export async function enforceFreeScanLimit(
+export async function enforceScanLimit(
   request: Request,
   workspaceId: string,
 ): Promise<NextResponse | null> {
-  const keys = [
-    `${FREE_SCAN.bucket}:ip:${clientIp(request)}`,
-    `${FREE_SCAN.bucket}:wid:${workspaceId}`,
-  ];
+  const keys = [`${SCAN.bucket}:ip:${clientIp(request)}`, `${SCAN.bucket}:wid:${workspaceId}`];
+  let blocked: { retryAfterSeconds: number }[];
   try {
     const results = await Promise.all(
-      keys.map((key) => checkRateLimit(key, FREE_SCAN.limit, FREE_SCAN.windowSeconds)),
+      keys.map((key) => checkRateLimit(key, SCAN.limit, SCAN.windowSeconds)),
     );
-    if (results.every((r) => r.allowed)) return null;
+    blocked = results.filter((r) => !r.allowed);
   } catch (err) {
     // falha ABERTA, como no enforceRateLimit: infra fora não derruba o endpoint
-    console.error("free scan check failed (allowing request)", err);
+    console.error("scan limit check failed (allowing request)", err);
     return null;
   }
+  if (blocked.length === 0) return null;
+  const retryAfter = Math.max(...blocked.map((r) => r.retryAfterSeconds));
   return NextResponse.json(
-    { error: "Seu scan grátis já foi usado. Crie sua conta pra continuar.", code: "signup_required" },
-    { status: 401 },
+    { error: "Você usou seus 4 scans desta janela de 2 horas. Volte daqui a pouco." },
+    { status: 429, headers: { "Retry-After": String(retryAfter) } },
   );
 }
