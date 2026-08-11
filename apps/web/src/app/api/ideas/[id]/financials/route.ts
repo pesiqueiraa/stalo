@@ -30,6 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       FINANCIALS_LIMIT.bucket,
       FINANCIALS_LIMIT.limit,
       FINANCIALS_LIMIT.windowSeconds,
+      { failClosed: true },
     );
     if (limited) return limited;
     // a lente do workspace ajusta o foco da análise financeira

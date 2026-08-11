@@ -10,68 +10,57 @@ function clientIp(request: Request): string {
   return request.headers.get("x-real-ip") ?? "local";
 }
 
-// Aplica o rate limit por IP a um endpoint. Devolve uma resposta 429 (com
-// Retry-After) quando estoura, ou null para o handler seguir. Chame ANTES da
-// chamada cara à IA — assim o 429 não gasta a OpenAI. O erro é visível ao
-// usuário (CLAUDE.md: nunca falhar em silêncio).
+// Aplica o rate limit por IP a um endpoint. Devolve null para o handler seguir,
+// ou a resposta de recusa. Chame ANTES da chamada cara à IA — assim a recusa
+// não gasta a OpenAI.
+//
+// failClosed: o que fazer quando o PRÓPRIO contador falha (Upstash fora).
+//   • true  → recusa (503). Use nas rotas que chamam a IA: sem contador não há
+//     teto, e errar para o lado de não gastar é mais barato que o contrário.
+//   • false → deixa passar. Use no resto: o contador fora não deve derrubar o
+//     site inteiro.
+//
+// message: texto do 429. O padrão serve para qualquer rota; passe um específico
+// quando a rota souber dizer algo mais útil ("seus 4 scans desta janela").
 export async function enforceRateLimit(
   request: Request,
   bucket: string,
   limit: number,
   windowSeconds: number,
+  opts: { failClosed?: boolean; message?: string } = {},
 ): Promise<NextResponse | null> {
-  const key = `${bucket}:${clientIp(request)}`;
-  let allowed: boolean;
-  let retryAfterSeconds: number;
+  const key = `rl:${bucket}:${clientIp(request)}`;
+  let result;
   try {
-    ({ allowed, retryAfterSeconds } = await checkRateLimit(key, limit, windowSeconds));
+    result = await checkRateLimit(key, limit, windowSeconds);
   } catch (err) {
-    // falha ABERTA: se a infra de rate limit falhar (tabela ausente, banco fora),
-    // é melhor deixar passar do que quebrar o endpoint. Loga para percebermos.
-    console.error("rate limit check failed (allowing request)", err);
-    return null;
+    console.error("rate limit check failed", err);
+    if (!opts.failClosed) return null;
+    return NextResponse.json(
+      { error: "O controle de uso está indisponível agora. Tente de novo em alguns minutos." },
+      { status: 503, headers: { "Retry-After": "60" } },
+    );
   }
-  if (allowed) return null;
+
+  if (result.allowed) return null;
+
   return NextResponse.json(
     {
       error:
+        opts.message ??
         "Você atingiu o limite de uso por agora. Tente de novo em alguns minutos.",
     },
-    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } },
   );
 }
 
-// Limites por endpoint (por IP). Generosos para uso real, restritivos para bot.
+// Limites por endpoint, todos por IP. O scan é o mais caro (busca web na
+// OpenAI), por isso a janela maior e o teto menor.
+//
+// Só o IP: a chave por cookie que existia antes não segurava nada contra script
+// — quem abusa manda um cookie novo a cada requisição. Melhor um limite honesto
+// do que dois que parecem dois.
 const HOUR = 3600;
+export const SCAN_LIMIT = { bucket: "scan", limit: 4, windowSeconds: 2 * HOUR };
 export const DIVE_LIMIT = { bucket: "dive", limit: 20, windowSeconds: HOUR };
 export const FINANCIALS_LIMIT = { bucket: "financials", limit: 20, windowSeconds: HOUR };
-
-// Limite do scan — o endpoint mais caro (busca web na OpenAI). Sem login, este
-// é o único freio de custo: 4 scans por janela de 2h, amarrados ao IP E ao
-// workspace do cookie — apagar o cookie não renova (o IP segura) e trocar de
-// IP não renova (o cookie segura).
-const SCAN = { bucket: "scan", limit: 4, windowSeconds: 2 * HOUR };
-
-export async function enforceScanLimit(
-  request: Request,
-  workspaceId: string,
-): Promise<NextResponse | null> {
-  const keys = [`${SCAN.bucket}:ip:${clientIp(request)}`, `${SCAN.bucket}:wid:${workspaceId}`];
-  let blocked: { retryAfterSeconds: number }[];
-  try {
-    const results = await Promise.all(
-      keys.map((key) => checkRateLimit(key, SCAN.limit, SCAN.windowSeconds)),
-    );
-    blocked = results.filter((r) => !r.allowed);
-  } catch (err) {
-    // falha ABERTA, como no enforceRateLimit: infra fora não derruba o endpoint
-    console.error("scan limit check failed (allowing request)", err);
-    return null;
-  }
-  if (blocked.length === 0) return null;
-  const retryAfter = Math.max(...blocked.map((r) => r.retryAfterSeconds));
-  return NextResponse.json(
-    { error: "Você usou seus 4 scans desta janela de 2 horas. Volte daqui a pouco." },
-    { status: 429, headers: { "Retry-After": String(retryAfter) } },
-  );
-}

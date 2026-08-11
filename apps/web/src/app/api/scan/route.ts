@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runScan, saveScan } from "@stalo/server";
 import { getWorkspaceId } from "@/lib/workspace";
-import { enforceScanLimit } from "@/lib/rateLimit";
+import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
 // POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
 // resultado (scans + news_items + insights) e devolve o ScanResult (items +
@@ -34,10 +34,21 @@ export async function POST(request: Request) {
   const window = typeof days === "number" && ALLOWED_DAYS.includes(days) ? days : null;
 
   // rate limit ANTES de chamar a IA — o scan é o endpoint mais caro (busca
-  // web). Um 429 aqui não gasta a OpenAI.
-  const workspaceId = await getWorkspaceId();
-  const limited = await enforceScanLimit(request, workspaceId);
+  // web). Uma recusa aqui não gasta a OpenAI. failClosed: sem contador de pé,
+  // é mais barato recusar do que arriscar gasto sem teto.
+  const limited = await enforceRateLimit(
+    request,
+    SCAN_LIMIT.bucket,
+    SCAN_LIMIT.limit,
+    SCAN_LIMIT.windowSeconds,
+    {
+      failClosed: true,
+      message: "Você usou seus 4 scans desta janela de 2 horas. Volte daqui a pouco.",
+    },
+  );
   if (limited) return limited;
+
+  const workspaceId = await getWorkspaceId();
 
   try {
     const result = await runScan(topics, window);
