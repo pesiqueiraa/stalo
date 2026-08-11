@@ -8,6 +8,11 @@ import { redisStore } from "./redis";
 // Uma chave por bucket+IP (ex.: "rl:scan:1.2.3.4"), com TTL igual à janela:
 // quando o TTL vence, a chave some e a janela recomeça sozinha. INCR é atômico,
 // então é seguro sob requisições concorrentes.
+//
+// INCR + EXPIRE não são atômicos (duas chamadas HTTP ao Upstash). Se EXPIRE
+// falhar após INCR bem-sucedido, a chave fica sem TTL e fica bloqueada para
+// sempre. Auto-reparo: quando o limite estourar e a chave não tiver TTL,
+// defina-a ali mesmo — a próxima requisição vai achar a chave com validade.
 
 // O mínimo que o contador precisa de um Redis. Existir como interface é o que
 // permite testar sem rede (ver rateLimit.test.ts).
@@ -43,6 +48,13 @@ export async function checkRateLimit(
   // TTL negativo = chave sem expiração conhecida; cai na janela cheia para o
   // Retry-After nunca sair negativo (o navegador leria como "tente agora").
   const ttl = await store.ttl(key);
+
+  // Auto-reparo: se a chave órfã (sem TTL) já ultrapassou o limite, defina
+  // a expiração aqui mesmo para evitar bloqueio permanente.
+  if (ttl < 0) {
+    await store.expire(key, windowSeconds);
+  }
+
   return {
     allowed: false,
     remaining: 0,

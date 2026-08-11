@@ -80,4 +80,37 @@ describe("checkRateLimit", () => {
     };
     await expect(checkRateLimit("scan:1.1.1.1", 4, 7200, store)).rejects.toThrow("upstash fora");
   });
+
+  it("repara chaves órfãs (sem TTL) ao ultrapassar o limite", async () => {
+    // Simular chave que perdeu o TTL (ex.: EXPIRE falhou após INCR).
+    // Quando a chave órfã é consultada e já ultrapassou o limite, o auto-reparo
+    // chama expire de novo para evitar bloqueio permanente.
+    const store = fakeStore();
+    const key = "scan:1.1.1.1";
+
+    // Atingir o limite normalmente (EXPIRE é definido)
+    for (let i = 0; i < 4; i++) {
+      await checkRateLimit(key, 4, 7200, store);
+    }
+
+    // Limpar as chamadas registradas até aqui
+    store.calls.length = 0;
+
+    // Forçar TTL -1 a partir de agora (simular chave órfã)
+    const storeOrfao: RateLimitStore = {
+      ...store,
+      async ttl() { return -1; },
+    };
+
+    // Quinta requisição: já ultrapassou o limite, TTL está ausente
+    const r = await checkRateLimit(key, 4, 7200, storeOrfao);
+
+    // Deve bloquear e tentar reparar
+    expect(r.allowed).toBe(false);
+    expect(r.retryAfterSeconds).toBe(7200);
+
+    // O auto-reparo deve ter chamado expire de novo
+    const expireCalls = store.calls.filter((c) => c.startsWith("expire:"));
+    expect(expireCalls).toContain(`expire:${key}:7200`);
+  });
 });
