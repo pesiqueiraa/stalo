@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // A rota puxa IA + DB via @stalo/server e o workspace via @/lib/workspace.
-// Mockamos tudo — o alvo é o LIMITE: 4 scans por 2h por IP+cookie, fail-open.
+// Mockamos tudo — o alvo é o LIMITE: 4 scans por 2h por IP, fail-closed.
 vi.mock("server-only", () => ({}));
 vi.mock("@stalo/server", () => ({
   runScan: vi.fn(),
@@ -38,11 +38,11 @@ beforeEach(() => {
 });
 
 describe("POST /api/scan — limite de 4 scans por 2h", () => {
-  it("dentro do limite passa e consome as chaves de IP e de workspace", async () => {
+  it("dentro do limite passa e consome a chave de IP", async () => {
     const res = await POST(req());
     expect(res.status).toBe(200);
-    expect(mockCheck.mock.calls).toContainEqual(["scan:ip:1.2.3.4", 4, 7200]);
-    expect(mockCheck.mock.calls).toContainEqual(["scan:wid:wid-anon", 4, 7200]);
+    // uma única chave: a de IP. A chave por cookie saiu — o cliente a controla.
+    expect(mockCheck.mock.calls).toEqual([["rl:scan:1.2.3.4", 4, 7200]]);
     expect(mockSaveScan).toHaveBeenCalledWith("wid-anon", ["IA"], { items: [], insights: [] });
   });
 
@@ -56,21 +56,13 @@ describe("POST /api/scan — limite de 4 scans por 2h", () => {
     expect(mockRunScan).not.toHaveBeenCalled();
   });
 
-  it("basta UMA das chaves estourar para bloquear (cookie novo não renova)", async () => {
-    mockCheck.mockImplementation(async (key: string) => ({
-      allowed: !key.startsWith("scan:ip:"),
-      remaining: 0,
-      retryAfterSeconds: 900,
-    }));
+  it("contador fora → FAIL-CLOSED: 503 e a OpenAI não é chamada", async () => {
+    // era fail-open. Com a infra do contador cega, deixar passar significava
+    // gastar sem teto — foi o que aconteceu quando o Supabase caiu.
+    mockCheck.mockRejectedValue(new Error("upstash fora"));
     const res = await POST(req());
-    expect(res.status).toBe(429);
+    expect(res.status).toBe(503);
     expect(mockRunScan).not.toHaveBeenCalled();
-  });
-
-  it("infra de rate limit fora → fail-open (scan segue)", async () => {
-    mockCheck.mockRejectedValue(new Error("db down"));
-    const res = await POST(req());
-    expect(res.status).toBe(200);
-    expect(mockRunScan).toHaveBeenCalled();
+    expect(mockSaveScan).not.toHaveBeenCalled();
   });
 });

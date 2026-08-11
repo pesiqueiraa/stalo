@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "apps/web/src"),
       "@stalo/shared": path.resolve(__dirname, "packages/shared/src/index.ts"),
+      "server-only": path.resolve(__dirname, ".vitest/server-only-mock.js"),
     },
   },
   test: {

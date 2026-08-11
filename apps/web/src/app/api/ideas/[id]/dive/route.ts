@@ -26,6 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       DIVE_LIMIT.bucket,
       DIVE_LIMIT.limit,
       DIVE_LIMIT.windowSeconds,
+      { failClosed: true },
     );
     if (limited) return limited;
     // a lente do workspace ajusta a linguagem de direcionamento do mergulho

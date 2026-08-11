@@ -48,12 +48,12 @@ cd stalo
 npm install
 
 cp apps/web/.env.example apps/web/.env
-# preencher OPENAI_API_KEY e DATABASE_URL
+# preencher OPENAI_API_KEY, DATABASE_URL, UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN
 
 npm run dev
 ```
 
-O schema do banco está em `packages/server/db/schema.sql`. Sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda.
+O schema do banco está em `packages/server/db/schema.sql`. Sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda. O rate limit (scan, dive, financials) usa o Upstash Redis; sem `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` essas rotas devolvem **503** em vez de rodar — a política é fail-closed (sem contador de pé, é mais barato recusar do que chamar a IA sem teto).
 
 ```bash
 npm test        # Vitest

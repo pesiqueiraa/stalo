@@ -12,6 +12,22 @@ Este é o **plano 1 de 3** da spec `artefatos/specs/2026-08-11-sem-banco-design.
 
 Ao final dele, o rate limit é a única coisa que já não precisa do banco. As rotas de dados continuam quebradas até o plano 2.
 
+## Executado — o que saiu diferente do plano
+
+Este plano foi executado em 2026-08-11 (commits `bd1f4af..f717618`). Quatro coisas divergiram do texto abaixo. O texto original ficou como está, e as diferenças estão aqui, porque um plano reescrito para parecer certo esconde justamente o que valeu a pena aprender.
+
+1. **Tasks 1 e 2 foram implementadas juntas.** A Task 1 sozinha não passa no typecheck: o `rateLimit.ts` que ela escreve importa o `./redis` que só nasce na Task 2. O Step 4 da Task 1 até admite isso. Uma tarefa precisa terminar com algo testável por conta própria; estas duas são uma só.
+
+2. **O contador ganhou auto-reparo de TTL.** O plano escreve `INCR` e depois `EXPIRE` só quando `count === 1`. São duas chamadas HTTP separadas no Upstash: se o `EXPIRE` falhar, a chave fica com contador e sem validade, e como o `EXPIRE` nunca mais roda, aquele IP fica bloqueado para sempre. O upsert do Postgres que isto substitui era atômico e não tinha esse buraco. A correção adotada foi definir a janela ao encontrar uma chave sem validade, em vez de transação/MULTI — mantém a interface `RateLimitStore` com três métodos e o store falso simples.
+
+3. **`beforeEach` precisa de chaves.** O plano escreve `beforeEach(() => checkRateLimit.mockReset())`. Em Vitest 4, um hook que **retorna** algo é tratado como função de teardown; `mockReset()` devolve o próprio mock, que era então re-invocado depois do teste, ainda armado com a rejeição do caso anterior. `beforeEach(() => { checkRateLimit.mockReset(); })` resolve.
+
+4. **O plano esqueceu duas rotas de IA e o README.** `/api/newsletter/preview` e `/api/newsletter/test` chamam `assemble()`, que desce até o Analista — são rotas de IA, e a `preview` é GET público sem autenticação. Ficaram fail-open porque a lista de "rotas de IA" do plano dizia só scan, dive e financials. A revisão final da branch pegou. Lição para os planos 2 e 3: `failClosed` ser um argumento opcional por call site é uma forma esquecível; a política devia viajar dentro da constante do limite. O README também não estava na lista de arquivos da Task 4 e continuava mandando configurar só duas envs.
+
+Follow-ups registrados e não feitos: `EXPIRE ... NX` incondicional dentro de um `pipeline()` (substituiria o `if (count === 1)` e o reparo condicional por uma regra só, correta em todo caminho, e cortaria uma viagem HTTP por requisição); política dentro da constante de limite; constante nomeada para o `Retry-After: "60"`; `ttl === -2` distinguido de `-1`; `vi.mock("server-only", …)` redundante em 5 arquivos depois do alias global.
+
+**Verificado durante a execução:** a Vercel sobrescreve o `x-forwarded-for` e não repassa IPs externos, explicitamente para impedir spoofing — então usar o primeiro elemento do header como chave é seguro, e o limite por IP se sustenta agora que a chave por cookie saiu. Ressalva: pôr um proxy (Cloudflare, por exemplo) na frente da Vercel colapsaria todos os visitantes em poucos IPs e o limite deixaria de discriminar.
+
 ## Global Constraints
 
 - Textos de UI e mensagens de erro em **português**, tom direto (CLAUDE.md).

@@ -69,6 +69,7 @@ export async function GET(request: Request) {
     PREVIEW_LIMIT.bucket,
     PREVIEW_LIMIT.limit,
     PREVIEW_LIMIT.windowSeconds,
+    { failClosed: true },
   );
   if (limited) return limited;
 
