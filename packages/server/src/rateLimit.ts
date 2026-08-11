@@ -1,14 +1,21 @@
 import "server-only";
-import { sql } from "./db";
+import { redisStore } from "./redis";
 
-// Rate limiting por janela fixa, com o contador no próprio Postgres (Supabase) —
-// sem serviço externo (Redis/Upstash) e compartilhado entre as instâncias
-// serverless do Vercel, que in-memory não garante. Protege os endpoints de IA
-// (scan/dive/financials) de abuso de custo agora que o app é público.
+// Rate limiting por JANELA FIXA. O contador vive no Upstash (Redis) — precisa
+// ser compartilhado entre as instâncias serverless do Vercel, que in-memory
+// não garante. Antes ficava no Postgres; saiu junto com o banco.
 //
-// Uma linha por `key` (ex.: "scan:<ip>"), atualizada no lugar — a tabela é
-// pequena e limitada pelo nº de IPs ativos. O upsert é atômico (um só statement),
+// Uma chave por bucket+IP (ex.: "rl:scan:1.2.3.4"), com TTL igual à janela:
+// quando o TTL vence, a chave some e a janela recomeça sozinha. INCR é atômico,
 // então é seguro sob requisições concorrentes.
+
+// O mínimo que o contador precisa de um Redis. Existir como interface é o que
+// permite testar sem rede (ver rateLimit.test.ts).
+export interface RateLimitStore {
+  incr(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<unknown>;
+  ttl(key: string): Promise<number>;
+}
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -20,29 +27,25 @@ export async function checkRateLimit(
   key: string,
   limit: number,
   windowSeconds: number,
+  store: RateLimitStore = redisStore(),
 ): Promise<RateLimitResult> {
-  // incrementa e devolve a contagem da janela atual; reseta quando a janela
-  // (window_start) já passou de windowSeconds.
-  const [row] = await sql<{ count: number; window_start: Date | string }[]>`
-    INSERT INTO rate_limits (key, window_start, count)
-    VALUES (${key}, now(), 1)
-    ON CONFLICT (key) DO UPDATE SET
-      count = CASE
-        WHEN rate_limits.window_start < now() - (${windowSeconds} * interval '1 second')
-        THEN 1 ELSE rate_limits.count + 1 END,
-      window_start = CASE
-        WHEN rate_limits.window_start < now() - (${windowSeconds} * interval '1 second')
-        THEN now() ELSE rate_limits.window_start END
-    RETURNING count, window_start
-  `;
+  const count = await store.incr(key);
 
-  const count = row.count;
-  const windowStart =
-    row.window_start instanceof Date ? row.window_start : new Date(row.window_start);
-  const elapsed = (Date.now() - windowStart.getTime()) / 1000;
+  // primeira requisição da janela: só aqui o TTL é definido. Renovar o TTL a
+  // cada requisição transformaria a janela fixa em janela infinita para quem
+  // continua batendo.
+  if (count === 1) await store.expire(key, windowSeconds);
+
+  if (count <= limit) {
+    return { allowed: true, remaining: limit - count, retryAfterSeconds: 0 };
+  }
+
+  // TTL negativo = chave sem expiração conhecida; cai na janela cheia para o
+  // Retry-After nunca sair negativo (o navegador leria como "tente agora").
+  const ttl = await store.ttl(key);
   return {
-    allowed: count <= limit,
-    remaining: Math.max(0, limit - count),
-    retryAfterSeconds: Math.max(1, Math.ceil(windowSeconds - elapsed)),
+    allowed: false,
+    remaining: 0,
+    retryAfterSeconds: ttl > 0 ? ttl : windowSeconds,
   };
 }
