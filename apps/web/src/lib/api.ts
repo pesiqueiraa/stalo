@@ -38,28 +38,12 @@ export async function deleteTopic(id: string): Promise<void> {
 
 // ---------- scan ----------
 
-// O visitante anônimo gastou o scan grátis: a rota devolve 401 com
-// code "signup_required" e o radar rende convite pra criar conta.
-export class SignupRequiredError extends Error {}
-
 export async function requestScan(topics: string[], days: number | null): Promise<ScanResult> {
   const res = await fetch("/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ topics, days }),
   });
-  if (res.status === 401) {
-    let data: { error?: string; code?: string } = {};
-    try {
-      data = (await res.json()) as { error?: string; code?: string };
-    } catch {
-      // sem corpo JSON — cai no erro genérico abaixo
-    }
-    if (data.code === "signup_required") {
-      throw new SignupRequiredError(data.error ?? "Crie sua conta pra continuar escaneando.");
-    }
-    throw new Error(data.error ?? "Falha ao buscar notícias.");
-  }
   if (!res.ok) throw new Error(await parseError(res, "Falha ao buscar notícias."));
   return (await res.json()) as ScanResult;
 }
@@ -136,18 +120,6 @@ export async function saveLens(lens: Lens): Promise<void> {
     body: JSON.stringify({ lens }),
   });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao salvar a lente."));
-}
-
-// Destino após autenticar: quem ainda não configurou (sem setores e sem lente)
-// vai pro onboarding; os demais, pro radar. Mesmo critério do /auth/callback do
-// OAuth, aqui no client para o login por e-mail.
-export async function postAuthDestination(): Promise<"/onboarding" | "/radar"> {
-  try {
-    const [topics, settings] = await Promise.all([fetchTopics(), fetchSettings()]);
-    return topics.length === 0 && !settings.lens ? "/onboarding" : "/radar";
-  } catch {
-    return "/radar";
-  }
 }
 
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia

@@ -5,10 +5,8 @@ import Link from "next/link";
 import { NewsletterPopup } from "@/components/NewsletterPopup";
 import "./landing.css";
 
-// Landing pública. `authed` vem do server component (page.tsx): quem já tem
-// sessão vê "Ir ao radar" no lugar dos CTAs de login/cadastro — sem redirect e
-// sem flash, porque o botão certo já sai renderizado do servidor.
-export default function Landing({ authed }: { authed: boolean }) {
+// Landing pública. 'dest' vem do server component (page.tsx): onboarding pra quem ainda não configurou, radar pros demais.
+export default function Landing({ dest }: { dest: "/onboarding" | "/radar" }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -330,20 +328,9 @@ export default function Landing({ authed }: { authed: boolean }) {
             <a href="#evidencia">Evidência</a>
           </div>
           <div className="nav-cta">
-            {authed ? (
-              <Link className="btn btn-primary" href="/radar">
-                Ir ao radar
-              </Link>
-            ) : (
-              <>
-                <Link className="btn btn-ghost" href="/login">
-                  Entrar
-                </Link>
-                <Link className="btn btn-primary" href="/signup">
-                  Criar conta grátis
-                </Link>
-              </>
-            )}
+            <Link className="btn btn-primary" href={dest}>
+              Abrir o radar
+            </Link>
           </div>
         </div>
       </nav>
@@ -363,15 +350,9 @@ export default function Landing({ authed }: { authed: boolean }) {
               Escolha seus setores. A IA cruza as notícias e aponta o gap.
             </p>
             <div className="cta-row">
-              {authed ? (
-                <Link className="btn btn-primary" href="/radar">
-                  Ir ao radar <span className="arrow">→</span>
-                </Link>
-              ) : (
-                <Link className="btn btn-primary" href="/signup">
-                  Criar conta grátis <span className="arrow">→</span>
-                </Link>
-              )}
+              <Link className="btn btn-primary" href={dest}>
+                Começar agora <span className="arrow">→</span>
+              </Link>
               <a className="btn btn-ghost" href="#como">
                 Como funciona
               </a>
@@ -663,15 +644,9 @@ export default function Landing({ authed }: { authed: boolean }) {
           <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
           <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
           <div className="cta-row">
-            {authed ? (
-              <Link className="btn btn-primary" href="/radar">
-                Ir ao radar
-              </Link>
-            ) : (
-              <Link className="btn btn-primary" href="/signup">
-                Criar conta grátis
-              </Link>
-            )}
+            <Link className="btn btn-primary" href={dest}>
+              Começar agora
+            </Link>
             <a className="btn btn-ghost" href="#pra-quem">
               Ver qual lente é a minha
             </a>

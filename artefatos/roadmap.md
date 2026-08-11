@@ -34,7 +34,7 @@ Sem ordem de prioridade fixa — organizado por tema, para revisitar depois que 
 - Personalização por lente/perfil (**founder / investidor / explorador**, capturada no onboarding): a lente parametriza a **linguagem de direcionamento do mergulho** e, opcionalmente, o **ranqueamento do brief**; o **grafo** e a **taxonomia de categorias** (tendência/gap/oportunidade) permanecem neutros/universais. **Implementado:** persistência da lente (`workspace_settings`) e prompts do mergulho **e** do 2º nível financeiro ajustados por lente. **Falta (opcional):** ranqueamento do brief por lente. Decisão em `arquiteturad.md` §7.
 
 ### Alcance e colaboração
-- Multi-usuário com autenticação (login simples por e-mail/magic link). _(Telas de login/cadastro e o fluxo de onboarding de setores + lente já existem no **frontend**, como stub — sem backend de auth nem persistência ainda.)_
+- Multi-usuário com autenticação (login simples por e-mail/magic link). _(O app chegou a ter Supabase Auth — Google + e-mail/senha — implementado ponta a ponta, com backend e persistência, e foi removido em 2026-08 por decisão de produto (ver `arquiteturad.md` §7); se voltar, é reimplementação do zero, não retomar um stub.)_
 - Times/workspaces compartilhados — mais de uma pessoa acompanhando o mesmo radar.
 - Exportação de ideias salvas para Notion/Google Docs/Slack.
 

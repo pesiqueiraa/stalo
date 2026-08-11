@@ -1,22 +1,18 @@
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { getLens, listTopics } from "@stalo/server";
+import { getWorkspaceId } from "@/lib/workspace";
 import Landing from "./Landing";
 
-// A landing é pública, mas precisa saber se o visitante já tem sessão: nesse
-// caso os CTAs de "Entrar / Criar conta" viram um único "Ir ao radar". A
-// checagem roda no servidor pra o botão certo já sair renderizado (sem flash).
-// Sem sessão, Supabase fora do ar ou erro → trata como deslogado.
+// Landing pública. Sem login: o CTA leva direto ao produto — onboarding pra
+// quem ainda não configurou nada (sem temas e sem lente), radar pros demais.
+// A checagem roda no servidor pra o botão certo já sair renderizado.
 export default async function Page() {
-  let authed = false;
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    try {
-      const supabase = await createSupabaseServer();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      authed = !!user;
-    } catch {
-      // segue como deslogado — a landing pública é o destino seguro
-    }
+  let dest: "/onboarding" | "/radar" = "/onboarding";
+  try {
+    const wid = await getWorkspaceId();
+    const [topics, lens] = await Promise.all([listTopics(wid), getLens(wid)]);
+    if (topics.length > 0 || lens) dest = "/radar";
+  } catch {
+    // banco fora do ar → onboarding é o destino seguro pra um visitante novo
   }
-  return <Landing authed={authed} />;
+  return <Landing dest={dest} />;
 }

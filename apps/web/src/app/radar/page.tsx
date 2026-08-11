@@ -23,7 +23,6 @@ import {
   requestFinancials,
   requestScan,
   saveLens,
-  SignupRequiredError,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
 import { insightKey } from "@/lib/ui";
@@ -73,8 +72,6 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // o visitante anônimo gastou o scan grátis — o erro vira convite pra criar conta
-  const [signupCta, setSignupCta] = useState(false);
   const [days, setDays] = useState<number | null>(30); // janela de recência do scan (30/60/90 ou null = sem limite)
   const [view, setView] = useState<View>("rede"); // rede-first: o usuário vê primeiro o mapa das conexões, depois o brief
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -192,7 +189,6 @@ export default function Home() {
     if (loading) return;
     setLoading(true);
     setError(null);
-    setSignupCta(false);
     bannerTimers.current.forEach(clearTimeout);
     bannerTimers.current = [];
     setBanner(null);
@@ -211,14 +207,11 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-      if (err instanceof SignupRequiredError) {
-        setError(err.message);
-        setSignupCta(true);
-      } else {
-        setError(
-          "Não consegui buscar ou interpretar as notícias agora. Tente novamente em instantes.",
-        );
-      }
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Não consegui buscar ou interpretar as notícias agora. Tente novamente em instantes.",
+      );
     }
     setLoading(false);
   }
@@ -385,7 +378,6 @@ export default function Home() {
           onScan={scan}
           loading={loading}
           error={error}
-          errorLink={signupCta ? { href: "/signup", label: "Criar conta grátis" } : null}
           days={days}
           onDaysChange={setDays}
           settings={settings}

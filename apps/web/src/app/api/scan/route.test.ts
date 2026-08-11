@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// A rota puxa IA + DB via @stalo/server e sessão via @/lib/workspace. Mockamos
-// tudo — o alvo é o GATE: logado passa, anônimo tem 1 brinde, fail-open vale.
+// A rota puxa IA + DB via @stalo/server e o workspace via @/lib/workspace.
+// Mockamos tudo — o alvo é o LIMITE: 4 scans por 2h por IP+cookie, fail-open.
 vi.mock("server-only", () => ({}));
 vi.mock("@stalo/server", () => ({
   runScan: vi.fn(),
@@ -9,18 +9,16 @@ vi.mock("@stalo/server", () => ({
   checkRateLimit: vi.fn(),
 }));
 vi.mock("@/lib/workspace", () => ({
-  getAuthUserId: vi.fn(),
   getWorkspaceId: vi.fn(),
 }));
 
 import { POST } from "./route";
 import { checkRateLimit, runScan, saveScan } from "@stalo/server";
-import { getAuthUserId, getWorkspaceId } from "@/lib/workspace";
+import { getWorkspaceId } from "@/lib/workspace";
 
 const mockCheck = vi.mocked(checkRateLimit);
 const mockRunScan = vi.mocked(runScan);
 const mockSaveScan = vi.mocked(saveScan);
-const mockAuthUser = vi.mocked(getAuthUserId);
 const mockWid = vi.mocked(getWorkspaceId);
 
 function req(): Request {
@@ -36,40 +34,37 @@ beforeEach(() => {
   mockCheck.mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 60 });
   mockRunScan.mockResolvedValue({ items: [], insights: [] });
   mockSaveScan.mockResolvedValue(undefined);
-  mockAuthUser.mockResolvedValue(null);
   mockWid.mockResolvedValue("wid-anon");
 });
 
-describe("POST /api/scan — gate do scan grátis", () => {
-  it("anônimo no 1º scan passa e consome as duas chaves do brinde", async () => {
+describe("POST /api/scan — limite de 4 scans por 2h", () => {
+  it("dentro do limite passa e consome as chaves de IP e de workspace", async () => {
     const res = await POST(req());
     expect(res.status).toBe(200);
-    const keys = mockCheck.mock.calls.map(([key]) => key);
-    expect(keys).toContain("free-scan:ip:1.2.3.4");
-    expect(keys).toContain("free-scan:wid:wid-anon");
+    expect(mockCheck.mock.calls).toContainEqual(["scan:ip:1.2.3.4", 4, 7200]);
+    expect(mockCheck.mock.calls).toContainEqual(["scan:wid:wid-anon", 4, 7200]);
     expect(mockSaveScan).toHaveBeenCalledWith("wid-anon", ["IA"], { items: [], insights: [] });
   });
 
-  it("anônimo com brinde gasto → 401 signup_required, sem gastar OpenAI", async () => {
-    mockCheck.mockImplementation(async (key: string) => ({
-      allowed: !key.startsWith("free-scan:"),
-      remaining: 0,
-      retryAfterSeconds: 60,
-    }));
+  it("limite estourado → 429 com Retry-After, sem gastar OpenAI", async () => {
+    mockCheck.mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 1800 });
     const res = await POST(req());
-    expect(res.status).toBe(401);
-    const body = (await res.json()) as { code?: string };
-    expect(body.code).toBe("signup_required");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("1800");
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toContain("4 scans");
     expect(mockRunScan).not.toHaveBeenCalled();
   });
 
-  it("logado não passa pelo gate do brinde", async () => {
-    mockAuthUser.mockResolvedValue("user-1");
+  it("basta UMA das chaves estourar para bloquear (cookie novo não renova)", async () => {
+    mockCheck.mockImplementation(async (key: string) => ({
+      allowed: !key.startsWith("scan:ip:"),
+      remaining: 0,
+      retryAfterSeconds: 900,
+    }));
     const res = await POST(req());
-    expect(res.status).toBe(200);
-    const keys = mockCheck.mock.calls.map(([key]) => key);
-    expect(keys.some((k) => k.startsWith("free-scan:"))).toBe(false);
-    expect(mockSaveScan).toHaveBeenCalledWith("user-1", ["IA"], { items: [], insights: [] });
+    expect(res.status).toBe(429);
+    expect(mockRunScan).not.toHaveBeenCalled();
   });
 
   it("infra de rate limit fora → fail-open (scan segue)", async () => {
@@ -77,16 +72,5 @@ describe("POST /api/scan — gate do scan grátis", () => {
     const res = await POST(req());
     expect(res.status).toBe(200);
     expect(mockRunScan).toHaveBeenCalled();
-  });
-
-  it("limite por IP estourado continua devolvendo 429 (comportamento existente)", async () => {
-    mockCheck.mockImplementation(async (key: string) => ({
-      allowed: !key.startsWith("scan:"),
-      remaining: 0,
-      retryAfterSeconds: 60,
-    }));
-    const res = await POST(req());
-    expect(res.status).toBe(429);
-    expect(mockRunScan).not.toHaveBeenCalled();
   });
 });
