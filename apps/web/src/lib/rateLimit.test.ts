@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const checkRateLimit = vi.fn();
 vi.mock("@stalo/server", () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }));
 
-const { enforceRateLimit, SCAN_LIMIT } = await import("./rateLimit");
+const { enforceRateLimit, SCAN_LIMIT, DIVE_LIMIT, FINANCIALS_LIMIT } = await import("./rateLimit");
 
 function req(ip = "1.2.3.4"): Request {
   return new Request("https://stalo.dev/api/scan", {
@@ -64,5 +64,13 @@ describe("enforceRateLimit", () => {
 
   it("o limite do scan é 4 por 2 horas", () => {
     expect(SCAN_LIMIT).toEqual({ bucket: "scan", limit: 4, windowSeconds: 7200 });
+  });
+
+  it("o limite do dive é 20 por hora", () => {
+    expect(DIVE_LIMIT).toEqual({ bucket: "dive", limit: 20, windowSeconds: 3600 });
+  });
+
+  it("o limite do financials é 20 por hora", () => {
+    expect(FINANCIALS_LIMIT).toEqual({ bucket: "financials", limit: 20, windowSeconds: 3600 });
   });
 });

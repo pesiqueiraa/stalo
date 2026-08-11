@@ -113,4 +113,30 @@ describe("checkRateLimit", () => {
     const expireCalls = store.calls.filter((c) => c.startsWith("expire:"));
     expect(expireCalls).toContain(`expire:${key}:7200`);
   });
+
+  it("NÃO repara (nem estende o TTL) quando a chave já tem TTL vivo", async () => {
+    // O guard `ttl < 0` é o que garante que a janela fixa não vira janela
+    // infinita: se o reparo disparasse com TTL positivo, cada requisição de
+    // quem já estourou o limite renovaria a expiração e o bloqueio nunca zeraria.
+    const store = fakeStore();
+    const key = "scan:1.1.1.1";
+
+    for (let i = 0; i < 4; i++) {
+      await checkRateLimit(key, 4, 7200, store);
+    }
+    store.calls.length = 0;
+
+    const storeComTtl: RateLimitStore = {
+      ...store,
+      async ttl() { return 1800; },
+    };
+
+    const r = await checkRateLimit(key, 4, 7200, storeComTtl);
+
+    expect(r.allowed).toBe(false);
+    expect(r.retryAfterSeconds).toBe(1800);
+
+    const expireCalls = store.calls.filter((c) => c.startsWith("expire:"));
+    expect(expireCalls).toEqual([]);
+  });
 });

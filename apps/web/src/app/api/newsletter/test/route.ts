@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     TEST_LIMIT.bucket,
     TEST_LIMIT.limit,
     TEST_LIMIT.windowSeconds,
+    { failClosed: true },
   );
   if (limited) return limited;
 
