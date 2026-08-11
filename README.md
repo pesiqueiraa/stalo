@@ -1,66 +1,75 @@
 # Stalo — o radar de tendências
 
-Ferramenta que monitora setores de tecnologia escolhidos pelo usuário, cruza notícias entre eles usando um LLM com busca web, visualiza tudo como um grafo de conexões e deixa salvar tendências/gaps/oportunidades identificadas como ideias de negócio.
+Escolha os setores de tecnologia que você acompanha. O Stalo busca as notícias recentes de cada um, cruza os setores entre si e devolve as tendências, gaps e oportunidades que aparecem no meio do caminho — cada uma com a tese e as fontes que a sustentam. O que te interessar, você salva como ideia de negócio.
 
-## Status atual
+## Por que eu construí isso
 
-🟡 **Protótipo funcional (MVP validado como artifact)** — já existe uma versão navegável rodando 100% no client-side (HTML + JS + D3), usada para validar o conceito antes de investir em backend/infra. Este repositório é o próximo passo: transformar o protótipo em um produto real, com persistência própria e a chave de API protegida no servidor.
+Eu queria acompanhar notícias de vários setores ao mesmo tempo para tirar dali ideias de produto, e nunca conseguia. Ler tudo manualmente não escala: são cinco feeds diferentes, todos lineares, e no fim do dia você leu muita coisa e não tirou nada dali.
 
-## Documentos deste repositório
+O problema não era o volume — era o formato. A informação que eu queria não estava dentro de nenhuma notícia isolada; estava no **cruzamento** entre duas notícias de setores diferentes, que ninguém coloca lado a lado porque estão em feeds separados. É exatamente esse tipo de conexão que um feed linear esconde e que vira ideia de produto.
 
-| Arquivo | Conteúdo |
+Então fiz a ferramenta que eu queria usar: ela lê por mim, procura onde os setores se tocam, e me entrega o cruzamento já com o "e daí?" explícito e o link da fonte para eu conferir.
+
+## O que ele faz
+
+- **Temas monitorados** — até 5 setores, adicionados e removidos na hora.
+- **Scan sob demanda** — duas etapas de IA: um Coletor busca notícias na web, um Analista cruza os setores e extrai tendências, gaps e oportunidades.
+- **Brief priorizado** — a saída principal: as oportunidades da rodada rankeadas, cada uma com tese e fontes.
+- **Grafo (D3)** — notícias como nós coloridos por tema, insights destacados, arestas por palavra-chave compartilhada. É a camada de explorar o mapa, não o protagonista.
+- **Ideias salvas** — qualquer insight vira um item guardado, com deep dive e análise financeira sob demanda.
+- **Boletim por e-mail** — resumo periódico, disparado por cron.
+
+## Stack
+
+| Camada | Tecnologia |
 |---|---|
-| [`artefatos/produto.md`](./artefatos/produto.md) | Problema, usuário, escopo do MVP (o que entra e o que fica de fora) |
-| [`artefatos/arquiteturad.md`](./artefatos/arquiteturad.md) | Stack técnica, modelo de dados, fluxo de dados, decisões e trade-offs |
-| [`artefatos/roadmap.md`](./artefatos/roadmap.md) | Checklist do MVP e backlog de features futuras |
-| [`artefatos/notas.md`](./artefatos/notas.md) | Ajustes de UX pendentes no MVP e ideias soltas pra depois |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, D3 |
+| Backend | `@stalo/server` — rotas `/api/*` finas no Next chamam a lógica do pacote |
+| Banco | Postgres (Supabase) |
+| LLM | OpenAI (Responses API + tool `web_search`) |
+| Testes | Vitest |
+| Deploy | Vercel |
 
-Comece pelo `artefatos/produto.md` se quiser entender o *o quê* e o *por quê*. Vá direto pro `artefatos/arquiteturad.md` se quiser entender o *como*.
+Monorepo com npm workspaces — `apps/web` (UI + rotas de API), `packages/server` (banco, scan, prompts), `packages/shared` (tipos do domínio). Comandos rodam da raiz.
 
-## Pitch em uma frase
+## Sem contas, com limites
 
-Um radar que lê as notícias de tecnologia por você, encontra onde os setores se cruzam, e transforma esse cruzamento em ideias de startup prontas pra validar.
+O app é anônimo: cada visitante ganha um workspace por cookie (`stalo_wid`, 1 ano) e só enxerga os próprios temas, scans e ideias. Não há login — o custo de fricção de uma conta não se pagava num projeto sem monetização.
 
-## Stack (proposta — ver `artefatos/arquiteturad.md` para detalhes e alternativas)
+Como não há conta segurando o custo de IA, quem segura é o rate limit. O scan (o endpoint caro, que faz busca web) é limitado a **4 por janela de 2 horas**, com chave dupla em IP **e** cookie: apagar o cookie não renova, trocar de IP não renova. O limite é checado antes da chamada à OpenAI, então um 429 não gasta nada. Deep dive e análise financeira têm limites próprios por IP.
 
-- **Frontend:** Next.js (App Router) + TypeScript + Tailwind CSS + D3 (visualização de grafo)
-- **Backend:** Node.js (rotas de API) — proxy seguro para a Claude API
-- **Banco de dados:** Postgres (via Supabase ou Neon)
-- **LLM:** Claude API com a ferramenta de busca web nativa (`web_search`)
-- **Deploy:** Vercel (frontend + funções serverless) + banco gerenciado
-
-## Estrutura do repositório
-
-Monorepo com npm workspaces:
-
-- `apps/web` — app Next.js (frontend + rotas `/api/*` finas)
-- `packages/server` — backend: acesso ao banco, persistência e o scan (busca web + IA)
-- `packages/shared` — tipos do domínio, compartilhados entre os dois
-
-Os comandos (`dev`, `build`, `typecheck`, `lint`) rodam da raiz.
+A chave da OpenAI vive só no servidor e nunca chega ao client.
 
 ## Como rodar
 
 ```bash
-# 1. Clonar e instalar (na raiz — os npm workspaces cuidam de tudo)
-git clone <url-do-repo>
+git clone https://github.com/pesiqueiraa/stalo.git
 cd stalo
 npm install
 
-# 2. Configurar variáveis de ambiente (no app web)
 cp apps/web/.env.example apps/web/.env
 # preencher OPENAI_API_KEY e DATABASE_URL
 
-# 3. Rodar localmente (da raiz)
 npm run dev
 ```
 
-> O scan usa a OpenAI (busca web + IA) e persiste no Postgres, então `OPENAI_API_KEY` e `DATABASE_URL` são necessários para o fluxo completo.
+O schema do banco está em `packages/server/db/schema.sql`. Sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda.
 
-## Protótipo de referência
+```bash
+npm test        # Vitest
+npm run typecheck
+npm run build
+```
 
-O protótipo original (artifact standalone, sem backend) está descrito no `artefatos/arquiteturad.md` na seção "O que já existe". Ele serve como especificação viva do comportamento esperado da interface e da lógica de geração de insights — use-o como referência ao implementar a versão real.
+## Documentação
+
+| Arquivo | Conteúdo |
+|---|---|
+| [`artefatos/produto.md`](./artefatos/produto.md) | Problema, usuário-alvo, escopo do MVP |
+| [`artefatos/arquiteturad.md`](./artefatos/arquiteturad.md) | Stack, modelo de dados, fluxo, decisões e trade-offs |
+| [`artefatos/roadmap.md`](./artefatos/roadmap.md) | Checklist do MVP e backlog |
+| [`artefatos/notas.md`](./artefatos/notas.md) | Ajustes de UX pendentes e ideias soltas |
 
 ## Licença
 
-A definir.
+MIT — veja [`LICENSE`](./LICENSE).
