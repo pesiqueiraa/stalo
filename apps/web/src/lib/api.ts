@@ -1,5 +1,5 @@
 import { MAX_TOPICS, type Lens, type NewsItem, type SavedIdea, type ScanResult, type Topic } from "@stalo/shared";
-import { readLens, readTopics, writeLens, writeTopics } from "./storage";
+import { readLens, readScan, readTopics, writeLens, writeScan, writeTopics } from "./storage";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -50,16 +50,16 @@ export async function requestScan(topics: string[], days: number | null): Promis
     body: JSON.stringify({ topics, days }),
   });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao buscar notícias."));
-  return (await res.json()) as ScanResult;
+  const result = (await res.json()) as ScanResult;
+  writeScan(result); // quem guarda agora é o navegador
+  return result;
 }
 
 export async function fetchLatestScan(): Promise<{
   result: ScanResult | null;
   createdAt: string | null;
 }> {
-  const res = await fetch("/api/scan/latest");
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar o último scan."));
-  return (await res.json()) as { result: ScanResult | null; createdAt: string | null };
+  return readScan();
 }
 
 // ---------- newsletter ----------

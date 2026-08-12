@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { runScan, saveScan } from "@stalo/server";
-import { getWorkspaceId } from "@/lib/workspace";
+import { runScan } from "@stalo/server";
 import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
-// POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
-// resultado (scans + news_items + insights) e devolve o ScanResult (items +
-// insights). O frontend chama esta rota em vez de gerar os dados no client,
-// mantendo a futura chave de IA no servidor.
+// POST /api/scan — recebe a lista de temas, roda o scan no servidor e devolve
+// o ScanResult (items + insights). Quem guarda o resultado é o navegador
+// (apps/web/src/lib/storage.ts) — esta rota não persiste nada; só fala com a
+// IA, mantendo a chave de IA no servidor.
 // Janelas de recência permitidas (dias). O frontend oferece estas opções;
 // null/ausente = sem limite de data.
 const ALLOWED_DAYS = [30, 60, 90];
@@ -48,14 +47,8 @@ export async function POST(request: Request) {
   );
   if (limited) return limited;
 
-  const workspaceId = await getWorkspaceId();
-
   try {
     const result = await runScan(topics, window);
-    // persiste o scan para que /api/scan/latest o recupere ao recarregar a
-    // página. Se a gravação falhar, o scan não é considerado bem-sucedido —
-    // não falha silenciosamente (CLAUDE.md).
-    await saveScan(workspaceId, topics, result);
     return NextResponse.json(result);
   } catch (err) {
     console.error("scan failed", err);
