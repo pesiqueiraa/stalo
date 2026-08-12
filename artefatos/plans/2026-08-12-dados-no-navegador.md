@@ -649,6 +649,8 @@ Esperado: nenhuma saída além das próprias definições, que você está remov
 
 - [ ] **Step 4:** Atualize o `README.md` (a seção "Como rodar" e a de stack) e o `.env.example`: o `DATABASE_URL` passa a ser exigido **apenas** pela newsletter.
 
+- [ ] **Step 4b: Acabe com as cópias do `MAX_TOPICS`.** A Task 2 tornou `@stalo/shared` a casa canônica da constante, mas dois arquivos ainda declaram `const MAX_TOPICS = 5` local: `apps/web/src/components/TopicsPanel.tsx:12` e `apps/web/src/app/radar/page.tsx:46`. Eles governam o texto "N/5 temas" e o `disabled` do botão de adicionar — se o canônico mudar, a interface passa a mentir. Troque as duas declarações por `import { MAX_TOPICS } from "@stalo/shared"` e confirme com `grep -rn "MAX_TOPICS" apps packages --include="*.ts" --include="*.tsx" | grep -v node_modules` que só resta uma declaração.
+
 - [ ] **Step 5: Verificação final e commit**
 
 ```bash
