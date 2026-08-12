@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { TOPIC_COLORS } from "@/lib/graph";
-import type { InsightType, Topic } from "@stalo/shared";
+import { MAX_TOPICS, type InsightType, type Topic } from "@stalo/shared";
 import { labelForType } from "@/lib/ui";
 import { SPREAD_MAX, SPREAD_MIN, type GraphSettings } from "@/lib/settings";
 import { InsightGlyph } from "./InsightGlyph";
 
 const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
 
-const MAX_TOPICS = 5;
 const DAYS_OPTIONS = [30, 60, 90];
 
 interface TopicsPanelProps {

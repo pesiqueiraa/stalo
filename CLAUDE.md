@@ -8,7 +8,7 @@ Stalo — o radar de tendências: ferramenta que monitora setores de tecnologia 
 
 ## Estado atual do repositório
 
-🟢 **Frontend + persistência + scan real (OpenAI) plugado.** **Monorepo com npm workspaces:** `apps/web` (frontend Next.js — UI + rotas `/api/*` finas), `packages/server` (backend: db, repo, scan/OpenAI, prompts — `@stalo/server`) e `packages/shared` (tipos do domínio — `@stalo/shared`). A UI completa (temas, scan, grafo D3, detalhe, ideias salvas) já **persiste em Postgres (Supabase)** via os endpoints `/api/*`, que chamam `packages/server/src/db.ts` + `repo.ts` (schema em `packages/server/db/schema.sql`). O **scan** roda em duas etapas de IA reais — Coletor (busca web) + Analista (cruzamento) — em `packages/server/src/scan.ts`, via **OpenAI** (Responses API), com prompts em `packages/server/src/scanPrompt.ts`. Já testado ponta a ponta com key real (busca + JSON estrito + persistência); `packages/server/src/mockData.ts` fica só como referência do formato. Decisão: OpenAI no MVP (mais barato), troca para Claude no fim (o ponto de plugue é `scan.ts`). O protótipo original (HTML+JS+D3 standalone) que serviu de especificação está em `artefatos/prototype.html`.
+🟢 **Frontend completo + scan real (OpenAI) plugado + dados do visitante sem banco.** **Monorepo com npm workspaces:** `apps/web` (frontend Next.js — UI + rotas `/api/*` finas, sem estado), `packages/server` (backend: scan/OpenAI, prompts, newsletter — `@stalo/server`) e `packages/shared` (tipos do domínio — `@stalo/shared`). A UI completa (temas, scan, grafo D3, detalhe, ideias salvas) **persiste no `localStorage` do navegador** (`apps/web/src/lib/storage.ts`) — não há workspace, cookie nem conta; sem sincronização entre aparelhos e sem backup (ver `artefatos/arquiteturad.md` §7). O **scan** roda em duas etapas de IA reais — Coletor (busca web) + Analista (cruzamento) — em `packages/server/src/scan.ts`, via **OpenAI** (Responses API), com prompts em `packages/server/src/scanPrompt.ts`; a rota `POST /api/scan` não guarda nada, só devolve o resultado. `packages/server/src/db.ts` + `repo.ts` (schema em `packages/server/db/schema.sql`) restam só para a **newsletter** (mailing list + edição semanal), até um plano futuro removê-la. Decisão: OpenAI no MVP (mais barato), troca para Claude no fim (o ponto de plugue é `scan.ts`). O protótipo original (HTML+JS+D3 standalone) que serviu de especificação está em `artefatos/prototype.html`.
 
 ## Onde encontrar o quê
 
@@ -26,8 +26,8 @@ Não duplique o conteúdo desses arquivos aqui — se uma instrução persistent
 
 - Estrutura: **monorepo com npm workspaces** — `apps/web` (`@stalo/web`), `packages/server` (`@stalo/server`), `packages/shared` (`@stalo/shared`). Comandos rodam da raiz (`npm run dev`/`build`/`typecheck`).
 - Frontend: Next.js (App Router) + TypeScript + Tailwind CSS + D3 (visualização de grafo), em `apps/web/`
-- Backend: lógica em `packages/server` (db, repo, scan/OpenAI), consumida por rotas `/api/*` finas no `apps/web`. Um dia pode virar serviço próprio, mas hoje roda no mesmo processo do Next (1 deploy).
-- Banco: Postgres (Supabase ou Neon)
+- Backend: lógica em `packages/server` (scan/OpenAI, newsletter, prompts), consumida por rotas `/api/*` finas e sem estado no `apps/web`. Um dia pode virar serviço próprio, mas hoje roda no mesmo processo do Next (1 deploy).
+- Banco: Postgres (Supabase ou Neon) — só para a newsletter; os dados do visitante vivem no `localStorage`
 - LLM: **OpenAI** (Responses API + tool `web_search`) no MVP; troca planejada para Claude API no fim do MVP. O provider é isolado em `packages/server/src/scan.ts` (ponto único de plugue).
 - Deploy: Vercel
 

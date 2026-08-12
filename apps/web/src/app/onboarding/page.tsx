@@ -102,6 +102,15 @@ type Sector = { id: string; name: string; color: string };
 type Step = "sectors" | "lens" | "reveal";
 const ORDER: Step[] = ["sectors", "lens", "reveal"];
 
+// Aviso (dispensável) de que os dados salvos antes da migração para o
+// localStorage (temas, ideias, scans — eram escopados por um cookie que
+// também saiu) não puderam ser trazidos. Sem confirmação de conta e sem
+// cookie, não há como saber "de quem" era o dado antigo pra migrar — mas isso
+// não é motivo pra sumir com ele em silêncio. Fica escondido por padrão (evita
+// o flash de "aparece e já some" pra quem já dispensou) e só aparece se o
+// localStorage não tiver o registro da dispensa.
+const NOTICE_DISMISSED_KEY = "stalo:onb-notice-dismissed";
+
 // geometria do radar
 const CX = 120;
 const CY = 120;
@@ -115,10 +124,35 @@ export default function OnboardingPage() {
   const [lens, setLens] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [noticeVisible, setNoticeVisible] = useState(false);
 
   const isMax = selected.length >= MAX;
   const count = selected.length;
   const stepIndex = ORDER.indexOf(step);
+
+  // só mostra o aviso de migração se ele ainda não foi dispensado — checa uma
+  // vez, no mount. Começa escondido (em vez de aparecer e sumir) pra quem já
+  // dispensou não ver nem um flash dele.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (localStorage.getItem(NOTICE_DISMISSED_KEY)) return;
+    } catch {
+      // localStorage indisponível: mostra mesmo assim, é só um aviso — não
+      // vale a pena um segundo caminho de código pra esse detalhe
+    }
+    setNoticeVisible(true);
+  }, []);
+
+  function dismissNotice() {
+    setNoticeVisible(false);
+    try {
+      localStorage.setItem(NOTICE_DISMISSED_KEY, "1");
+    } catch {
+      // sem cota/permissão: o aviso volta a aparecer na próxima visita — ok,
+      // é só chato, não é grave
+    }
+  }
 
   // no passo de revelação, "varre" por um instante e então revela o sinal
   useEffect(() => {
@@ -263,6 +297,23 @@ export default function OnboardingPage() {
           ))}
         </div>
       </div>
+
+      {noticeVisible && (
+        <div className="onb-notice" role="status">
+          <span className="onb-notice-text">
+            O Stalo passou a guardar tudo no seu navegador. O que você tinha salvo antes desta
+            mudança não pôde ser migrado.
+          </span>
+          <button
+            type="button"
+            className="onb-notice-close"
+            onClick={dismissNotice}
+            aria-label="Dispensar aviso"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* key={step} faz o miolo re-animar a cada troca de passo */}
       <main className="onb-main" key={step}>

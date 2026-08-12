@@ -54,7 +54,7 @@ Apagados: `apps/web/src/app/api/topics/**`, `api/settings/**`, `api/ideas/**`, `
 
 **Contexto para quem implementa:** este módulo é a única parte do app que toca `localStorage`. Três regras que o resto do plano assume:
 
-1. **Roda só no cliente.** `localStorage` não existe no servidor; toda leitura começa com um guard `typeof window === "undefined"` e devolve o vazio.
+1. **Roda só no cliente.** `localStorage` não existe no servidor; toda leitura começa com um guard sobre o próprio `localStorage` (não sobre `window`) e devolve o vazio.
 2. **O que sai de lá é entrada não confiável.** Valide forma antes de devolver. Um `JSON.parse` que devolve `{"topics": "haha"}` não pode virar `topics.map(...)` na UI nem texto dentro de um prompt.
 3. **Versione.** Cada chave guarda `{ v: 1, data: ... }`. Versão diferente da atual é descartada, não migrada — não há dado precioso aqui, e migração especulativa é código morto.
 
@@ -63,11 +63,25 @@ Apagados: `apps/web/src/app/api/topics/**`, `api/settings/**`, `api/ideas/**`, `
 Crie `apps/web/src/lib/storage.test.ts`:
 
 ```ts
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hasAnything, readIdeas, readLens, readTopics, writeIdeas, writeLens, writeTopics } from "./storage";
 
-// jsdom dá um localStorage de verdade; limpamos entre os testes.
-beforeEach(() => localStorage.clear());
+// A suíte roda em `environment: "node"` (vitest.config.ts) e o projeto não usa
+// jsdom — então `localStorage` não existe aqui. Em vez de trocar o ambiente e
+// pagar por jsdom só para testar um mapa com getItem/setItem, injetamos um
+// falso, no mesmo estilo do stubFetch que api.test.ts já usa.
+function fakeLocalStorage() {
+  const mapa = new Map<string, string>();
+  return {
+    getItem: (k: string) => mapa.get(k) ?? null,
+    setItem: (k: string, v: string) => void mapa.set(k, v),
+    removeItem: (k: string) => void mapa.delete(k),
+    clear: () => mapa.clear(),
+  };
+}
+
+beforeEach(() => vi.stubGlobal("localStorage", fakeLocalStorage()));
+afterEach(() => vi.unstubAllGlobals());
 
 describe("storage", () => {
   it("round-trip de temas", () => {
@@ -124,14 +138,24 @@ describe("storage", () => {
     expect(hasAnything()).toBe(true);
   });
 
-  it("escrever não estoura quando o localStorage recusa (cota cheia / modo privado)", () => {
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = () => { throw new Error("QuotaExceededError"); };
-    try {
-      expect(() => writeIdeas([])).not.toThrow();
-    } finally {
-      Storage.prototype.setItem = original;
-    }
+  it("escrever não estoura quando o armazenamento recusa (cota cheia / modo privado)", () => {
+    vi.stubGlobal("localStorage", {
+      ...fakeLocalStorage(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    // perder a persistência é ruim; derrubar a tela do usuário é pior
+    expect(() => writeIdeas([])).not.toThrow();
+  });
+
+  it("no servidor (sem localStorage) devolve o vazio em vez de estourar", () => {
+    // as funções de leitura rodam em componentes que também renderizam no
+    // servidor; lá o global não existe
+    vi.unstubAllGlobals();
+    expect(readTopics()).toEqual([]);
+    expect(readLens()).toBeNull();
+    expect(() => writeTopics([{ id: "1", name: "IA" }])).not.toThrow();
   });
 });
 ```
@@ -144,7 +168,7 @@ npx vitest run apps/web/src/lib/storage.test.ts
 
 Esperado: falha na importação — `./storage` não existe.
 
-Se o ambiente do vitest não tiver `localStorage`, o `vitest.config.ts` precisa de `environment: "jsdom"` para os testes de `apps/web`. Confira o arquivo antes de assumir que o teste está errado; se precisar adicionar, adicione (e o `jsdom` como devDependency).
+**Não instale jsdom nem troque `environment: "node"`** no `vitest.config.ts`. O falso acima já resolve, e a suíte inteira roda hoje em ~300ms — vale manter assim.
 
 - [ ] **Step 3: Implemente**
 
@@ -170,11 +194,19 @@ const KEYS = {
   settings: "stalo:settings",
 } as const;
 
+// Guard de ambiente: no servidor (e no vitest, que roda em `node`) o global
+// não existe. Checamos o `localStorage` direto, e não o `window`, para o teste
+// poder injetar um falso sem precisar simular um DOM inteiro.
+function loja(): Storage | null {
+  return typeof localStorage === "undefined" ? null : localStorage;
+}
+
 function read<T>(key: string, validate: (raw: unknown) => T | null): T | null {
-  if (typeof window === "undefined") return null; // servidor: não existe
+  const ls = loja();
+  if (!ls) return null;
   let parsed: unknown;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = ls.getItem(key);
     if (!raw) return null;
     parsed = JSON.parse(raw);
   } catch {
@@ -187,9 +219,10 @@ function read<T>(key: string, validate: (raw: unknown) => T | null): T | null {
 }
 
 function write(key: string, data: unknown): void {
-  if (typeof window === "undefined") return;
+  const ls = loja();
+  if (!ls) return;
   try {
-    window.localStorage.setItem(key, JSON.stringify({ v: VERSION, data }));
+    ls.setItem(key, JSON.stringify({ v: VERSION, data }));
   } catch {
     // cota cheia ou modo privado: seguir sem persistir é melhor que derrubar a
     // tela. O usuário perde a persistência, não a sessão.
@@ -262,9 +295,12 @@ git commit -m "feat(storage): cofre local tipado e validado para os dados do vis
 
 Acrescente a `apps/web/src/lib/api.test.ts` (o arquivo já existe) um bloco novo:
 
+O `api.test.ts` roda em `environment: "node"` e hoje só stuba `fetch`. Para os testes locais ele precisa do mesmo `localStorage` falso que o `storage.test.ts` já usa — **copie o helper `fakeLocalStorage` de lá** (ou extraia para um utilitário compartilhado, se preferir; não instale jsdom).
+
 ```ts
 describe("temas no armazenamento local", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => vi.stubGlobal("localStorage", fakeLocalStorage()));
+  afterEach(() => vi.unstubAllGlobals());
 
   it("cria tema com id próprio e persiste", async () => {
     const t = await createTopic("IA");
@@ -466,6 +502,15 @@ export async function deleteIdea(id: string): Promise<void> {
 }
 ```
 
+- [ ] **Step 3b: Feche a lacuna de cobertura do scan**
+
+A revisão da Task 3 apontou que o caminho de persistência do scan ficou sem teste nenhum — nem as funções do cofre, nem a ligação delas. É a saída principal do produto: se isso quebrar, o usuário roda o scan, vê o resultado, recarrega e perde tudo, sem erro nenhum na tela.
+
+Acrescente dois testes, aproveitando que você já está nestes dois arquivos:
+
+1. Em `apps/web/src/lib/storage.test.ts`: round-trip de `writeScan`/`readScan` — o resultado volta igual, e o `createdAt` volta como string ISO preenchida (é o `writeScan` que a gera). Cubra também a leitura sem nada guardado, que deve devolver `{ result: null, createdAt: null }`.
+2. Em `apps/web/src/lib/api.test.ts`: com o `fetch` stubado devolvendo um `ScanResult`, `requestScan` deve **gravar** — prove chamando `fetchLatestScan()` depois e conferindo que o resultado está lá. Teste o comportamento pela porta da frente, não espionando o `writeScan`.
+
 - [ ] **Step 4: Apague as rotas e verifique**
 
 ```bash
@@ -612,6 +657,8 @@ Esperado: nenhuma saída além das próprias definições, que você está remov
 - [ ] **Step 3:** Atualize `artefatos/arquiteturad.md`: a seção 4 (schema) reflete só o que sobrou, e o log de decisões ganha uma entrada explicando que os dados do visitante foram para o `localStorage`, com o trade-off assumido — sem sincronização entre aparelhos e **sem backup: limpar os dados do navegador apaga as ideias salvas**, coisa que o Postgres cobria. Registre também que exportar as ideias em JSON ficou como follow-up.
 
 - [ ] **Step 4:** Atualize o `README.md` (a seção "Como rodar" e a de stack) e o `.env.example`: o `DATABASE_URL` passa a ser exigido **apenas** pela newsletter.
+
+- [ ] **Step 4b: Acabe com as cópias do `MAX_TOPICS`.** A Task 2 tornou `@stalo/shared` a casa canônica da constante, mas dois arquivos ainda declaram `const MAX_TOPICS = 5` local: `apps/web/src/components/TopicsPanel.tsx:12` e `apps/web/src/app/radar/page.tsx:46`. Eles governam o texto "N/5 temas" e o `disabled` do botão de adicionar — se o canônico mudar, a interface passa a mentir. Troque as duas declarações por `import { MAX_TOPICS } from "@stalo/shared"` e confirme com `grep -rn "MAX_TOPICS" apps packages --include="*.ts" --include="*.tsx" | grep -v node_modules` que só resta uma declaração.
 
 - [ ] **Step 5: Verificação final e commit**
 

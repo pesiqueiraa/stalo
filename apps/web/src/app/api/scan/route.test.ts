@@ -1,31 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// A rota puxa IA + DB via @stalo/server e o workspace via @/lib/workspace.
-// Mockamos tudo — o alvo é o LIMITE: 4 scans por 2h por IP, fail-closed.
+// A rota puxa IA via @stalo/server. Mockamos tudo — o alvo é o LIMITE: 4
+// scans por 2h por IP, fail-closed.
 vi.mock("server-only", () => ({}));
 vi.mock("@stalo/server", () => ({
   runScan: vi.fn(),
-  saveScan: vi.fn(),
   checkRateLimit: vi.fn(),
-}));
-vi.mock("@/lib/workspace", () => ({
-  getWorkspaceId: vi.fn(),
 }));
 
 import { POST } from "./route";
-import { checkRateLimit, runScan, saveScan } from "@stalo/server";
-import { getWorkspaceId } from "@/lib/workspace";
+import { checkRateLimit, runScan } from "@stalo/server";
 
 const mockCheck = vi.mocked(checkRateLimit);
 const mockRunScan = vi.mocked(runScan);
-const mockSaveScan = vi.mocked(saveScan);
-const mockWid = vi.mocked(getWorkspaceId);
 
-function req(): Request {
+function req(body: unknown = { topics: ["IA"], days: null }): Request {
   return new Request("http://localhost/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-forwarded-for": "1.2.3.4" },
-    body: JSON.stringify({ topics: ["IA"], days: null }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -33,17 +26,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockCheck.mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 60 });
   mockRunScan.mockResolvedValue({ items: [], insights: [] });
-  mockSaveScan.mockResolvedValue(undefined);
-  mockWid.mockResolvedValue("wid-anon");
 });
 
 describe("POST /api/scan — limite de 4 scans por 2h", () => {
-  it("dentro do limite passa e consome a chave de IP", async () => {
+  it("dentro do limite passa e devolve o resultado do runScan", async () => {
     const res = await POST(req());
     expect(res.status).toBe(200);
     // uma única chave: a de IP. A chave por cookie saiu — o cliente a controla.
     expect(mockCheck.mock.calls).toEqual([["rl:scan:1.2.3.4", 4, 7200]]);
-    expect(mockSaveScan).toHaveBeenCalledWith("wid-anon", ["IA"], { items: [], insights: [] });
+    const body = (await res.json()) as unknown;
+    expect(body).toEqual({ items: [], insights: [] });
   });
 
   it("limite estourado → 429 com Retry-After, sem gastar OpenAI", async () => {
@@ -63,6 +55,31 @@ describe("POST /api/scan — limite de 4 scans por 2h", () => {
     const res = await POST(req());
     expect(res.status).toBe(503);
     expect(mockRunScan).not.toHaveBeenCalled();
-    expect(mockSaveScan).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/scan — teto de entrada (MAX_TOPICS/tamanho por tema)", () => {
+  // MAX_TOPICS foi para o cliente (@stalo/shared) — a UI recusa o 6º tema,
+  // mas o cliente é entrada não confiável. Sem checar de novo aqui, nada
+  // impede um POST direto com temas demais ou um tema gigante indo pro prompt
+  // do Coletor (packages/server/src/scanPrompt.ts: `topics.join(", ")`).
+  it("temas demais → 400, sem rate limit nem runScan", async () => {
+    const topics = ["a", "b", "c", "d", "e", "f"]; // MAX_TOPICS é 5
+    const res = await POST(req({ topics, days: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBeTruthy();
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRunScan).not.toHaveBeenCalled();
+  });
+
+  it("tema gigante → 400, sem rate limit nem runScan", async () => {
+    const topics = ["x".repeat(101)];
+    const res = await POST(req({ topics, days: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBeTruthy();
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRunScan).not.toHaveBeenCalled();
   });
 });

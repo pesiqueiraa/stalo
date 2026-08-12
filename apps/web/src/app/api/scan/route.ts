@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
-import { runScan, saveScan } from "@stalo/server";
-import { getWorkspaceId } from "@/lib/workspace";
+import { runScan } from "@stalo/server";
+import { MAX_TOPICS } from "@stalo/shared";
 import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
-// POST /api/scan — recebe a lista de temas, roda o scan no servidor, persiste o
-// resultado (scans + news_items + insights) e devolve o ScanResult (items +
-// insights). O frontend chama esta rota em vez de gerar os dados no client,
-// mantendo a futura chave de IA no servidor.
+// POST /api/scan — recebe a lista de temas, roda o scan no servidor e devolve
+// o ScanResult (items + insights). Quem guarda o resultado é o navegador
+// (apps/web/src/lib/storage.ts) — esta rota não persiste nada; só fala com a
+// IA, mantendo a chave de IA no servidor.
 // Janelas de recência permitidas (dias). O frontend oferece estas opções;
 // null/ausente = sem limite de data.
 const ALLOWED_DAYS = [30, 60, 90];
+
+// Teto de cada tema — `topics.join(", ")` vai direto para o prompt do Coletor
+// (packages/server/src/scanPrompt.ts). MAX_TOPICS já limita a quantidade no
+// cliente (a UI recusa o 6º tema), mas o cliente é entrada não confiável: sem
+// checar aqui de novo, nada impede um POST direto com centenas de temas ou um
+// tema gigante. 100 caracteres dá folga de sobra para qualquer setor real.
+const MAX_TOPIC_LENGTH = 100;
 
 export async function POST(request: Request) {
   let topics: unknown;
@@ -25,6 +32,19 @@ export async function POST(request: Request) {
   if (!Array.isArray(topics) || !topics.every((t) => typeof t === "string")) {
     return NextResponse.json(
       { error: "Envie 'topics' como uma lista de strings." },
+      { status: 400 },
+    );
+  }
+
+  if (topics.length > MAX_TOPICS) {
+    return NextResponse.json(
+      { error: `Envie no máximo ${MAX_TOPICS} temas.` },
+      { status: 400 },
+    );
+  }
+  if (topics.some((t) => t.length > MAX_TOPIC_LENGTH)) {
+    return NextResponse.json(
+      { error: `Cada tema deve ter até ${MAX_TOPIC_LENGTH} caracteres.` },
       { status: 400 },
     );
   }
@@ -48,14 +68,8 @@ export async function POST(request: Request) {
   );
   if (limited) return limited;
 
-  const workspaceId = await getWorkspaceId();
-
   try {
     const result = await runScan(topics, window);
-    // persiste o scan para que /api/scan/latest o recupere ao recarregar a
-    // página. Se a gravação falhar, o scan não é considerado bem-sucedido —
-    // não falha silenciosamente (CLAUDE.md).
-    await saveScan(workspaceId, topics, result);
     return NextResponse.json(result);
   } catch (err) {
     console.error("scan failed", err);

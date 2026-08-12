@@ -39,93 +39,11 @@ Duas limitações do ambiente de artifact não existem mais fora dele, e precisa
 - **Backend:** único lugar com a chave da IA (`OPENAI_API_KEY` no MVP, variável de ambiente, nunca commitada). Também expõe endpoints de CRUD para temas e ideias salvas.
 - **Banco:** substitui o `window.storage` do protótipo. Guarda temas, histórico de scans, notícias, insights e ideias salvas.
 
-## 4. Modelo de dados (proposta inicial)
+## 4. Modelo de dados
+
+Os dados do visitante (temas, scans, ideias salvas, lente) não moram mais no banco — vivem no `localStorage` do navegador (ver decisão "Dados do visitante saem do Postgres, vão para o `localStorage`" em §7). O que resta no Postgres é só a newsletter, uma mailing list global sem relação com o workspace do visitante:
 
 ```sql
--- temas monitorados
-CREATE TABLE topics (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
-  name TEXT NOT NULL,
-  color TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- cada execução de scan (um clique em "atualizar")
-CREATE TABLE scans (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
-  topics_snapshot JSONB NOT NULL,  -- lista de temas usados nesse scan
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- notícias extraídas em um scan
-CREATE TABLE news_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id UUID REFERENCES scans(id) ON DELETE CASCADE,
-  ref TEXT NOT NULL,        -- id local do item dentro do scan ("n1"), como veio do LLM;
-                            -- usado para remontar as ligações do ScanResult na leitura
-  topic TEXT NOT NULL,
-  title TEXT NOT NULL,
-  summary TEXT,
-  source TEXT,
-  url TEXT,
-  entities TEXT[],
-  published_at DATE,        -- data original da notícia (não confundir com created_at)
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- insights extraídos em um scan
-CREATE TABLE insights (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id UUID REFERENCES scans(id) ON DELETE CASCADE,
-  ref TEXT NOT NULL,             -- id local do insight dentro do scan ("i1"), como veio do LLM
-  type TEXT CHECK (type IN ('tendencia','gap','oportunidade')),
-  title TEXT NOT NULL,
-  description TEXT,             -- a frase de efeito (até 25 palavras)
-  rationale TEXT,              -- "por que conecta": a linha de raciocínio entre os setores
-  why_now TEXT,               -- "por que agora": o sinal de timing que torna o cruzamento relevante neste momento
-  so_what TEXT,               -- "e daí?": a ação/oportunidade concreta
-  related_refs TEXT[],          -- refs das notícias relacionadas (as mesmas de news_items.ref)
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- ideias salvas pelo usuário (o "produto" final do fluxo)
-CREATE TABLE saved_ideas (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id UUID,        -- dono do dado (workspace anônimo do visitante)
-  insight_ref TEXT,         -- ref do insight de origem; permite detectar "já salva" no scan atual
-  type TEXT,
-  title TEXT NOT NULL,
-  description TEXT,
-  rationale TEXT,           -- "por que conecta" — snapshot do insight de origem
-  why_now TEXT,             -- "por que agora" — snapshot do insight de origem
-  so_what TEXT,             -- "e daí?" — snapshot do insight de origem
-  related_items JSONB,      -- retrato das notícias relacionadas no momento do save
-                             -- (título, resumo, fonte, url, published_at) — não é só
-                             -- uma referência, que pode ficar sem sentido se o scan
-                             -- original for substituído por um novo
-  notes TEXT,               -- espaço para o usuário anotar aprendizados depois
-  deep_dive JSONB,          -- "Mergulhar" gerado pela IA: análise por TIPO
-                            -- (typeAnalysis, discriminada por kind) + MAPA DE MERCADO
-                            -- (market: players/ondeValor/analogas, via busca web) +
-                            -- proximosPassos + sinais; null = não mergulhado.
-                            -- (panorama/porQueAgora ficam opcionais só p/ JSON antigo)
-  dived_at TIMESTAMPTZ,     -- quando a ideia foi mergulhada
-  financials JSONB,         -- análise financeira (2º nível: mercado, monetização,
-                            -- premissas, custo de validar); null = não aprofundado
-  saved_at TIMESTAMPTZ DEFAULT now()
-);
-
--- preferências do workspace (uma linha por workspace). Hoje só a lente escolhida
--- no onboarding (founder/investor/explorer). Quando contas reais entrarem,
--- workspace_id vira user_id, como no resto do schema.
-CREATE TABLE workspace_settings (
-  workspace_id UUID PRIMARY KEY,
-  lens TEXT CHECK (lens IN ('founder','investor','explorer')),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
 -- assinantes da newsletter (captura de email + setores no popup da landing).
 -- NÃO é workspace-scoped: um assinante é um email numa mailing list, não um
 -- visitante do app (ver blockquote abaixo). Re-assinar faz upsert por email.
@@ -150,33 +68,26 @@ CREATE TABLE newsletter_editions (
 );
 ```
 
-> **Lente do workspace (`workspace_settings`):** a lente escolhida no onboarding é preferência de workspace (uma linha por `workspace_id`), não atributo de insight — a taxonomia de insights continua universal. Ela afina a *linguagem de direcionamento* do mergulho e o ranqueamento do brief (§7), não o scan nem o grafo.
-
-> **`ref` (id local do scan):** o `ScanResult` que sai do LLM usa ids locais como
-> `"n1"`/`"i1"` para ligar insights às notícias. Guardamos esses ids na coluna `ref`
-> (em vez de referenciar os UUIDs entre tabelas) para que `GET /api/scan/latest` remonte
-> o `ScanResult` no formato exato que o `buildGraph()` do frontend espera, sem tradução de
-> ids. O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql).
-
 > **Assinantes (`subscribers`):** EXCEÇÃO deliberada ao padrão "tudo é workspace-scoped". Um assinante é um **email externo numa mailing list**, não um visitante/workspace do app: a mesma pessoa pode assinar de qualquer navegador, sem cookie de workspace, e o que identifica o registro é o `email` (UNIQUE), não um `workspace_id`. Por isso a tabela não tem `workspace_id` e a função de repo não recebe `wid`. Re-assinar é **upsert por email** (`ON CONFLICT (email) DO UPDATE`): atualiza `sectors`, reativa (`status = 'active'`) e toca `updated_at`, sem criar linha duplicada. Escopo atual é só CAPTURA/persistência — sem envio de email nem ESP; `status` já prevê o `unsubscribe` futuro. Não é autenticação (mailing list não é login, ver `produto.md` §2 / CLAUDE.md regra 2).
 
 > **Edição da newsletter (`newsletter_editions`):** 2ª EXCEÇÃO deliberada ao workspace-scoping (como `subscribers`). O conteúdo semanal é igual pra todos os assinantes — o que muda por pessoa é só QUAIS setores aparecem —, então é global, **uma linha por semana** (`week_start` UNIQUE, a segunda-feira da edição). `combos` (JSONB) mapeia `comboKey|origem` → `{ items: NewsletterItem[], insights: Insight[] }` **pronto pra renderizar** (`comboKey` = os setores do assinante ordenados e concatenados), preenchido **sob demanda**: o 1º assinante de um combo dispara a ingestão RSS + o Analista (`analyze()`) sobre os itens combinados (ids reatribuídos), e os demais do mesmo combo reusam. Assim a IA roda **por combo único, não por assinante**. Reaproveita os contratos `NewsItem`/`Insight` de `@stalo/shared`: na newsletter a ingestão RSS substitui só a ETAPA DE COLETA do scan; o Analista e a validação (`validate.ts`) seguem iguais.
 
-> **Isolamento por workspace anônimo:** `topics`, `scans` e `saved_ideas` têm `workspace_id` — o id de um workspace anônimo por visitante (cookie `stalo_wid`, criado no `apps/web/src/proxy.ts` (convenção "proxy" do Next 16, ex-middleware), lido no servidor por `getWorkspaceId()` em `apps/web/src/lib/workspace.ts`). Toda função do `repo.ts` recebe esse id e escopa o SQL por ele; `news_items`/`insights` herdam o escopo via `scan_id`. Isso isola os dados sem login (ver `produto.md` §2). Não é autenticação — e por decisão de produto não haverá login (ver `produto.md` §2); se um dia contas voltarem, `workspace_id` vira `user_id` sem reescrever as queries.
+O SQL executável fica em [`packages/server/db/schema.sql`](../packages/server/db/schema.sql). Os dados do visitante (temas, último scan, ideias salvas, lente) e a forma como cada um é validado ao sair do `localStorage` estão em `apps/web/src/lib/storage.ts` — sem contrapartida em SQL, então não há uma seção equivalente aqui; ver a decisão em §7.
 
-## 5. Endpoints propostos
+## 5. Endpoints
+
+Nenhuma rota persiste dados do visitante — todas são funções finas que recebem entrada, chamam a IA quando precisam, e devolvem resultado. Quem guarda temas, scan e ideias é o navegador (`apps/web/src/lib/storage.ts`, ver §7).
 
 | Método | Rota | Faz o quê |
 |---|---|---|
-| `GET` | `/api/topics` | Lista temas monitorados |
-| `POST` | `/api/topics` | Adiciona um tema (valida limite de 5) |
-| `DELETE` | `/api/topics/:id` | Remove um tema |
-| `POST` | `/api/scan` | Roda o scan em duas etapas (Coletor com busca web + Analista), valida/limpa, persiste `scans` + `news_items` + `insights`, e devolve o `ScanResult` |
-| `GET` | `/api/scan/latest` | Retorna o último scan (para o frontend recarregar estado ao abrir a página) |
-| `POST` | `/api/ideas` | Salva uma ideia a partir de um insight |
-| `GET` | `/api/ideas` | Lista ideias salvas |
-| `DELETE` | `/api/ideas/:id` | Remove uma ideia salva |
-| `POST` | `/api/newsletter` | Captura assinante da newsletter (email + setores) — valida e faz upsert em `subscribers`. Não é workspace-scoped; só captura, sem envio |
+| `POST` | `/api/scan` | Roda o scan em duas etapas (Coletor com busca web + Analista), valida/limpa, e devolve o `ScanResult` — sem persistir |
+| `POST` | `/api/dive` | "Mergulhar": recebe a ideia salva no corpo (não busca mais no banco) e devolve o `DeepDive` gerado com busca web |
+| `POST` | `/api/financials` | "Aprofundar": recebe a ideia (já mergulhada) no corpo e devolve a análise financeira (2º nível) |
+| `POST` | `/api/newsletter` | Captura assinante da newsletter (email + setores) — valida e faz upsert em `subscribers`; dispara e-mail de boas-vindas em cadastro novo/reativação. Não é workspace-scoped |
+| `GET` | `/api/newsletter/preview` | Renderiza o boletim na tela sob demanda (amostra ou edição real via `?sectors=`), para conferir o template |
+| `GET` | `/api/newsletter/send` | Cron semanal (Vercel Cron, protegido por `CRON_SECRET`): monta e envia o boletim da semana a cada assinante ativo |
+| `POST` | `/api/newsletter/test` | Envio de teste sob demanda, protegido por `NEWSLETTER_ADMIN_SECRET` |
+| `GET` | `/api/newsletter/unsubscribe` | Descadastro por 1 clique no link do boletim (idempotente, sem segredo — o UUID do assinante é o token) |
 
 ## 6. Fluxo de um scan (ponta a ponta)
 
@@ -186,9 +97,8 @@ CREATE TABLE newsletter_editions (
    - **① Coletor** — chama o provider **com busca web** e structured outputs (schema Zod), devolvendo só as notícias (`items`, com ids `n1…n8`).
    - **② Analista** — chama o provider **sem busca**, recebe os `items` e cruza os temas, devolvendo `insights` (`i1…i3`) que referenciam os ids das notícias.
    - Depois, uma **camada de validação em código** (não é IA) deduplica notícias, descarta insights com `related_items` órfãos ou com menos de 2 notícias, e aplica os limites (8/3).
-4. Backend persiste `scans`, `news_items`, `insights` no Postgres (`saveScan`).
-5. A rota devolve o `ScanResult` cru (items + insights) — o mesmo contrato de JSON do prompt.
-6. Frontend chama `buildGraph(result, topics)` (`apps/web/src/lib/graph.ts`) para montar nós/arestas e renderiza com D3. A construção do grafo fica no client porque depende de estado de apresentação do client (cor por ordem de tema).
+4. A rota devolve o `ScanResult` cru (items + insights) — o mesmo contrato de JSON do prompt. Ela não persiste nada; quem grava o resultado é o navegador, em `apps/web/src/lib/storage.ts` (ver §7).
+5. Frontend chama `buildGraph(result, topics)` (`apps/web/src/lib/graph.ts`) para montar nós/arestas e renderiza com D3. A construção do grafo fica no client porque depende de estado de apresentação do client (cor por ordem de tema).
 
 > Decisão de arquitetura: a rota devolve `ScanResult` e o client constrói o grafo (em vez de o backend já devolver o grafo pronto). Assim o `ScanResult` — que é exatamente a saída do LLM — vira a fronteira limpa entre provider de IA e visualização.
 
@@ -206,10 +116,11 @@ CREATE TABLE newsletter_editions (
 - **Detalhe do insight como revelação progressiva (InsightStory), não bloco único**: feedback de uso apontou que a interface entregava a conclusão pronta sem o "caminho" do raciocínio. O detalhe de um insight (no brief e no painel do grafo — componente compartilhado `InsightStory` em `apps/web`) agora fase o conteúdo em etapas numeradas: **o padrão** (notícias relacionadas em ordem cronológica + mini-timeline por `published_at`, pra distinguir evento isolado de sequência) → **por que conecta** (`rationale`) → **por que agora** (`why_now`) → **e daí?** (`so_what`) → **ação** (salvar). Etapas fechadas são clicáveis; clicar numa etapa adiante revela tudo até ela. É mudança só de apresentação — nenhum campo removido, contrato do `ScanResult` intacto. Complemento: a lista de temas mostra a **atividade do scan atual** ("N notícias neste scan", contagem direta do último `ScanResult`) — deliberadamente rotulada como atividade, não "tendência": sinal de tendência real depende de recorrência entre scans, que exige o histórico de scans do backlog (ver `notas.md`, "Score de confiança do cruzamento").
 - **Coleta sob demanda com LLM+busca em vez de pipeline volumoso (RSS/API de notícias)**: o valor do produto é curadoria + cruzamento, não volume (ver `produto.md`). Pipeline volumoso fica no backlog, só se cobertura/histórico/digest agendado virarem prioridade. **Exceção realizada — a newsletter:** o boletim semanal é justamente esse "digest agendado", então usa um modelo **híbrido RSS + LLM**. Um mapa curado `setor → feeds RSS` (mantido por nós, invisível ao assinante — ele só escolhe setores de um menu, **nunca inputa RSS**) coleta os itens com URL, data e imagem reais, baratos e sem alucinação; o LLM entra **só na síntese** — os 3 insights (tendência/gap/oportunidade) que cruzam as notícias de cada seção, preservando o "curadoria + cruzamento". A coleta do produto principal (veredito/scan) **não muda** — segue LLM+busca sob demanda. Detalhe do plano na nota "newsletter-plano-de-implem" (Maestri).
 - **`max_tokens` fixo e prompt com limites explícitos** (máx. 8 notícias, máx. 3 insights por scan): decisão deliberada para manter respostas previsíveis e baratas; ajustar para cima só se o volume de temas monitorados crescer no roadmap.
-- **Personalização por lente (perfil) mora no prompt do mergulho (`dive`), não no scan nem no brief**: o onboarding captura a lente do usuário (**founder / investidor / explorador** — a ideia de "público" de `produto.md` §2-3). As **categorias de insight continuam universais** (`tendência / gap / oportunidade` — mesmos glifos, cores e taxonomia em grafo, brief e mergulho); por isso **não é mudança no `type` do `Insight`** nem no schema de `insights`. O que muda por lente é a **linguagem de direcionamento** — o *"e daí?"/payoff*, os *passos* e o *2º nível financeiro* do mergulho — e a **ordem do brief** (qual categoria lidera é ranqueamento, não regeneração de texto). O **grafo permanece neutro** (é a superfície de triagem/mapa; a divergência por perfil precisa de densidade, e o mergulho é onde ela cabe). Consequência técnica: a lente vira **parâmetro do prompt do `dive`** (e do `financials`), threaded pelo módulo compartilhado de prompts (regra 4). Isso isola a personalização à geração sob demanda (barata, por insight) e preserva o "mesmo radar pra todo mundo" (comparabilidade). A lente é preferência de **workspace/usuário** (não por insight), persistida em `workspace_settings` (§4). **Implementado:** capturada no onboarding, e o prompt do mergulho já se ajusta a ela (`buildDeepDiveSystemPrompt` em `scanPrompt.ts`; a rota `/api/ideas/:id/dive` lê `getLens(wid)` e passa pra `runDeepDive`) — founder puxa validação com cliente, investidor puxa diligência/deal, explorador puxa sinais a acompanhar. O 2º nível financeiro também se ajusta à lente (`buildFinancialsSystemPrompt`; a rota `/api/ideas/:id/financials` lê `getLens(wid)`): founder foca em bootstrap/receita, investidor em venture-scale/defensibilidade, explorador em por onde o dinheiro flui. Os esquemas de saída (mergulho e financeiro), o scan e o grafo seguem neutros; o **brief é reordenado por lente na apresentação** — o componente `Brief` põe a categoria que a lente lidera no topo (evidência como desempate), via `LENS_LEAD_CATEGORY` em `apps/web/src/lib/ui.ts`, com a lente lida por `GET /api/settings`. É reordenação de apresentação: não regenera texto nem altera o contrato do `ScanResult`.
+- **Personalização por lente (perfil) mora no prompt do mergulho (`dive`), não no scan nem no brief**: o onboarding captura a lente do usuário (**founder / investidor / explorador** — a ideia de "público" de `produto.md` §2-3). As **categorias de insight continuam universais** (`tendência / gap / oportunidade` — mesmos glifos, cores e taxonomia em grafo, brief e mergulho); por isso **não é mudança no `type` do `Insight`** nem no schema de `insights`. O que muda por lente é a **linguagem de direcionamento** — o *"e daí?"/payoff*, os *passos* e o *2º nível financeiro* do mergulho — e a **ordem do brief** (qual categoria lidera é ranqueamento, não regeneração de texto). O **grafo permanece neutro** (é a superfície de triagem/mapa; a divergência por perfil precisa de densidade, e o mergulho é onde ela cabe). Consequência técnica: a lente vira **parâmetro do prompt do `dive`** (e do `financials`), threaded pelo módulo compartilhado de prompts (regra 4). Isso isola a personalização à geração sob demanda (barata, por insight) e preserva o "mesmo radar pra todo mundo" (comparabilidade). A lente é preferência de **navegador** (não por insight), guardada no `localStorage` (`apps/web/src/lib/storage.ts`, chave `stalo:settings`; ver decisão de dados do visitante em §7). **Implementado:** capturada no onboarding; o cliente lê a lente salva (`readLens()` em `apps/web/src/lib/api.ts`) e a manda no corpo de `POST /api/dive` e `POST /api/financials` junto com a ideia — as rotas não guardam estado, só repassam a lente pra `runDeepDive`/`runFinancials`, que ajustam o prompt (`buildDeepDiveSystemPrompt`/`buildFinancialsSystemPrompt` em `scanPrompt.ts`): founder puxa validação com cliente, investidor puxa diligência/deal, explorador puxa sinais a acompanhar; no financeiro, founder foca em bootstrap/receita, investidor em venture-scale/defensibilidade, explorador em por onde o dinheiro flui. Os esquemas de saída (mergulho e financeiro), o scan e o grafo seguem neutros; o **brief é reordenado por lente na apresentação** — o componente `Brief` põe a categoria que a lente lidera no topo (evidência como desempate), via `LENS_LEAD_CATEGORY` em `apps/web/src/lib/ui.ts`, com a lente lida do `localStorage`. É reordenação de apresentação: não regenera texto nem altera o contrato do `ScanResult`.
 - **Autenticação removida (2026-08)**: o app teve Supabase Auth (Google + e-mail/senha) por um período; saiu porque (1) o projeto free do Supabase pausava por inatividade e derrubava login e banco juntos, (2) o Stalo é peça de portfólio sem plano de monetização — conta não pagava seu custo de fricção. O que segurava abuso (scan grátis único + convite de conta) virou **rate limit de 4 scans/2h por IP+cookie** (`apps/web/src/lib/rateLimit.ts`, `enforceScanLimit`, chaves duplas `scan:ip:*`/`scan:wid:*` na tabela `rate_limits`). O banco **continua** sendo o Postgres do Supabase; migração para Neon é follow-up independente.
 - **Rate limit fora do banco (2026-08-11)**: o contador saiu do Postgres para o Upstash (Redis). Motivo: o projeto free do Supabase ficou inacessível e derrubou o contador junto com os dados — e, como o limite falhava ABERTA, cada tentativa de scan chamava a OpenAI sem teto e falhava depois, gastando sem entregar. Além do armazenamento, mudou a política: as rotas que chamam a IA (scan, dive, financials) passaram a **fail-closed** (503 quando o contador não responde); o resto segue fail-open. A chave por cookie foi removida — o cliente a controla, então só o IP segura de fato. Janela fixa e limites preservados (scan 4/2h, dive e financials 20/h). Como `INCR` e `EXPIRE` são duas chamadas separadas no Upstash (o upsert do Postgres era atômico), uma chave pode ficar sem TTL se o `EXPIRE` falhar; o contador se auto-repara, definindo a janela quando encontra uma chave sem validade.
 - **Contador em memória, sem serviço externo (2026-08-12)**: um dia depois, o Upstash também saiu — o contador passou a viver em memória, no processo da função (`packages/server/src/memoryStore.ts`). Motivo: o objetivo do projeto é ser 100% grátis e simples, e trocar um serviço externo (Supabase) por outro (Upstash) andava contra isso. O que decidiu foi perceber o que o serviço externo realmente comprava: um limite por IP **nunca** protegeu contra abuso distribuído — quem quer queimar tokens troca de IP — então o ganho era estreito (consistência contra um mesmo IP entre instâncias do Vercel) e custava mais uma chave. **Trade-off assumido**: o contador é por instância e morre em cold start, então o limite é furado — segura uso casual e repetição acidental, não segura script determinado. A garantia financeira de verdade é o **teto de gasto mensal na OpenAI**, não o rate limit; isto aqui é fricção, não teto. A troca custou um arquivo porque tudo passa pela interface `RateLimitStore`: política, rotas, limites e testes não mudaram. Voltar para um store remoto é reimplementar a mesma interface. Considerada e descartada: a regra de rate limit do firewall da Vercel (grátis no Hobby, sem código), porque a janela máxima no plano é de 10 minutos e a política do produto é 4 scans por 2 horas — serve como tampa contra flood, não como o limite do produto.
+- **Dados do visitante saem do Postgres, vão para o `localStorage` (2026-08)**: temas, último scan, ideias salvas (com deep dive e financeiro) e a lente pararam de ter tabela — moram só no navegador (`apps/web/src/lib/storage.ts`), lidos e validados pelo cliente antes de entrar na UI ou num prompt (o `localStorage` é entrada não confiável: qualquer pessoa edita pelo devtools). Motivo: o mesmo projeto free do Supabase que já tinha derrubado o login (ver "Autenticação removida" acima) derrubou também os dados em produção — segundo prejuízo do mesmo componente, com o app inteiro dependendo de um serviço que pausa por inatividade. As rotas `/api/*` que sobraram (`/api/scan`, `/api/dive`, `/api/financials`) viraram funções puras: recebem entrada, chamam a IA, devolvem resultado, sem guardar nada — quem persiste é o navegador. Saíram do repositório as funções de CRUD do visitante em `repo.ts`, as tabelas `topics`/`scans`/`news_items`/`insights`/`saved_ideas`/`workspace_settings` do schema, o cookie `stalo_wid` e o `apps/web/src/proxy.ts` que o criava — sem eles, não sobra isolamento por workspace pra fazer, porque não sobra dado nenhum no servidor pra isolar. **Trade-off assumido, dois pontos**: (1) **sem sincronização entre aparelhos** — abrir o Stalo num celular não traz o que foi salvo no notebook, cada navegador é uma cópia isolada; (2) mais sério, **sem backup** — limpar os dados do navegador (ou trocar de navegador/aparelho) apaga as ideias salvas de vez, sem volta, coisa que o Postgres cobria antes. Um botão de exportar/importar as ideias em JSON mitigaria o ponto 2 e ficou deliberadamente de fora deste corte — é **follow-up conhecido**, a entrar assim que o resto estabilizar (ver `artefatos/specs/2026-08-11-sem-banco-design.md`, "Riscos assumidos"). O que continua no Postgres é só a newsletter (`subscribers`, `newsletter_editions`, §4) — mailing list global sem relação com o workspace do visitante, removida num plano futuro junto com o e-mail.
 
 ## 8. Como começar a implementar
 
@@ -219,5 +130,5 @@ Ordem escolhida (frontend primeiro com dados mockados, para validar a UI antes d
 2. Frontend com dados mockados: portar a UI do protótipo (topics sidebar, grafo D3, painel de detalhe, ideias salvas) trocando `window.storage` por estado local/`localStorage` e o `scanNews()` real por uma função que retorna um `ScanResult` mockado (mesmo formato de JSON da seção 6), para validar a experiência completa sem depender de banco nem da Claude API.
 3. **[feito]** Endpoint `POST /api/scan` no servidor com o "encaixe" do provider (`runScan`) e o prompt no módulo compartilhado — porém ainda servido por mock, porque a API de IA não foi escolhida. O frontend já consome o endpoint via `fetch` (não gera mais os dados no client).
 4. **[em andamento]** Plugar a API de IA em `runScan`: **OpenAI** (Responses API) em duas etapas (Coletor com `web_search` + Analista), structured outputs por schema Zod, e validação em código. `OPENAI_API_KEY` em variável de ambiente no servidor. Falta configurar a key e testar ponta a ponta; troca para Claude planejada para o fim do MVP.
-5. **[feito]** Banco de dados: projeto no Supabase, schema da seção 4 em `packages/server/db/schema.sql`, acesso via `packages/server/src/db.ts` (postgres.js) + `packages/server/src/repo.ts`. O `localStorage` (temas, ideias, último scan) foi trocado pelos endpoints `/api/topics`, `/api/ideas`, `/api/scan` e `/api/scan/latest`.
+5. **[feito, depois revertido]** Banco de dados: projeto no Supabase, acesso via `packages/server/src/db.ts` (postgres.js) + `packages/server/src/repo.ts`. Na época, o `localStorage` (temas, ideias, último scan) foi trocado pelos endpoints `/api/topics`, `/api/ideas`, `/api/scan` e `/api/scan/latest`. **Revertido em 2026-08**: esses dados voltaram para o `localStorage` e essas rotas foram removidas — ver a decisão "Dados do visitante saem do Postgres, vão para o `localStorage`" em §7. O que ficou no Postgres é só a newsletter (§4).
 6. Deploy: Vercel + a variável de ambiente da chave de IA configurada no painel do Vercel, nunca no código.

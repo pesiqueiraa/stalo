@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { TopicsPanel } from "@/components/TopicsPanel";
 import { GraphCanvas } from "@/components/GraphCanvas";
@@ -25,6 +26,7 @@ import {
   saveLens,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
+import { hasAnything } from "@/lib/storage";
 import { insightKey } from "@/lib/ui";
 import {
   getServerSettingsSnapshot,
@@ -32,22 +34,26 @@ import {
   setGraphSettings,
   subscribeSettings,
 } from "@/lib/settings";
-import type {
-  Graph,
-  GraphNode,
-  InsightNode,
-  Lens,
-  NewsItem,
-  NewsNode,
-  SavedIdea,
-  Topic,
+import {
+  MAX_TOPICS,
+  type Graph,
+  type GraphNode,
+  type InsightNode,
+  type Lens,
+  type NewsItem,
+  type NewsNode,
+  type SavedIdea,
+  type Topic,
 } from "@stalo/shared";
 
-const MAX_TOPICS = 5;
 const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
 type View = "rede" | "brief";
 
 export default function Home() {
+  const router = useRouter();
+  // guarda a tela até sabermos se o visitante tem algo salvo — sem isso, quem
+  // vai ser mandado ao onboarding veria o radar (vazio) piscar antes do redirect.
+  const [ready, setReady] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
@@ -100,49 +106,49 @@ export default function Home() {
 
   // carrega o estado persistido ao abrir a página: temas, ideias salvas e o
   // último scan (que o client remonta em grafo com as cores dos temas atuais).
-  // Usuário novo recebe listas vazias (nada a mostrar, sem erro). O único motivo
-  // de falhar aqui é hiccup transitório do banco (ex.: cold-start da Supabase),
-  // então tentamos de novo automaticamente antes de incomodar o usuário — em vez
-  // de mandá-lo "recarregar a página", já que ele pode nem ter dados salvos.
+  // Tudo isso é leitura direta do localStorage (apps/web/src/lib/storage.ts,
+  // sem I/O de rede) — usuário novo recebe listas vazias (nada a mostrar, sem
+  // erro). `readTopics`/`readIdeas`/`readLens` nunca lançam (o pior caso é o
+  // vazio), mas a rede de segurança fica: qualquer coisa inesperada aqui
+  // mostra uma mensagem em vez de deixar a tela em branco.
+  //
+  // Antes de tudo isso: quem ainda não configurou nada (sem temas, sem lente)
+  // não tem o que ver aqui — manda pro onboarding com replace (não push), pra
+  // "voltar" não devolver a esta página, que redirecionaria de novo.
   useEffect(() => {
+    if (!hasAnything()) {
+      router.replace("/onboarding");
+      return;
+    }
+    setReady(true);
     let cancelled = false;
     (async () => {
-      const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
-      for (let attempt = 0; ; attempt++) {
-        try {
-          const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
-            fetchTopics(),
-            fetchIdeas(),
-            fetchLatestScan(),
-            fetchSettings(),
-          ]);
-          if (cancelled) return;
-          setTopics(loadedTopics);
-          setIdeas(loadedIdeas);
-          setLens(loadedSettings.lens);
-          if (latest.result) {
-            setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
-            setLastUpdated(latest.createdAt);
-          }
-          setError(null);
-          return;
-        } catch (err) {
-          console.error(err);
-          if (cancelled) return;
-          if (attempt < RETRY_DELAYS.length) {
-            await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-            if (cancelled) return;
-            continue;
-          }
-          setError("Instabilidade ao conectar. Tente adicionar um tema ou recarregar em instantes.");
-          return;
+      try {
+        const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
+          fetchTopics(),
+          fetchIdeas(),
+          fetchLatestScan(),
+          fetchSettings(),
+        ]);
+        if (cancelled) return;
+        setTopics(loadedTopics);
+        setIdeas(loadedIdeas);
+        setLens(loadedSettings.lens);
+        if (latest.result) {
+          setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
+          setLastUpdated(latest.createdAt);
         }
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        if (cancelled) return;
+        setError("Não consegui carregar seus dados salvos agora. Tente recarregar a página.");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   function flashMessage(message: string, action?: ToastAction) {
     setToast({ message, action });
@@ -194,7 +200,7 @@ export default function Home() {
     setBanner(null);
     try {
       const topicNames = topics.slice(0, MAX_TOPICS).map((t) => t.name);
-      const result = await requestScan(topicNames, days);
+      const { result, persisted } = await requestScan(topicNames, days);
       setGraph(buildGraph(result, topics.map((t) => t.name)));
       setLastUpdated(new Date().toISOString());
       // a manchete entra quando os insights terminam de estourar (fim do stagger)
@@ -204,6 +210,12 @@ export default function Home() {
         const text = `${n} ${n === 1 ? "conexão" : "conexões"} entre seus temas`;
         bannerTimers.current.push(setTimeout(() => setBanner(text), 1500));
         bannerTimers.current.push(setTimeout(() => setBanner(null), 6500));
+      }
+      // o scan aconteceu e já custou a chamada de IA — se só o salvamento
+      // falhou (cota cheia, modo privado), o resultado fica na tela mesmo
+      // assim, só avisa que ele não sobrevive a um reload.
+      if (!persisted) {
+        flashMessage("Não consegui guardar este scan no navegador; ele some se você recarregar a página.");
       }
     } catch (err) {
       console.error(err);
@@ -305,12 +317,16 @@ export default function Home() {
     });
   }
 
-  // gera o mergulho (ou recupera do cache no servidor) e abre a tela
+  // gera o mergulho (ou recupera do cache no cliente) e abre a tela. A rota
+  // não busca mais a ideia — ela vai inteira no corpo, então achamos no
+  // estado local pelo id que os componentes filhos mandam.
   async function dive(id: string) {
     if (divingId) return;
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
     setDivingId(id);
     try {
-      const updated = await requestDeepDive(id);
+      const updated = await requestDeepDive(idea);
       setIdeas((prev) => prev.map((i) => (i.id === id ? updated : i)));
       setOpenDiveId(id);
     } catch (err) {
@@ -323,9 +339,11 @@ export default function Home() {
   // aprofunda no financeiro (2º nível) — a ideia já precisa estar mergulhada
   async function deepenFinancials(id: string) {
     if (financingId) return;
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
     setFinancingId(id);
     try {
-      const updated = await requestFinancials(id);
+      const updated = await requestFinancials(idea);
       setIdeas((prev) => prev.map((i) => (i.id === id ? updated : i)));
     } catch (err) {
       flashMessage(err instanceof Error ? err.message : "Não consegui gerar a análise financeira.");
@@ -360,6 +378,10 @@ export default function Home() {
           (i) => insightKey(i.type, i.title) === insightKey(selectedNode.insightType, selectedNode.title),
         )
       : false;
+
+  // ainda não sabemos se este visitante fica ou vai pro onboarding — não
+  // renderiza nada do radar enquanto isso não é decidido (efeito acima).
+  if (!ready) return null;
 
   return (
     <div id="app">
