@@ -73,6 +73,18 @@ describe("temas no armazenamento local", () => {
     expect(await fetchTopics()).toEqual([]);
   });
 
+  it("cota cheia ao remover: rejeita com mensagem visível", async () => {
+    vi.stubGlobal("localStorage", {
+      ...fakeLocalStorage(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    await expect(deleteTopic("qualquer-id")).rejects.toThrow(
+      "Não consegui remover o tema — armazenamento do navegador indisponível.",
+    );
+  });
+
   it("a lente vai e volta", async () => {
     expect(await fetchSettings()).toEqual({ lens: null });
     await saveLens("founder");
@@ -130,6 +142,18 @@ describe("ideias salvas no armazenamento local", () => {
     expect((await fetchIdeas()).map((i) => i.id)).toEqual([c.id, b.id, a.id]);
   });
 
+  it("cota cheia ao remover: rejeita com mensagem visível", async () => {
+    vi.stubGlobal("localStorage", {
+      ...fakeLocalStorage(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    await expect(deleteIdea("qualquer-id")).rejects.toThrow(
+      "Não consegui remover a ideia — armazenamento do navegador indisponível.",
+    );
+  });
+
   it("cota cheia: rejeita com mensagem visível, sem derrubar a tela", async () => {
     // o card aparecia no state do React mesmo sem persistir — o usuário só
     // descobria que a ideia sumiu depois de recarregar. write() agora devolve
@@ -155,11 +179,29 @@ describe("scan — persistência ponta a ponta", () => {
     const result: ScanResult = { items: [], insights: [] };
     stubFetch(200, result);
     const returned = await requestScan(["IA"], null);
-    expect(returned).toEqual(result);
+    expect(returned).toEqual({ result, persisted: true });
 
     const stored = await fetchLatestScan();
     expect(stored.result).toEqual(result);
     expect(stored.createdAt).toBeTruthy();
+  });
+
+  // Decisão de projeto: o scan já custou a chamada de IA quando chega aqui —
+  // se o navegador recusar guardar (cota cheia, modo privado), a função NÃO
+  // pode lançar e descartar um resultado que já saiu caro. Ela resolve com
+  // persisted: false, e quem chama decide como avisar sem perder o resultado
+  // na tela. Se alguém trocar isso por um throw, este teste quebra.
+  it("requestScan resolve (não rejeita) com persisted: false quando o navegador recusa guardar", async () => {
+    const result: ScanResult = { items: [], insights: [] };
+    stubFetch(200, result);
+    vi.stubGlobal("localStorage", {
+      ...fakeLocalStorage(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    const returned = await requestScan(["IA"], null);
+    expect(returned).toEqual({ result, persisted: false });
   });
 });
 

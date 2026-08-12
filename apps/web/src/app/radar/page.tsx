@@ -200,7 +200,7 @@ export default function Home() {
     setBanner(null);
     try {
       const topicNames = topics.slice(0, MAX_TOPICS).map((t) => t.name);
-      const result = await requestScan(topicNames, days);
+      const { result, persisted } = await requestScan(topicNames, days);
       setGraph(buildGraph(result, topics.map((t) => t.name)));
       setLastUpdated(new Date().toISOString());
       // a manchete entra quando os insights terminam de estourar (fim do stagger)
@@ -210,6 +210,12 @@ export default function Home() {
         const text = `${n} ${n === 1 ? "conexão" : "conexões"} entre seus temas`;
         bannerTimers.current.push(setTimeout(() => setBanner(text), 1500));
         bannerTimers.current.push(setTimeout(() => setBanner(null), 6500));
+      }
+      // o scan aconteceu e já custou a chamada de IA — se só o salvamento
+      // falhou (cota cheia, modo privado), o resultado fica na tela mesmo
+      // assim, só avisa que ele não sobrevive a um reload.
+      if (!persisted) {
+        flashMessage("Não consegui guardar este scan no navegador; ele some se você recarregar a página.");
       }
     } catch (err) {
       console.error(err);

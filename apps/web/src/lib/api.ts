@@ -40,12 +40,22 @@ export async function createTopic(name: string): Promise<Topic> {
 }
 
 export async function deleteTopic(id: string): Promise<void> {
-  writeTopics(readTopics().filter((t) => t.id !== id));
+  if (!writeTopics(readTopics().filter((t) => t.id !== id))) {
+    throw new Error("Não consegui remover o tema — armazenamento do navegador indisponível.");
+  }
 }
 
 // ---------- scan ----------
 
-export async function requestScan(topics: string[], days: number | null): Promise<ScanResult> {
+// O scan em si (a chamada de IA) e o salvamento no navegador são falhas de
+// natureza diferente: se a IA não responder, não há o que mostrar — lança. Se
+// a IA respondeu mas o navegador recusou guardar (cota cheia, modo privado),
+// o resultado já custou dinheiro e existe: devolve `persisted: false` em vez
+// de lançar, pra quem chama mostrar o resultado E avisar que ele não fica.
+export async function requestScan(
+  topics: string[],
+  days: number | null,
+): Promise<{ result: ScanResult; persisted: boolean }> {
   const res = await fetch("/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,8 +63,8 @@ export async function requestScan(topics: string[], days: number | null): Promis
   });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao buscar notícias."));
   const result = (await res.json()) as ScanResult;
-  writeScan(result); // quem guarda agora é o navegador
-  return result;
+  const persisted = writeScan(result); // quem guarda agora é o navegador
+  return { result, persisted };
 }
 
 export async function fetchLatestScan(): Promise<{
@@ -113,7 +123,9 @@ export async function createIdea(payload: NewIdeaPayload): Promise<SavedIdea> {
 }
 
 export async function deleteIdea(id: string): Promise<void> {
-  writeIdeas(readIdeas().filter((i) => i.id !== id));
+  if (!writeIdeas(readIdeas().filter((i) => i.id !== id))) {
+    throw new Error("Não consegui remover a ideia — armazenamento do navegador indisponível.");
+  }
 }
 
 // ---------- settings (lente do workspace) ----------
