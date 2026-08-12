@@ -25,18 +25,19 @@ Então fiz a ferramenta que eu queria usar: ela lê por mim, procura onde os set
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, D3 |
 | Backend | `@stalo/server` — rotas `/api/*` finas no Next chamam a lógica do pacote |
-| Banco | Postgres (Supabase) |
+| Dados do visitante | `localStorage` do navegador (temas, último scan, ideias salvas, lente) |
+| Banco | Postgres (Supabase) — só a newsletter |
 | LLM | OpenAI (Responses API + tool `web_search`) |
 | Testes | Vitest |
 | Deploy | Vercel |
 
-Monorepo com npm workspaces — `apps/web` (UI + rotas de API), `packages/server` (banco, scan, prompts), `packages/shared` (tipos do domínio). Comandos rodam da raiz.
+Monorepo com npm workspaces — `apps/web` (UI + rotas de API), `packages/server` (newsletter, scan, prompts), `packages/shared` (tipos do domínio). Comandos rodam da raiz.
 
-## Sem contas, com limites
+## Sem contas, sem banco para o produto
 
-O app é anônimo: cada visitante ganha um workspace por cookie (`stalo_wid`, 1 ano) e só enxerga os próprios temas, scans e ideias. Não há login — o custo de fricção de uma conta não se pagava num projeto sem monetização.
+O app é anônimo e sem login. Temas, último scan, ideias salvas e a lente vivem só no `localStorage` do navegador (`apps/web/src/lib/storage.ts`) — não há workspace nem cookie identificando o visitante. Isso significa **sem sincronização entre aparelhos** e **sem backup**: limpar os dados do navegador apaga as ideias salvas de vez. Exportar/importar em JSON é um follow-up conhecido, ainda não implementado (ver `artefatos/arquiteturad.md` §7).
 
-Como não há conta segurando o custo de IA, quem segura é o rate limit. O scan (o endpoint caro, que faz busca web) é limitado a **4 por janela de 2 horas**, com chave dupla em IP **e** cookie: apagar o cookie não renova, trocar de IP não renova. O limite é checado antes da chamada à OpenAI, então um 429 não gasta nada. Deep dive e análise financeira têm limites próprios por IP.
+Como não há conta segurando o custo de IA, quem segura é o rate limit. O scan (o endpoint caro, que faz busca web) é limitado a **4 por janela de 2 horas**, por IP. O limite é checado antes da chamada à OpenAI, então um 429 não gasta nada. Deep dive e análise financeira têm limites próprios por IP.
 
 A chave da OpenAI vive só no servidor e nunca chega ao client.
 
@@ -48,12 +49,12 @@ cd stalo
 npm install
 
 cp apps/web/.env.example apps/web/.env
-# preencher OPENAI_API_KEY e DATABASE_URL
+# preencher OPENAI_API_KEY
 
 npm run dev
 ```
 
-**Uma chave só.** A da OpenAI é a única credencial de terceiro que o projeto pede — o rate limit não precisa de serviço nenhum (o contador vive em memória) e o banco está em remoção. O schema atual está em `packages/server/db/schema.sql`; sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda.
+**`OPENAI_API_KEY` é a única credencial obrigatória.** O rate limit não precisa de serviço nenhum (o contador vive em memória). `DATABASE_URL` só é exigida pela newsletter (captura de assinante e o cron do boletim) — sem ela o app sobe normalmente e o produto principal (temas, scan, ideias) funciona inteiro, porque esses dados vivem no `localStorage` do navegador, não no banco. O schema da newsletter está em `packages/server/db/schema.sql`.
 
 ```bash
 npm test        # Vitest

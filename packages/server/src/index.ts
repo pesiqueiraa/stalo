@@ -12,20 +12,6 @@ export { weekStart, comboKey, assemble } from "./newsletter";
 export { renderBoletim, renderBoasVindas, sampleEdition } from "./render";
 export { sendBoletim } from "./send";
 export {
-  listTopics,
-  countTopics,
-  addTopic,
-  removeTopic,
-  saveScan,
-  getLatestScan,
-  listIdeas,
-  saveIdea,
-  removeIdea,
-  getIdea,
-  saveDeepDive,
-  saveFinancials,
-  getLens,
-  setLens,
   saveSubscriber,
   getActiveSubscribers,
   unsubscribe,

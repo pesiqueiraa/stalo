@@ -34,18 +34,18 @@ import {
   setGraphSettings,
   subscribeSettings,
 } from "@/lib/settings";
-import type {
-  Graph,
-  GraphNode,
-  InsightNode,
-  Lens,
-  NewsItem,
-  NewsNode,
-  SavedIdea,
-  Topic,
+import {
+  MAX_TOPICS,
+  type Graph,
+  type GraphNode,
+  type InsightNode,
+  type Lens,
+  type NewsItem,
+  type NewsNode,
+  type SavedIdea,
+  type Topic,
 } from "@stalo/shared";
 
-const MAX_TOPICS = 5;
 const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
 type View = "rede" | "brief";
 
