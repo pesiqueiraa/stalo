@@ -41,7 +41,7 @@ describe("POST /api/ideas/:id/dive — fail-closed", () => {
   it("contador fora → 503 e a IA não é chamada", async () => {
     // era fail-open. Com a infra do contador cega, deixar passar significava
     // gastar sem teto — o mesmo cenário que quebrou o /api/scan.
-    mockCheck.mockRejectedValue(new Error("upstash fora"));
+    mockCheck.mockRejectedValue(new Error("contador fora"));
     const res = await POST(req(), { params: Promise.resolve({ id: "idea-1" }) });
     expect(res.status).toBe(503);
     expect(mockRunDeepDive).not.toHaveBeenCalled();

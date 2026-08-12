@@ -40,7 +40,7 @@ describe("enforceRateLimit", () => {
   });
 
   it("FAIL-CLOSED: recusa com 503 quando o contador cai e a rota é cara", async () => {
-    checkRateLimit.mockRejectedValue(new Error("upstash fora"));
+    checkRateLimit.mockRejectedValue(new Error("contador fora"));
     const res = await enforceRateLimit(req(), "scan", 4, 7200, { failClosed: true });
     expect(res?.status).toBe(503);
     expect(await res?.json()).toEqual({
@@ -49,7 +49,7 @@ describe("enforceRateLimit", () => {
   });
 
   it("FAIL-OPEN: deixa passar quando o contador cai e a rota é barata", async () => {
-    checkRateLimit.mockRejectedValue(new Error("upstash fora"));
+    checkRateLimit.mockRejectedValue(new Error("contador fora"));
     expect(await enforceRateLimit(req(), "algo-barato", 20, 3600)).toBeNull();
   });
 

@@ -14,7 +14,7 @@ function clientIp(request: Request): string {
 // ou a resposta de recusa. Chame ANTES da chamada cara à IA — assim a recusa
 // não gasta a OpenAI.
 //
-// failClosed: o que fazer quando o PRÓPRIO contador falha (Upstash fora).
+// failClosed: o que fazer quando o PRÓPRIO contador falha.
 //   • true  → recusa (503). Use nas rotas que chamam a IA: sem contador não há
 //     teto, e errar para o lado de não gastar é mais barato que o contrário.
 //   • false → deixa passar. Use no resto: o contador fora não deve derrubar o

@@ -48,12 +48,12 @@ cd stalo
 npm install
 
 cp apps/web/.env.example apps/web/.env
-# preencher OPENAI_API_KEY, DATABASE_URL, UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN
+# preencher OPENAI_API_KEY e DATABASE_URL
 
 npm run dev
 ```
 
-O schema do banco está em `packages/server/db/schema.sql`. Sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda. O rate limit (scan, dive, financials) usa o Upstash Redis; sem `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` essas rotas devolvem **503** em vez de rodar — a política é fail-closed (sem contador de pé, é mais barato recusar do que chamar a IA sem teto).
+**Uma chave só.** A da OpenAI é a única credencial de terceiro que o projeto pede — o rate limit não precisa de serviço nenhum (o contador vive em memória) e o banco está em remoção. O schema atual está em `packages/server/db/schema.sql`; sem `OPENAI_API_KEY` e `DATABASE_URL` o app sobe, mas o scan não roda.
 
 ```bash
 npm test        # Vitest

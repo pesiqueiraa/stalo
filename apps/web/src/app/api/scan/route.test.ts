@@ -59,7 +59,7 @@ describe("POST /api/scan — limite de 4 scans por 2h", () => {
   it("contador fora → FAIL-CLOSED: 503 e a OpenAI não é chamada", async () => {
     // era fail-open. Com a infra do contador cega, deixar passar significava
     // gastar sem teto — foi o que aconteceu quando o Supabase caiu.
-    mockCheck.mockRejectedValue(new Error("upstash fora"));
+    mockCheck.mockRejectedValue(new Error("contador fora"));
     const res = await POST(req());
     expect(res.status).toBe(503);
     expect(mockRunScan).not.toHaveBeenCalled();
