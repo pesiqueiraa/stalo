@@ -24,8 +24,6 @@ import type {
 // escopo via scan_id (sempre acessadas a partir de um scan já filtrado). Quando
 // contas reais (magic link) entrarem, `wid` vira o user_id sem mudar as queries.
 
-export const MAX_TOPICS = 5;
-
 // DATE/TIMESTAMPTZ voltam como Date do postgres.js — normaliza para string.
 function toDateStr(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);

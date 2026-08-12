@@ -12,7 +12,6 @@ export { weekStart, comboKey, assemble } from "./newsletter";
 export { renderBoletim, renderBoasVindas, sampleEdition } from "./render";
 export { sendBoletim } from "./send";
 export {
-  MAX_TOPICS,
   listTopics,
   countTopics,
   addTopic,

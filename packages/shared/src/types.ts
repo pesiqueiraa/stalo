@@ -10,6 +10,11 @@ export interface Topic {
   name: string;
 }
 
+// Limite de temas monitorados por vez. Regra de domínio (não de servidor):
+// vive aqui para o cliente aplicá-la sem importar `@stalo/server` (que tem
+// módulos `server-only` e não pode ser bundlado no client).
+export const MAX_TOPICS = 5;
+
 export interface NewsItem {
   id: string;
   topic: string;

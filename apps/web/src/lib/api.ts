@@ -1,4 +1,5 @@
-import type { Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
+import { MAX_TOPICS, type Lens, type NewsItem, type SavedIdea, type ScanResult, type Topic } from "@stalo/shared";
+import { readLens, readTopics, writeLens, writeTopics } from "./storage";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -16,24 +17,28 @@ async function parseError(res: Response, fallback: string): Promise<string> {
 // ---------- topics ----------
 
 export async function fetchTopics(): Promise<Topic[]> {
-  const res = await fetch("/api/topics");
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar temas."));
-  return (await res.json()) as Topic[];
+  return readTopics();
 }
 
 export async function createTopic(name: string): Promise<Topic> {
-  const res = await fetch("/api/topics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao adicionar tema."));
-  return (await res.json()) as Topic;
+  const limpo = name.trim();
+  if (!limpo) throw new Error("Dê um nome ao tema.");
+
+  const atuais = readTopics();
+  if (atuais.length >= MAX_TOPICS) {
+    throw new Error(`Máximo de ${MAX_TOPICS} temas por vez.`);
+  }
+  if (atuais.some((t) => t.name.toLowerCase() === limpo.toLowerCase())) {
+    throw new Error("Esse tema já está na lista.");
+  }
+
+  const novo: Topic = { id: crypto.randomUUID(), name: limpo };
+  writeTopics([...atuais, novo]);
+  return novo;
 }
 
 export async function deleteTopic(id: string): Promise<void> {
-  const res = await fetch(`/api/topics/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao remover tema."));
+  writeTopics(readTopics().filter((t) => t.id !== id));
 }
 
 // ---------- scan ----------
@@ -108,18 +113,11 @@ export async function deleteIdea(id: string): Promise<void> {
 // ---------- settings (lente do workspace) ----------
 
 export async function fetchSettings(): Promise<{ lens: Lens | null }> {
-  const res = await fetch("/api/settings");
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar preferências."));
-  return (await res.json()) as { lens: Lens | null };
+  return { lens: readLens() };
 }
 
 export async function saveLens(lens: Lens): Promise<void> {
-  const res = await fetch("/api/settings", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lens }),
-  });
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao salvar a lente."));
+  writeLens(lens);
 }
 
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia
