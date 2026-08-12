@@ -305,12 +305,16 @@ export default function Home() {
     });
   }
 
-  // gera o mergulho (ou recupera do cache no servidor) e abre a tela
+  // gera o mergulho (ou recupera do cache no cliente) e abre a tela. A rota
+  // não busca mais a ideia — ela vai inteira no corpo, então achamos no
+  // estado local pelo id que os componentes filhos mandam.
   async function dive(id: string) {
     if (divingId) return;
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
     setDivingId(id);
     try {
-      const updated = await requestDeepDive(id);
+      const updated = await requestDeepDive(idea);
       setIdeas((prev) => prev.map((i) => (i.id === id ? updated : i)));
       setOpenDiveId(id);
     } catch (err) {
@@ -323,9 +327,11 @@ export default function Home() {
   // aprofunda no financeiro (2º nível) — a ideia já precisa estar mergulhada
   async function deepenFinancials(id: string) {
     if (financingId) return;
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
     setFinancingId(id);
     try {
-      const updated = await requestFinancials(id);
+      const updated = await requestFinancials(idea);
       setIdeas((prev) => prev.map((i) => (i.id === id ? updated : i)));
     } catch (err) {
       flashMessage(err instanceof Error ? err.message : "Não consegui gerar a análise financeira.");

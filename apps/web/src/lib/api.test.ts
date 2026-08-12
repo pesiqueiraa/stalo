@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScanResult } from "@stalo/shared";
+import type { DeepDive, Financials, SavedIdea } from "@stalo/shared";
 import {
   createIdea,
   createTopic,
@@ -9,11 +10,14 @@ import {
   fetchLatestScan,
   fetchSettings,
   fetchTopics,
+  requestDeepDive,
+  requestFinancials,
   requestScan,
   saveLens,
   type NewIdeaPayload,
 } from "./api";
 import { fakeLocalStorage } from "./testUtils";
+import { readIdeas, writeIdeas } from "./storage";
 
 function stubFetch(status: number, body: unknown) {
   vi.stubGlobal(
@@ -140,5 +144,85 @@ describe("scan — persistência ponta a ponta", () => {
     const stored = await fetchLatestScan();
     expect(stored.result).toEqual(result);
     expect(stored.createdAt).toBeTruthy();
+  });
+});
+
+function fakeSavedIdea(overrides: Partial<SavedIdea> = {}): SavedIdea {
+  return {
+    id: "idea-1",
+    insightRef: "i1",
+    type: "oportunidade",
+    title: "Título",
+    description: "Descrição",
+    rationale: "Rationale",
+    whyNow: "Why now",
+    soWhat: "So what",
+    notes: "",
+    savedAt: "2026-08-01T00:00:00.000Z",
+    relatedItems: [],
+    deepDive: null,
+    financials: null,
+    ...overrides,
+  };
+}
+
+describe("requestDeepDive/requestFinancials — cache no cliente, sem gastar a IA à toa", () => {
+  beforeEach(() => vi.stubGlobal("localStorage", fakeLocalStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("mergulho já feito (com análise por tipo): nem faz a requisição", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const idea = fakeSavedIdea({
+      deepDive: { typeAnalysis: { kind: "oportunidade", beachhead: "b", menorTeste: "t" } } as DeepDive,
+    });
+    const returned = await requestDeepDive(idea);
+    expect(returned).toBe(idea);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sem mergulho: chama /api/dive e persiste a ideia atualizada", async () => {
+    const deepDive = { typeAnalysis: null, market: null, proximosPassos: [], sinais: [] } as DeepDive;
+    stubFetch(200, deepDive);
+    writeIdeas([fakeSavedIdea()]);
+    const returned = await requestDeepDive(fakeSavedIdea());
+    expect(returned.deepDive).toEqual(deepDive);
+    const [stored] = readIdeas();
+    expect(stored.deepDive).toEqual(deepDive);
+  });
+
+  it("financeiro já analisado: nem faz a requisição", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const idea = fakeSavedIdea({
+      deepDive: { typeAnalysis: null, market: null, proximosPassos: [], sinais: [] } as DeepDive,
+      financials: { mercado: "m", monetizacao: "mo", premissas: [], custoValidar: "c" } as Financials,
+    });
+    const returned = await requestFinancials(idea);
+    expect(returned).toBe(idea);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sem mergulho ainda: recusa no cliente com a mensagem exata, sem requisição", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const idea = fakeSavedIdea({ deepDive: null });
+    await expect(requestFinancials(idea)).rejects.toThrow(
+      "Mergulhe na ideia antes de aprofundar no financeiro.",
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("mergulhada e sem financeiro: chama /api/financials e persiste a ideia atualizada", async () => {
+    const financials = { mercado: "grande", monetizacao: "assinatura", premissas: [], custoValidar: "baixo" } as Financials;
+    stubFetch(200, financials);
+    const idea = fakeSavedIdea({
+      deepDive: { typeAnalysis: null, market: null, proximosPassos: [], sinais: [] } as DeepDive,
+    });
+    writeIdeas([idea]);
+    const returned = await requestFinancials(idea);
+    expect(returned.financials).toEqual(financials);
+    const [stored] = readIdeas();
+    expect(stored.financials).toEqual(financials);
   });
 });

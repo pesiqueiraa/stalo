@@ -120,16 +120,42 @@ export async function saveLens(lens: Lens): Promise<void> {
 }
 
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia
-// atualizada, já com o deepDive preenchido.
-export async function requestDeepDive(id: string): Promise<SavedIdea> {
-  const res = await fetch(`/api/ideas/${id}/dive`, { method: "POST" });
+// atualizada, já com o deepDive preenchido. O servidor não guarda mais nada —
+// quem persiste é o navegador (writeIdeas), inclusive o cache: se já tem o
+// mergulho novo (com análise por tipo), nem faz a requisição.
+export async function requestDeepDive(idea: SavedIdea): Promise<SavedIdea> {
+  if (idea.deepDive?.typeAnalysis) return idea;
+
+  const res = await fetch("/api/dive", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idea, lens: readLens() }),
+  });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao aprofundar a ideia."));
-  return (await res.json()) as SavedIdea;
+  const deepDive = (await res.json()) as SavedIdea["deepDive"];
+
+  const atualizada = { ...idea, deepDive };
+  writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)));
+  return atualizada;
 }
 
 // "Aprofundar": gera (ou recupera do cache) a análise financeira do 2º nível.
-export async function requestFinancials(id: string): Promise<SavedIdea> {
-  const res = await fetch(`/api/ideas/${id}/financials`, { method: "POST" });
+// Exige que a ideia já tenha sido mergulhada — o atalho abaixo evita a
+// requisição que a rota recusaria com 409; a rota mantém a mesma checagem,
+// porque o servidor não pode confiar que o cliente checou.
+export async function requestFinancials(idea: SavedIdea): Promise<SavedIdea> {
+  if (idea.financials) return idea;
+  if (!idea.deepDive) throw new Error("Mergulhe na ideia antes de aprofundar no financeiro.");
+
+  const res = await fetch("/api/financials", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idea, lens: readLens() }),
+  });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao gerar a análise financeira."));
-  return (await res.json()) as SavedIdea;
+  const financials = (await res.json()) as SavedIdea["financials"];
+
+  const atualizada = { ...idea, financials };
+  writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)));
+  return atualizada;
 }
