@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SavedIdea } from "@stalo/shared";
+import { MAX_BODY_BYTES } from "@/lib/aiPayload";
 
 // A rota puxa IA via @stalo/server. Mockamos tudo — os alvos são: o teto de
 // entrada, a precondição (409 sem mergulho) e o LIMITE: 20/h por IP,
@@ -60,9 +61,20 @@ beforeEach(() => {
 });
 
 describe("POST /api/financials", () => {
-  it("corpo inválido → 400, sem chamar runFinancials", async () => {
+  it("corpo inválido → 400, sem consultar rate limit nem chamar runFinancials", async () => {
     const res = await POST(req({ lens: "founder" })); // sem 'idea'
     expect(res.status).toBe(400);
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRunFinancials).not.toHaveBeenCalled();
+  });
+
+  it("corpo acima do teto de tamanho → 400, sem consultar rate limit nem chamar runFinancials", async () => {
+    const idea = fakeIdea({ notes: "x".repeat(MAX_BODY_BYTES + 1) });
+    const res = await POST(req({ idea, lens: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toMatch(/32\s*KB|tamanho/i);
+    expect(mockCheck).not.toHaveBeenCalled();
     expect(mockRunFinancials).not.toHaveBeenCalled();
   });
 

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { NewsItem, SavedIdea } from "@stalo/shared";
 import {
   MAX_BODY_BYTES,
+  MAX_RELATED_FIELD,
   MAX_RELATED_ITEMS,
+  MAX_TEXT,
   MAX_TITLE,
   validateIdeaPayload,
 } from "./aiPayload";
@@ -97,5 +99,48 @@ describe("validateIdeaPayload", () => {
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/32\s*KB|tamanho/i);
+  });
+
+  // Achado 1 da revisão: deepDive decide, na rota de financials, se a ideia
+  // já foi mergulhada (`if (!idea.deepDive)` → 409). Sem checar a forma, um
+  // corpo como `deepDive: true` passava por essa checagem como se fosse um
+  // mergulho de verdade, e a IA era chamada para uma ideia nunca mergulhada.
+  it("deepDive que não é objeto nem null é recusado", () => {
+    const idea = { ...fakeIdea(), deepDive: true } as unknown as SavedIdea;
+    const result = validateIdeaPayload({ idea, lens: null });
+    expect("error" in result).toBe(true);
+    if (!("error" in result)) return;
+    expect(result.error).toMatch(/ideia/i);
+  });
+
+  it("financials que não é objeto nem null é recusado", () => {
+    const idea = { ...fakeIdea(), financials: "não" } as unknown as SavedIdea;
+    const result = validateIdeaPayload({ idea, lens: null });
+    expect("error" in result).toBe(true);
+    if (!("error" in result)) return;
+    expect(result.error).toMatch(/ideia/i);
+  });
+
+  // Achado 3 da revisão: os campos de texto (description/rationale/whyNow/
+  // soWhat/notes) e os campos de cada relatedItem que vão de fato para o
+  // prompt (topic/title/summary/source/url) tinham teto de tipo mas nunca
+  // eram exercitados por um teste.
+  it("campo de texto acima do teto (MAX_TEXT) recusa", () => {
+    const idea = fakeIdea({ description: "a".repeat(MAX_TEXT + 1) });
+    const result = validateIdeaPayload({ idea, lens: null });
+    expect("error" in result).toBe(true);
+    if (!("error" in result)) return;
+    expect(result.error).toMatch(/descrição/i);
+    expect(result.error).toContain(String(MAX_TEXT));
+  });
+
+  it("campo de relatedItem acima do teto (MAX_RELATED_FIELD) recusa", () => {
+    const idea = fakeIdea({
+      relatedItems: [fakeNewsItem({ summary: "s".repeat(MAX_RELATED_FIELD + 1) })],
+    });
+    const result = validateIdeaPayload({ idea, lens: null });
+    expect("error" in result).toBe(true);
+    if (!("error" in result)) return;
+    expect(result.error).toContain(String(MAX_RELATED_FIELD));
   });
 });

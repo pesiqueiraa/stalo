@@ -14,13 +14,24 @@ export const MAX_BODY_BYTES = 32 * 1024;
 export const MAX_TITLE = 200;
 export const MAX_TEXT = 2000; // description, rationale, whyNow, soWhat, notes
 export const MAX_RELATED_ITEMS = 20;
-export const MAX_RELATED_FIELD = 500; // title e url de cada item de relatedItems
+// topic/title/summary/source são os campos de cada relatedItem que de fato
+// vão para o prompt (packages/server/src/scan.ts); url não entra no prompt
+// mas segue com o mesmo teto — é barato e ainda é renderizado na UI.
+export const MAX_RELATED_FIELD = 500;
 
 const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
 const LENSES: Lens[] = ["founder", "investor", "explorer"];
 
 function isStr(v: unknown): v is string {
   return typeof v === "string";
+}
+
+// deepDive/financials precisam ser objeto ou null — nunca outro tipo. Sem
+// isso, um corpo como `deepDive: true` passava pela checagem `if
+// (!idea.deepDive)` da rota de financials como se a ideia já tivesse sido
+// mergulhada, e a IA era chamada de verdade para uma ideia nunca mergulhada.
+function isObjectOrNull(v: unknown): boolean {
+  return v === null || v === undefined || (typeof v === "object" && !Array.isArray(v));
 }
 
 // a lente é preferência de tom, não conteúdo de prompt de risco — uma lente
@@ -54,9 +65,15 @@ function validateRelatedItems(raw: unknown): NewsItem[] | { error: string } {
     ) {
       return { error: "Notícia relacionada em formato inválido." };
     }
-    if (c.title.length > MAX_RELATED_FIELD || c.url.length > MAX_RELATED_FIELD) {
+    if (
+      c.topic.length > MAX_RELATED_FIELD ||
+      c.title.length > MAX_RELATED_FIELD ||
+      c.summary.length > MAX_RELATED_FIELD ||
+      c.source.length > MAX_RELATED_FIELD ||
+      c.url.length > MAX_RELATED_FIELD
+    ) {
       return {
-        error: `O título e a URL de cada notícia relacionada devem ter até ${MAX_RELATED_FIELD} caracteres.`,
+        error: `O tema, título, resumo, fonte e URL de cada notícia relacionada devem ter até ${MAX_RELATED_FIELD} caracteres.`,
       };
     }
     items.push(c);
@@ -99,6 +116,14 @@ export function validateIdeaPayload(
     !isStr(c.notes) ||
     !isStr(c.savedAt)
   ) {
+    return { error: "Ideia em formato inválido." };
+  }
+
+  // `deepDive` decide, na rota de financials, se a ideia já foi mergulhada
+  // (`if (!idea.deepDive)` → 409). Sem checar a forma aqui, um corpo como
+  // `deepDive: true` passaria por essa checagem como se fosse um mergulho de
+  // verdade — a precondição do servidor existiria só no papel.
+  if (!isObjectOrNull(c.deepDive) || !isObjectOrNull(c.financials)) {
     return { error: "Ideia em formato inválido." };
   }
 

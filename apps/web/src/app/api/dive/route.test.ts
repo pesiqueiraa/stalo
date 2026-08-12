@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SavedIdea } from "@stalo/shared";
+import { MAX_BODY_BYTES } from "@/lib/aiPayload";
 
 // A rota puxa IA via @stalo/server. Mockamos tudo — os alvos são: o teto de
 // entrada (payload inválido nunca chega na IA) e o LIMITE: 20 dives por hora
@@ -55,11 +56,22 @@ beforeEach(() => {
 });
 
 describe("POST /api/dive", () => {
-  it("corpo inválido → 400, sem chamar runDeepDive", async () => {
+  it("corpo inválido → 400, sem consultar rate limit nem chamar runDeepDive", async () => {
     const res = await POST(req({ lens: "founder" })); // sem 'idea'
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBeTruthy();
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRunDeepDive).not.toHaveBeenCalled();
+  });
+
+  it("corpo acima do teto de tamanho → 400, sem consultar rate limit nem chamar runDeepDive", async () => {
+    const idea = fakeIdea({ notes: "x".repeat(MAX_BODY_BYTES + 1) });
+    const res = await POST(req({ idea, lens: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toMatch(/32\s*KB|tamanho/i);
+    expect(mockCheck).not.toHaveBeenCalled();
     expect(mockRunDeepDive).not.toHaveBeenCalled();
   });
 
