@@ -11,12 +11,6 @@ import type { NewsletterCombo, NewsletterEdition } from "@stalo/shared";
 // e o log de decisões em arquiteturad.md §7). O que sobra aqui é só a
 // newsletter — mailing list global, sem workspace — até o plano que a remove.
 
-// DATE/TIMESTAMPTZ voltam como Date do postgres.js — normaliza para string.
-function toIso(value: unknown): string {
-  if (value instanceof Date) return value.toISOString();
-  return typeof value === "string" ? value : new Date().toISOString();
-}
-
 // ---------- newsletter (mailing list global) ----------
 
 // Captura um assinante da newsletter. NÃO é workspace-scoped (ver arquiteturad

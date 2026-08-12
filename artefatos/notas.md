@@ -11,7 +11,7 @@ Duas coisas vivem aqui, em seções separadas:
 
 **Problema:** hoje uma ideia salva (`SavedIdea`) guarda só `id`, `type`, `title`, `description` e `savedAt`. Se o usuário salva um gap/tendência/oportunidade e volta meses depois, não tem como lembrar quais notícias embasaram aquele insight — o resumo/descrição é curto demais pra reconstituir o contexto, e as notícias relacionadas (`related_items` do insight) não são persistidas junto. Como o grafo mostra sempre o *último* scan, o vínculo com as notícias originais se perde assim que um novo scan roda.
 
-**Ajuste aplicado:** `SavedIdea` ganhou `relatedItems: NewsItem[]` — um retrato das notícias relacionadas (título, resumo, fonte, link, data de publicação) tirado no momento do save, dentro de `saveIdea` (`apps/web/src/app/page.tsx`). O card em `IdeasPanel` mostra essas notícias numa lista expansível (`<details>`). Ideias salvas antes dessa mudança continuam funcionando, só sem a lista (tratadas como se não tivessem notícias relacionadas). O schema proposto em `arquiteturad.md` seção 4 já reflete isso (`news_items.published_at`, `saved_ideas.related_items`).
+**Ajuste aplicado:** `SavedIdea` ganhou `relatedItems: NewsItem[]` — um retrato das notícias relacionadas (título, resumo, fonte, link, data de publicação) tirado no momento do save. O card em `IdeasPanel` mostra essas notícias numa lista expansível (`<details>`). Ideias salvas antes dessa mudança continuam funcionando, só sem a lista (tratadas como se não tivessem notícias relacionadas).
 
 De quebra, notícias no grafo (nós, tooltip, painel de detalhe) agora também mostram a data de publicação (`publishedAt`), então dá pra situar uma notícia no tempo mesmo antes de salvar a ideia.
 
