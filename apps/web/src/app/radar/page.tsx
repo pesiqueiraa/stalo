@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { TopicsPanel } from "@/components/TopicsPanel";
 import { GraphCanvas } from "@/components/GraphCanvas";
@@ -25,6 +26,7 @@ import {
   saveLens,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
+import { hasAnything } from "@/lib/storage";
 import { insightKey } from "@/lib/ui";
 import {
   getServerSettingsSnapshot,
@@ -48,6 +50,10 @@ const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
 type View = "rede" | "brief";
 
 export default function Home() {
+  const router = useRouter();
+  // guarda a tela até sabermos se o visitante tem algo salvo — sem isso, quem
+  // vai ser mandado ao onboarding veria o radar (vazio) piscar antes do redirect.
+  const [ready, setReady] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
@@ -104,7 +110,16 @@ export default function Home() {
   // de falhar aqui é hiccup transitório do banco (ex.: cold-start da Supabase),
   // então tentamos de novo automaticamente antes de incomodar o usuário — em vez
   // de mandá-lo "recarregar a página", já que ele pode nem ter dados salvos.
+  //
+  // Antes de tudo isso: quem ainda não configurou nada (sem temas, sem lente)
+  // não tem o que ver aqui — manda pro onboarding com replace (não push), pra
+  // "voltar" não devolver a esta página, que redirecionaria de novo.
   useEffect(() => {
+    if (!hasAnything()) {
+      router.replace("/onboarding");
+      return;
+    }
+    setReady(true);
     let cancelled = false;
     (async () => {
       const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
@@ -142,7 +157,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   function flashMessage(message: string, action?: ToastAction) {
     setToast({ message, action });
@@ -366,6 +381,10 @@ export default function Home() {
           (i) => insightKey(i.type, i.title) === insightKey(selectedNode.insightType, selectedNode.title),
         )
       : false;
+
+  // ainda não sabemos se este visitante fica ou vai pro onboarding — não
+  // renderiza nada do radar enquanto isso não é decidido (efeito acima).
+  if (!ready) return null;
 
   return (
     <div id="app">

@@ -5,8 +5,9 @@ import Link from "next/link";
 import { NewsletterPopup } from "@/components/NewsletterPopup";
 import "./landing.css";
 
-// Landing pública. 'dest' vem do server component (page.tsx): onboarding pra quem ainda não configurou, radar pros demais.
-export default function Landing({ dest }: { dest: "/onboarding" | "/radar" }) {
+// Landing pública. O CTA leva sempre ao radar — que decide, no navegador,
+// se redireciona para o onboarding (não tem mais como o servidor saber isso).
+export default function Landing() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -328,7 +329,7 @@ export default function Landing({ dest }: { dest: "/onboarding" | "/radar" }) {
             <a href="#evidencia">Evidência</a>
           </div>
           <div className="nav-cta">
-            <Link className="btn btn-primary" href={dest}>
+            <Link className="btn btn-primary" href="/radar">
               Abrir o radar
             </Link>
           </div>
@@ -350,7 +351,7 @@ export default function Landing({ dest }: { dest: "/onboarding" | "/radar" }) {
               Escolha seus setores. A IA cruza as notícias e aponta o gap.
             </p>
             <div className="cta-row">
-              <Link className="btn btn-primary" href={dest}>
+              <Link className="btn btn-primary" href="/radar">
                 Começar agora <span className="arrow">→</span>
               </Link>
               <a className="btn btn-ghost" href="#como">
@@ -644,7 +645,7 @@ export default function Landing({ dest }: { dest: "/onboarding" | "/radar" }) {
           <h2>Escolha seus setores e deixe o radar apontar o cruzamento.</h2>
           <p>Sua próxima ideia mora no atrito entre dois mundos que você já acompanha.</p>
           <div className="cta-row">
-            <Link className="btn btn-primary" href={dest}>
+            <Link className="btn btn-primary" href="/radar">
               Começar agora
             </Link>
             <a className="btn btn-ghost" href="#pra-quem">

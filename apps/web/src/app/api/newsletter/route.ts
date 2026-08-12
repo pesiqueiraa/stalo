@@ -5,8 +5,8 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 // POST /api/newsletter — captura um assinante da newsletter (email + setores)
 // vindo do popup da landing e faz upsert em `subscribers`. Persiste e, se for
 // cadastro novo ou reativação, dispara o e-mail de boas-vindas (best-effort). NÃO
-// é workspace-scoped — o assinante é um email numa mailing list, não um visitante
-// do app (arquiteturad §4), então não usa getWorkspaceId.
+// é escopado por visitante — o assinante é um email numa mailing list, sem
+// relação com os dados (temas, ideias) que cada visitante guarda no navegador.
 
 const SUBJECT_WELCOME = "Stalo · Você tá dentro";
 
