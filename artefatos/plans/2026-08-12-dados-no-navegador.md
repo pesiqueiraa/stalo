@@ -502,6 +502,15 @@ export async function deleteIdea(id: string): Promise<void> {
 }
 ```
 
+- [ ] **Step 3b: Feche a lacuna de cobertura do scan**
+
+A revisão da Task 3 apontou que o caminho de persistência do scan ficou sem teste nenhum — nem as funções do cofre, nem a ligação delas. É a saída principal do produto: se isso quebrar, o usuário roda o scan, vê o resultado, recarrega e perde tudo, sem erro nenhum na tela.
+
+Acrescente dois testes, aproveitando que você já está nestes dois arquivos:
+
+1. Em `apps/web/src/lib/storage.test.ts`: round-trip de `writeScan`/`readScan` — o resultado volta igual, e o `createdAt` volta como string ISO preenchida (é o `writeScan` que a gera). Cubra também a leitura sem nada guardado, que deve devolver `{ result: null, createdAt: null }`.
+2. Em `apps/web/src/lib/api.test.ts`: com o `fetch` stubado devolvendo um `ScanResult`, `requestScan` deve **gravar** — prove chamando `fetchLatestScan()` depois e conferindo que o resultado está lá. Teste o comportamento pela porta da frente, não espionando o `writeScan`.
+
 - [ ] **Step 4: Apague as rotas e verifique**
 
 ```bash
