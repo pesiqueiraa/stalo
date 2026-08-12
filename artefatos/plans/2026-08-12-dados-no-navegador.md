@@ -295,9 +295,12 @@ git commit -m "feat(storage): cofre local tipado e validado para os dados do vis
 
 Acrescente a `apps/web/src/lib/api.test.ts` (o arquivo já existe) um bloco novo:
 
+O `api.test.ts` roda em `environment: "node"` e hoje só stuba `fetch`. Para os testes locais ele precisa do mesmo `localStorage` falso que o `storage.test.ts` já usa — **copie o helper `fakeLocalStorage` de lá** (ou extraia para um utilitário compartilhado, se preferir; não instale jsdom).
+
 ```ts
 describe("temas no armazenamento local", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => vi.stubGlobal("localStorage", fakeLocalStorage()));
+  afterEach(() => vi.unstubAllGlobals());
 
   it("cria tema com id próprio e persiste", async () => {
     const t = await createTopic("IA");
