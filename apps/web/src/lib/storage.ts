@@ -1,4 +1,4 @@
-import type { Insight, Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
+import type { Insight, InsightType, Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
 
 // Única parte do app que toca localStorage. Os dados do visitante vivem aqui
 // desde 2026-08 — não há banco, não há conta, não há sincronização entre
@@ -112,13 +112,33 @@ export function writeScan(result: ScanResult): void {
 
 // ---------- ideias ----------
 
+const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
+
 function validIdea(raw: unknown): SavedIdea | null {
   if (typeof raw !== "object" || raw === null) return null;
   const c = raw as SavedIdea;
-  if (!isStr(c.id) || !isStr(c.title) || !isStr(c.type) || !isStr(c.description)) return null;
+  // `rationale`/`whyNow`/`soWhat` vão para dentro de prompt de IA nas tarefas
+  // seguintes, além de aparecerem na tela — não sobram sem validar, como o
+  // resto do módulo. `type` decide qual bloco a UI renderiza (componentes
+  // discriminados por esse valor): fora do enum vira ideia inválida, não tela
+  // quebrada em silêncio.
+  if (
+    !isStr(c.id) ||
+    !isStr(c.title) ||
+    !isStr(c.description) ||
+    !INSIGHT_TYPES.includes(c.type) ||
+    !isStr(c.insightRef) ||
+    !isStr(c.rationale) ||
+    !isStr(c.whyNow) ||
+    !isStr(c.soWhat) ||
+    !isStr(c.notes) ||
+    !isStr(c.savedAt)
+  ) {
+    return null;
+  }
   return {
     ...c,
-    relatedItems: Array.isArray(c.relatedItems) ? c.relatedItems : [],
+    relatedItems: Array.isArray(c.relatedItems) ? c.relatedItems.filter(isNewsItem) : [],
     deepDive: c.deepDive ?? null,
     financials: c.financials ?? null,
   };

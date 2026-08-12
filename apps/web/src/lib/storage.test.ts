@@ -67,6 +67,50 @@ describe("storage", () => {
     expect(lidas[0].id).toBe("a");
   });
 
+  it("ideia com campo de texto plausível-mas-errado é descartada", () => {
+    // rationale/whyNow/soWhat vão para dentro de prompt de IA e para a tela —
+    // um número ou objeto no devtools não pode passar disfarçado de texto
+    const base = {
+      id: "a", insightRef: "i1", type: "oportunidade", title: "T", description: "D",
+      rationale: "R", whyNow: "W", soWhat: "S", notes: "", savedAt: "2026-08-12",
+      relatedItems: [], deepDive: null, financials: null,
+    };
+    localStorage.setItem("stalo:ideas", JSON.stringify({ v: 1, data: [{ ...base, rationale: 123 }] }));
+    expect(readIdeas()).toEqual([]);
+    localStorage.setItem("stalo:ideas", JSON.stringify({ v: 1, data: [{ ...base, whyNow: { x: 1 } }] }));
+    expect(readIdeas()).toEqual([]);
+  });
+
+  it("ideia com type fora do enum é descartada", () => {
+    // type decide qual bloco de análise a UI renderiza (componentes
+    // discriminados por esse valor) — fora do enum vira ideia inválida, não
+    // tela quebrada em silêncio
+    const base = {
+      id: "a", insightRef: "i1", type: "hacker", title: "T", description: "D",
+      rationale: "R", whyNow: "W", soWhat: "S", notes: "", savedAt: "2026-08-12",
+      relatedItems: [], deepDive: null, financials: null,
+    };
+    localStorage.setItem("stalo:ideas", JSON.stringify({ v: 1, data: [base] }));
+    expect(readIdeas()).toEqual([]);
+  });
+
+  it("relatedItems com lixo mantém a ideia, mas filtra os itens inválidos", () => {
+    const noticiaValida = {
+      id: "n1", topic: "IA", title: "T", summary: "S", source: "src",
+      url: "https://x.com", entities: [], publishedAt: "2026-08-12",
+    };
+    const boa = {
+      id: "a", insightRef: "i1", type: "oportunidade", title: "T", description: "D",
+      rationale: "R", whyNow: "W", soWhat: "S", notes: "", savedAt: "2026-08-12",
+      relatedItems: [noticiaValida, { foo: "lixo" }, "string solta"],
+      deepDive: null, financials: null,
+    };
+    localStorage.setItem("stalo:ideas", JSON.stringify({ v: 1, data: [boa] }));
+    const lidas = readIdeas();
+    expect(lidas).toHaveLength(1);
+    expect(lidas[0].relatedItems).toEqual([noticiaValida]);
+  });
+
   it("hasAnything diz se o visitante já configurou algo", () => {
     expect(hasAnything()).toBe(false);
     writeTopics([{ id: "1", name: "IA" }]);
