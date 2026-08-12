@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { hasAnything, readIdeas, readLens, readTopics, writeIdeas, writeLens, writeTopics } from "./storage";
+import {
+  hasAnything,
+  readIdeas,
+  readLens,
+  readScan,
+  readTopics,
+  writeIdeas,
+  writeLens,
+  writeScan,
+  writeTopics,
+} from "./storage";
 import { fakeLocalStorage } from "./testUtils";
 
 beforeEach(() => vi.stubGlobal("localStorage", fakeLocalStorage()));
@@ -96,6 +106,26 @@ describe("storage", () => {
     const lidas = readIdeas();
     expect(lidas).toHaveLength(1);
     expect(lidas[0].relatedItems).toEqual([noticiaValida]);
+  });
+
+  it("round-trip de scan: volta igual, com createdAt em ISO preenchido pelo writeScan", () => {
+    const noticia = {
+      id: "n1", topic: "IA", title: "T", summary: "S", source: "src",
+      url: "https://x.com", entities: [], publishedAt: "2026-08-12",
+    };
+    const insight = {
+      id: "i1", type: "oportunidade" as const, title: "T", description: "D",
+      rationale: "R", whyNow: "W", soWhat: "S", related_items: ["n1"],
+    };
+    writeScan({ items: [noticia], insights: [insight] });
+    const lido = readScan();
+    expect(lido.result).toEqual({ items: [noticia], insights: [insight] });
+    expect(lido.createdAt).toBeTruthy();
+    expect(new Date(lido.createdAt as string).toString()).not.toBe("Invalid Date");
+  });
+
+  it("scan sem nada guardado devolve result e createdAt nulos", () => {
+    expect(readScan()).toEqual({ result: null, createdAt: null });
   });
 
   it("hasAnything diz se o visitante já configurou algo", () => {

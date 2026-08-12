@@ -1,5 +1,5 @@
 import { MAX_TOPICS, type Lens, type NewsItem, type SavedIdea, type ScanResult, type Topic } from "@stalo/shared";
-import { readLens, readScan, readTopics, writeLens, writeScan, writeTopics } from "./storage";
+import { readIdeas, readLens, readScan, readTopics, writeIdeas, writeLens, writeScan, writeTopics } from "./storage";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -90,24 +90,23 @@ export interface NewIdeaPayload {
 }
 
 export async function fetchIdeas(): Promise<SavedIdea[]> {
-  const res = await fetch("/api/ideas");
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao carregar ideias."));
-  return (await res.json()) as SavedIdea[];
+  return readIdeas();
 }
 
 export async function createIdea(payload: NewIdeaPayload): Promise<SavedIdea> {
-  const res = await fetch("/api/ideas", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao salvar ideia."));
-  return (await res.json()) as SavedIdea;
+  const nova: SavedIdea = {
+    ...payload,
+    id: crypto.randomUUID(),
+    savedAt: new Date().toISOString(),
+    deepDive: null,
+    financials: null,
+  };
+  writeIdeas([nova, ...readIdeas()]); // mais recente primeiro
+  return nova;
 }
 
 export async function deleteIdea(id: string): Promise<void> {
-  const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await parseError(res, "Falha ao remover ideia."));
+  writeIdeas(readIdeas().filter((i) => i.id !== id));
 }
 
 // ---------- settings (lente do workspace) ----------
