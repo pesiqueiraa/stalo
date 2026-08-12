@@ -153,4 +153,39 @@ describe("storage", () => {
     expect(readLens()).toBeNull();
     expect(() => writeTopics([{ id: "1", name: "IA" }])).not.toThrow();
   });
+
+  describe("localStorage cujo GETTER lança (ex.: SecurityError com cookies bloqueados)", () => {
+    // `typeof localStorage === "undefined"` só protege contra a referência não
+    // existir — não contra o acesso à propriedade lançar. Em Chrome/Firefox
+    // com cookies de terceiros bloqueados, e em webviews restritos, é
+    // exatamente isso que acontece: o getter da propriedade lança. Simulamos
+    // isso definindo o getter direto no globalThis (em vez de vi.stubGlobal,
+    // que só troca o valor, não o comportamento de acesso).
+    beforeEach(() => {
+      vi.unstubAllGlobals();
+      Object.defineProperty(globalThis, "localStorage", {
+        get() {
+          throw new Error("SecurityError");
+        },
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      // restaura a propriedade original (sem isso o resto da suíte quebra)
+      delete (globalThis as { localStorage?: unknown }).localStorage;
+    });
+
+    it("as leituras devolvem o vazio em vez de propagar a exceção", () => {
+      expect(readTopics()).toEqual([]);
+      expect(readIdeas()).toEqual([]);
+      expect(readLens()).toBeNull();
+      expect(hasAnything()).toBe(false);
+    });
+
+    it("writeTopics não lança", () => {
+      expect(() => writeTopics([{ id: "1", name: "IA" }])).not.toThrow();
+      expect(writeTopics([{ id: "1", name: "IA" }])).toBe(false);
+    });
+  });
 });

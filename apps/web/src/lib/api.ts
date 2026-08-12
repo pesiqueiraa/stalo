@@ -33,7 +33,9 @@ export async function createTopic(name: string): Promise<Topic> {
   }
 
   const novo: Topic = { id: crypto.randomUUID(), name: limpo };
-  writeTopics([...atuais, novo]);
+  if (!writeTopics([...atuais, novo])) {
+    throw new Error("Não consegui salvar o tema — armazenamento do navegador indisponível.");
+  }
   return novo;
 }
 
@@ -101,7 +103,12 @@ export async function createIdea(payload: NewIdeaPayload): Promise<SavedIdea> {
     deepDive: null,
     financials: null,
   };
-  writeIdeas([nova, ...readIdeas()]); // mais recente primeiro
+  // mais recente primeiro. Se não persistir, a ideia nem chega a voltar pro
+  // caller — sem isso ela aparecia no state do React (card na sidebar) e
+  // sumia num reload, sem nunca ter sido salva de verdade.
+  if (!writeIdeas([nova, ...readIdeas()])) {
+    throw new Error("Não consegui salvar a ideia — armazenamento do navegador indisponível.");
+  }
   return nova;
 }
 
@@ -116,7 +123,9 @@ export async function fetchSettings(): Promise<{ lens: Lens | null }> {
 }
 
 export async function saveLens(lens: Lens): Promise<void> {
-  writeLens(lens);
+  if (!writeLens(lens)) {
+    throw new Error("Não consegui salvar sua lente — armazenamento do navegador indisponível.");
+  }
 }
 
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia
@@ -135,7 +144,11 @@ export async function requestDeepDive(idea: SavedIdea): Promise<SavedIdea> {
   const deepDive = (await res.json()) as SavedIdea["deepDive"];
 
   const atualizada = { ...idea, deepDive };
-  writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)));
+  if (!writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)))) {
+    throw new Error(
+      "Mergulho gerado, mas não consegui salvá-lo — armazenamento do navegador indisponível.",
+    );
+  }
   return atualizada;
 }
 
@@ -156,6 +169,10 @@ export async function requestFinancials(idea: SavedIdea): Promise<SavedIdea> {
   const financials = (await res.json()) as SavedIdea["financials"];
 
   const atualizada = { ...idea, financials };
-  writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)));
+  if (!writeIdeas(readIdeas().map((i) => (i.id === idea.id ? atualizada : i)))) {
+    throw new Error(
+      "Análise financeira gerada, mas não consegui salvá-la — armazenamento do navegador indisponível.",
+    );
+  }
   return atualizada;
 }

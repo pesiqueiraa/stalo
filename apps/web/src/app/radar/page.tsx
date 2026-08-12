@@ -106,10 +106,11 @@ export default function Home() {
 
   // carrega o estado persistido ao abrir a página: temas, ideias salvas e o
   // último scan (que o client remonta em grafo com as cores dos temas atuais).
-  // Usuário novo recebe listas vazias (nada a mostrar, sem erro). O único motivo
-  // de falhar aqui é hiccup transitório do banco (ex.: cold-start da Supabase),
-  // então tentamos de novo automaticamente antes de incomodar o usuário — em vez
-  // de mandá-lo "recarregar a página", já que ele pode nem ter dados salvos.
+  // Tudo isso é leitura direta do localStorage (apps/web/src/lib/storage.ts,
+  // sem I/O de rede) — usuário novo recebe listas vazias (nada a mostrar, sem
+  // erro). `readTopics`/`readIdeas`/`readLens` nunca lançam (o pior caso é o
+  // vazio), mas a rede de segurança fica: qualquer coisa inesperada aqui
+  // mostra uma mensagem em vez de deixar a tela em branco.
   //
   // Antes de tudo isso: quem ainda não configurou nada (sem temas, sem lente)
   // não tem o que ver aqui — manda pro onboarding com replace (não push), pra
@@ -122,36 +123,26 @@ export default function Home() {
     setReady(true);
     let cancelled = false;
     (async () => {
-      const RETRY_DELAYS = [600, 1500, 3000]; // ms; cobre o tempo de acordar o banco
-      for (let attempt = 0; ; attempt++) {
-        try {
-          const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
-            fetchTopics(),
-            fetchIdeas(),
-            fetchLatestScan(),
-            fetchSettings(),
-          ]);
-          if (cancelled) return;
-          setTopics(loadedTopics);
-          setIdeas(loadedIdeas);
-          setLens(loadedSettings.lens);
-          if (latest.result) {
-            setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
-            setLastUpdated(latest.createdAt);
-          }
-          setError(null);
-          return;
-        } catch (err) {
-          console.error(err);
-          if (cancelled) return;
-          if (attempt < RETRY_DELAYS.length) {
-            await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-            if (cancelled) return;
-            continue;
-          }
-          setError("Instabilidade ao conectar. Tente adicionar um tema ou recarregar em instantes.");
-          return;
+      try {
+        const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
+          fetchTopics(),
+          fetchIdeas(),
+          fetchLatestScan(),
+          fetchSettings(),
+        ]);
+        if (cancelled) return;
+        setTopics(loadedTopics);
+        setIdeas(loadedIdeas);
+        setLens(loadedSettings.lens);
+        if (latest.result) {
+          setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
+          setLastUpdated(latest.createdAt);
         }
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        if (cancelled) return;
+        setError("Não consegui carregar seus dados salvos agora. Tente recarregar a página.");
       }
     })();
     return () => {

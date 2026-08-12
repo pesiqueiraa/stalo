@@ -129,6 +129,22 @@ describe("ideias salvas no armazenamento local", () => {
     const c = await createIdea(fakeIdeaPayload({ title: "C" }));
     expect((await fetchIdeas()).map((i) => i.id)).toEqual([c.id, b.id, a.id]);
   });
+
+  it("cota cheia: rejeita com mensagem visível, sem derrubar a tela", async () => {
+    // o card aparecia no state do React mesmo sem persistir — o usuário só
+    // descobria que a ideia sumiu depois de recarregar. write() agora devolve
+    // false, e createIdea propaga isso como erro (a UI já trata erro dessas
+    // funções e mostra a mensagem).
+    vi.stubGlobal("localStorage", {
+      ...fakeLocalStorage(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    await expect(createIdea(fakeIdeaPayload())).rejects.toThrow(
+      "Não consegui salvar a ideia — armazenamento do navegador indisponível.",
+    );
+  });
 });
 
 describe("scan — persistência ponta a ponta", () => {

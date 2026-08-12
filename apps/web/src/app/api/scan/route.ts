@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runScan } from "@stalo/server";
+import { MAX_TOPICS } from "@stalo/shared";
 import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 
 // POST /api/scan — recebe a lista de temas, roda o scan no servidor e devolve
@@ -9,6 +10,13 @@ import { enforceRateLimit, SCAN_LIMIT } from "@/lib/rateLimit";
 // Janelas de recência permitidas (dias). O frontend oferece estas opções;
 // null/ausente = sem limite de data.
 const ALLOWED_DAYS = [30, 60, 90];
+
+// Teto de cada tema — `topics.join(", ")` vai direto para o prompt do Coletor
+// (packages/server/src/scanPrompt.ts). MAX_TOPICS já limita a quantidade no
+// cliente (a UI recusa o 6º tema), mas o cliente é entrada não confiável: sem
+// checar aqui de novo, nada impede um POST direto com centenas de temas ou um
+// tema gigante. 100 caracteres dá folga de sobra para qualquer setor real.
+const MAX_TOPIC_LENGTH = 100;
 
 export async function POST(request: Request) {
   let topics: unknown;
@@ -24,6 +32,19 @@ export async function POST(request: Request) {
   if (!Array.isArray(topics) || !topics.every((t) => typeof t === "string")) {
     return NextResponse.json(
       { error: "Envie 'topics' como uma lista de strings." },
+      { status: 400 },
+    );
+  }
+
+  if (topics.length > MAX_TOPICS) {
+    return NextResponse.json(
+      { error: `Envie no máximo ${MAX_TOPICS} temas.` },
+      { status: 400 },
+    );
+  }
+  if (topics.some((t) => t.length > MAX_TOPIC_LENGTH)) {
+    return NextResponse.json(
+      { error: `Cada tema deve ter até ${MAX_TOPIC_LENGTH} caracteres.` },
       { status: 400 },
     );
   }

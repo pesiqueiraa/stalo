@@ -20,8 +20,18 @@ const KEYS = {
 // Guard de ambiente: no servidor (e no vitest, que roda em `node`) o global
 // não existe. Checamos o `localStorage` direto, e não o `window`, para o teste
 // poder injetar um falso sem precisar simular um DOM inteiro.
+//
+// O try/catch importa tanto quanto o `typeof`: em navegadores com cookies
+// bloqueados (e em alguns webviews restritos) o próprio ACESSO à propriedade
+// `localStorage` lança `SecurityError` — `typeof` só protege contra a
+// referência não existir, não contra um getter que lança. Sem isso, qualquer
+// leitura (ex.: `hasAnything()` no efeito do radar) derrubava a página inteira.
 function loja(): Storage | null {
-  return typeof localStorage === "undefined" ? null : localStorage;
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
 }
 
 function read<T>(key: string, validate: (raw: unknown) => T | null): T | null {
@@ -41,14 +51,17 @@ function read<T>(key: string, validate: (raw: unknown) => T | null): T | null {
   return validate(box.data);
 }
 
-function write(key: string, data: unknown): void {
+// Devolve true quando persistiu de verdade. `false` (cota cheia, modo privado,
+// getter que lança) não derruba a tela — quem chama decide o que fazer com a
+// falha (ver funções de escrita abaixo e apps/web/src/lib/api.ts).
+function write(key: string, data: unknown): boolean {
   const ls = loja();
-  if (!ls) return;
+  if (!ls) return false;
   try {
     ls.setItem(key, JSON.stringify({ v: VERSION, data }));
+    return true;
   } catch {
-    // cota cheia ou modo privado: seguir sem persistir é melhor que derrubar a
-    // tela. O usuário perde a persistência, não a sessão.
+    return false;
   }
 }
 
@@ -71,8 +84,8 @@ export function readTopics(): Topic[] {
   return read(KEYS.topics, validTopics) ?? [];
 }
 
-export function writeTopics(topics: Topic[]): void {
-  write(KEYS.topics, topics);
+export function writeTopics(topics: Topic[]): boolean {
+  return write(KEYS.topics, topics);
 }
 
 // ---------- scan ----------
@@ -104,10 +117,10 @@ export function readScan(): { result: ScanResult | null; createdAt: string | nul
   return found ? { result: found.result, createdAt: found.createdAt } : { result: null, createdAt: null };
 }
 
-export function writeScan(result: ScanResult): void {
+export function writeScan(result: ScanResult): boolean {
   // o carimbo de tempo é responsabilidade de quem guarda — era o
   // `DEFAULT now()` da tabela `scans`.
-  write(KEYS.scan, { result, createdAt: new Date().toISOString() });
+  return write(KEYS.scan, { result, createdAt: new Date().toISOString() });
 }
 
 // ---------- ideias ----------
@@ -158,8 +171,8 @@ export function readIdeas(): SavedIdea[] {
   return read(KEYS.ideas, validIdeas) ?? [];
 }
 
-export function writeIdeas(ideas: SavedIdea[]): void {
-  write(KEYS.ideas, ideas);
+export function writeIdeas(ideas: SavedIdea[]): boolean {
+  return write(KEYS.ideas, ideas);
 }
 
 // ---------- settings (lente) ----------
@@ -176,8 +189,8 @@ export function readLens(): Lens | null {
   return read(KEYS.settings, validLens);
 }
 
-export function writeLens(lens: Lens): void {
-  write(KEYS.settings, { lens });
+export function writeLens(lens: Lens): boolean {
+  return write(KEYS.settings, { lens });
 }
 
 // ---------- onboarding ----------

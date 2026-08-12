@@ -14,11 +14,11 @@ import { checkRateLimit, runScan } from "@stalo/server";
 const mockCheck = vi.mocked(checkRateLimit);
 const mockRunScan = vi.mocked(runScan);
 
-function req(): Request {
+function req(body: unknown = { topics: ["IA"], days: null }): Request {
   return new Request("http://localhost/api/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-forwarded-for": "1.2.3.4" },
-    body: JSON.stringify({ topics: ["IA"], days: null }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -54,6 +54,32 @@ describe("POST /api/scan — limite de 4 scans por 2h", () => {
     mockCheck.mockRejectedValue(new Error("contador fora"));
     const res = await POST(req());
     expect(res.status).toBe(503);
+    expect(mockRunScan).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/scan — teto de entrada (MAX_TOPICS/tamanho por tema)", () => {
+  // MAX_TOPICS foi para o cliente (@stalo/shared) — a UI recusa o 6º tema,
+  // mas o cliente é entrada não confiável. Sem checar de novo aqui, nada
+  // impede um POST direto com temas demais ou um tema gigante indo pro prompt
+  // do Coletor (packages/server/src/scanPrompt.ts: `topics.join(", ")`).
+  it("temas demais → 400, sem rate limit nem runScan", async () => {
+    const topics = ["a", "b", "c", "d", "e", "f"]; // MAX_TOPICS é 5
+    const res = await POST(req({ topics, days: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBeTruthy();
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRunScan).not.toHaveBeenCalled();
+  });
+
+  it("tema gigante → 400, sem rate limit nem runScan", async () => {
+    const topics = ["x".repeat(101)];
+    const res = await POST(req({ topics, days: null }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBeTruthy();
+    expect(mockCheck).not.toHaveBeenCalled();
     expect(mockRunScan).not.toHaveBeenCalled();
   });
 });
