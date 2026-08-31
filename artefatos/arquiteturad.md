@@ -85,7 +85,7 @@ Nenhuma rota persiste dados do visitante — todas são funções finas que rece
 | `POST` | `/api/financials` | "Aprofundar": recebe a ideia (já mergulhada) no corpo e devolve a análise financeira (2º nível) |
 | `POST` | `/api/newsletter` | Captura assinante da newsletter (email + setores) — valida e faz upsert em `subscribers`; dispara e-mail de boas-vindas em cadastro novo/reativação. Não é workspace-scoped |
 | `GET` | `/api/newsletter/preview` | Renderiza o boletim na tela sob demanda (amostra ou edição real via `?sectors=`), para conferir o template |
-| `GET` | `/api/newsletter/send` | Cron semanal (Vercel Cron, protegido por `CRON_SECRET`): monta e envia o boletim da semana a cada assinante ativo |
+| `GET` | `/api/newsletter/send` | Monta e envia o boletim da semana a cada assinante ativo, protegido por `CRON_SECRET`. **Não está agendado**: o `apps/web/vercel.json` com o Vercel Cron saiu no deploy de 2026-08-31, que subiu só o produto principal (a newsletter está em remoção). A rota continua existindo para chamada manual; reagendar é recriar o `vercel.json` com `"crons"` |
 | `POST` | `/api/newsletter/test` | Envio de teste sob demanda, protegido por `NEWSLETTER_ADMIN_SECRET` |
 | `GET` | `/api/newsletter/unsubscribe` | Descadastro por 1 clique no link do boletim (idempotente, sem segredo — o UUID do assinante é o token) |
 
