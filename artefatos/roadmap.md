@@ -31,7 +31,7 @@ Sem ordem de prioridade fixa — organizado por tema, para revisitar depois que 
 - Pontuação/priorização automática das ideias salvas (ex: "quantos scans essa conexão já apareceu").
 - Espaço para o usuário anotar aprendizados em cada ideia salva (campo `notes` já previsto no schema) e marcar status: "a validar", "validando", "descartada", "virou hipótese de startup".
 - Permitir feedback do usuário sobre a qualidade de um insight (útil/não útil), para eventualmente calibrar o prompt.
-- Personalização por lente/perfil (**founder / investidor / explorador**, capturada no onboarding): a lente parametriza a **linguagem de direcionamento do mergulho** e, opcionalmente, o **ranqueamento do brief**; o **grafo** e a **taxonomia de categorias** (tendência/gap/oportunidade) permanecem neutros/universais. **Implementado:** persistência da lente no `localStorage` (`apps/web/src/lib/storage.ts`) e prompts do mergulho **e** do 2º nível financeiro ajustados por lente. **Falta (opcional):** ranqueamento do brief por lente. Decisão em `arquiteturad.md` §7.
+- Personalização por lente/perfil (**founder / investidor / explorador**): foi implementada e **removida em 2026-08-31** junto com o onboarding que a capturava (ver `arquiteturad.md` §7). Se voltar, precisa de uma porta de entrada que não seja uma tela de escolha na chegada — e as categorias de insight seguem universais.
 
 ### Alcance e colaboração
 - Multi-usuário com autenticação (login simples por e-mail/magic link). _(O app chegou a ter Supabase Auth — Google + e-mail/senha — implementado ponta a ponta, com backend e persistência, e foi removido em 2026-08 por decisão de produto (ver `arquiteturad.md` §7); se voltar, é reimplementação do zero, não retomar um stub.)_

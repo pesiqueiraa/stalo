@@ -25,7 +25,7 @@ Então fiz a ferramenta que eu queria usar: ela lê por mim, procura onde os set
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, D3 |
 | Backend | `@stalo/server` — rotas `/api/*` finas no Next chamam a lógica do pacote |
-| Dados do visitante | `localStorage` do navegador (temas, último scan, ideias salvas, lente) |
+| Dados do visitante | `localStorage` do navegador (temas, último scan, ideias salvas) |
 | Banco | Postgres (Supabase) — só a newsletter |
 | LLM | OpenAI (Responses API + tool `web_search`) |
 | Testes | Vitest |
@@ -35,7 +35,7 @@ Monorepo com npm workspaces — `apps/web` (UI + rotas de API), `packages/server
 
 ## Sem contas, sem banco para o produto
 
-O app é anônimo e sem login. Temas, último scan, ideias salvas e a lente vivem só no `localStorage` do navegador (`apps/web/src/lib/storage.ts`) — não há workspace nem cookie identificando o visitante. Isso significa **sem sincronização entre aparelhos** e **sem backup**: limpar os dados do navegador apaga as ideias salvas de vez. Exportar/importar em JSON é um follow-up conhecido, ainda não implementado (ver `artefatos/arquiteturad.md` §7).
+O app é anônimo, sem login e sem onboarding: o radar abre vazio e os temas entram pelo próprio painel. Temas, último scan e ideias salvas vivem só no `localStorage` do navegador (`apps/web/src/lib/storage.ts`) — não há workspace nem cookie identificando o visitante. Isso significa **sem sincronização entre aparelhos** e **sem backup**: limpar os dados do navegador apaga as ideias salvas de vez. Exportar/importar em JSON é um follow-up conhecido, ainda não implementado (ver `artefatos/arquiteturad.md` §7).
 
 Como não há conta segurando o custo de IA, quem segura é o rate limit. O scan (o endpoint caro, que faz busca web) é limitado a **4 por janela de 2 horas**, por IP. O limite é checado antes da chamada à OpenAI, então um 429 não gasta nada. Deep dive e análise financeira têm limites próprios por IP.
 
