@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { NewsletterPopup } from "@/components/NewsletterPopup";
 import "./landing.css";
 
 // Landing pública. O CTA leva sempre ao radar — que decide, no navegador,
@@ -670,9 +669,6 @@ export default function Landing() {
           </a>
         </div>
       </div>
-
-      {/* mock do cadastro da newsletter: popup ao chegar no fim da página */}
-      <NewsletterPopup />
     </div>
   );
 }
