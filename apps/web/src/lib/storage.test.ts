@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  hasAnything,
   readIdeas,
   readLens,
   readScan,
@@ -128,12 +127,6 @@ describe("storage", () => {
     expect(readScan()).toEqual({ result: null, createdAt: null });
   });
 
-  it("hasAnything diz se o visitante já configurou algo", () => {
-    expect(hasAnything()).toBe(false);
-    writeTopics([{ id: "1", name: "IA" }]);
-    expect(hasAnything()).toBe(true);
-  });
-
   it("escrever não estoura quando o armazenamento recusa (cota cheia / modo privado)", () => {
     vi.stubGlobal("localStorage", {
       ...fakeLocalStorage(),
@@ -180,7 +173,6 @@ describe("storage", () => {
       expect(readTopics()).toEqual([]);
       expect(readIdeas()).toEqual([]);
       expect(readLens()).toBeNull();
-      expect(hasAnything()).toBe(false);
     });
 
     it("writeTopics não lança", () => {

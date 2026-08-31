@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { TopicsPanel } from "@/components/TopicsPanel";
 import { GraphCanvas } from "@/components/GraphCanvas";
@@ -26,7 +25,6 @@ import {
   saveLens,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
-import { hasAnything } from "@/lib/storage";
 import { insightKey } from "@/lib/ui";
 import {
   getServerSettingsSnapshot,
@@ -50,10 +48,6 @@ const EMPTY_GRAPH: Graph = { nodes: [], links: [] };
 type View = "rede" | "brief";
 
 export default function Home() {
-  const router = useRouter();
-  // guarda a tela até sabermos se o visitante tem algo salvo — sem isso, quem
-  // vai ser mandado ao onboarding veria o radar (vazio) piscar antes do redirect.
-  const [ready, setReady] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
@@ -107,20 +101,12 @@ export default function Home() {
   // carrega o estado persistido ao abrir a página: temas, ideias salvas e o
   // último scan (que o client remonta em grafo com as cores dos temas atuais).
   // Tudo isso é leitura direta do localStorage (apps/web/src/lib/storage.ts,
-  // sem I/O de rede) — usuário novo recebe listas vazias (nada a mostrar, sem
-  // erro). `readTopics`/`readIdeas`/`readLens` nunca lançam (o pior caso é o
-  // vazio), mas a rede de segurança fica: qualquer coisa inesperada aqui
+  // sem I/O de rede) — visitante novo recebe listas vazias e cai no estado
+  // vazio do painel ("adicione temas ao lado"), que é a porta de entrada desde
+  // que o onboarding saiu. `readTopics`/`readIdeas` nunca lançam (o pior caso é
+  // o vazio), mas a rede de segurança fica: qualquer coisa inesperada aqui
   // mostra uma mensagem em vez de deixar a tela em branco.
-  //
-  // Antes de tudo isso: quem ainda não configurou nada (sem temas, sem lente)
-  // não tem o que ver aqui — manda pro onboarding com replace (não push), pra
-  // "voltar" não devolver a esta página, que redirecionaria de novo.
   useEffect(() => {
-    if (!hasAnything()) {
-      router.replace("/onboarding");
-      return;
-    }
-    setReady(true);
     let cancelled = false;
     (async () => {
       try {
@@ -148,7 +134,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, []);
 
   function flashMessage(message: string, action?: ToastAction) {
     setToast({ message, action });
@@ -378,10 +364,6 @@ export default function Home() {
           (i) => insightKey(i.type, i.title) === insightKey(selectedNode.insightType, selectedNode.title),
         )
       : false;
-
-  // ainda não sabemos se este visitante fica ou vai pro onboarding — não
-  // renderiza nada do radar enquanto isso não é decidido (efeito acima).
-  if (!ready) return null;
 
   return (
     <div id="app">

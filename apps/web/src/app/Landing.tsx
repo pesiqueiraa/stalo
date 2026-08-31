@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import "./landing.css";
 
-// Landing pública. O CTA leva sempre ao radar — que decide, no navegador,
-// se redireciona para o onboarding (não tem mais como o servidor saber isso).
+// Landing pública. O CTA leva direto ao radar: sem login e sem onboarding, o
+// radar abre vazio e os temas são adicionados no próprio painel.
 export default function Landing() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);

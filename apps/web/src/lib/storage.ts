@@ -192,9 +192,3 @@ export function readLens(): Lens | null {
 export function writeLens(lens: Lens): boolean {
   return write(KEYS.settings, { lens });
 }
-
-// ---------- onboarding ----------
-
-export function hasAnything(): boolean {
-  return readTopics().length > 0 || readLens() !== null;
-}
