@@ -8,12 +8,10 @@ import {
   deleteTopic,
   fetchIdeas,
   fetchLatestScan,
-  fetchSettings,
   fetchTopics,
   requestDeepDive,
   requestFinancials,
   requestScan,
-  saveLens,
   type NewIdeaPayload,
 } from "./api";
 import { fakeLocalStorage } from "./testUtils";
@@ -83,12 +81,6 @@ describe("temas no armazenamento local", () => {
     await expect(deleteTopic("qualquer-id")).rejects.toThrow(
       "Não consegui remover o tema — armazenamento do navegador indisponível.",
     );
-  });
-
-  it("a lente vai e volta", async () => {
-    expect(await fetchSettings()).toEqual({ lens: null });
-    await saveLens("founder");
-    expect(await fetchSettings()).toEqual({ lens: "founder" });
   });
 });
 

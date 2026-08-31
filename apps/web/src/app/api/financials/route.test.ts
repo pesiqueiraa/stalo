@@ -62,7 +62,7 @@ beforeEach(() => {
 
 describe("POST /api/financials", () => {
   it("corpo inválido → 400, sem consultar rate limit nem chamar runFinancials", async () => {
-    const res = await POST(req({ lens: "founder" })); // sem 'idea'
+    const res = await POST(req({})); // sem 'idea'
     expect(res.status).toBe(400);
     expect(mockCheck).not.toHaveBeenCalled();
     expect(mockRunFinancials).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ describe("POST /api/financials", () => {
 
   it("corpo acima do teto de tamanho → 400, sem consultar rate limit nem chamar runFinancials", async () => {
     const idea = fakeIdea({ notes: "x".repeat(MAX_BODY_BYTES + 1) });
-    const res = await POST(req({ idea, lens: null }));
+    const res = await POST(req({ idea }));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toMatch(/32\s*KB|tamanho/i);
@@ -79,7 +79,7 @@ describe("POST /api/financials", () => {
   });
 
   it("sem mergulho → 409 com a mensagem exata, sem chamar runFinancials", async () => {
-    const res = await POST(req({ idea: fakeIdea({ deepDive: null }), lens: null }));
+    const res = await POST(req({ idea: fakeIdea({ deepDive: null }) }));
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBe("Mergulhe na ideia antes de aprofundar no financeiro.");
@@ -89,7 +89,7 @@ describe("POST /api/financials", () => {
 
   it("contador fora → 503, sem chamar runFinancials (fail-closed)", async () => {
     mockCheck.mockRejectedValue(new Error("contador fora"));
-    const res = await POST(req({ idea: fakeIdea(), lens: null }));
+    const res = await POST(req({ idea: fakeIdea() }));
     expect(res.status).toBe(503);
     expect(mockRunFinancials).not.toHaveBeenCalled();
   });
@@ -98,10 +98,10 @@ describe("POST /api/financials", () => {
     const fin = { mercado: "grande", monetizacao: "assinatura", premissas: ["p1"], custoValidar: "baixo" };
     mockRunFinancials.mockResolvedValue(fin as never);
     const idea = fakeIdea();
-    const res = await POST(req({ idea, lens: "investor" }));
+    const res = await POST(req({ idea }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as unknown;
     expect(body).toEqual(fin);
-    expect(mockRunFinancials).toHaveBeenCalledWith(idea, "investor");
+    expect(mockRunFinancials).toHaveBeenCalledWith(idea);
   });
 });

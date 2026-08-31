@@ -50,31 +50,32 @@ function fakeIdea(overrides: Partial<SavedIdea> = {}): SavedIdea {
 describe("validateIdeaPayload", () => {
   it("corpo válido passa e devolve a ideia", () => {
     const idea = fakeIdea();
-    const result = validateIdeaPayload({ idea, lens: "founder" });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(false);
     if ("error" in result) return;
     expect(result.idea).toEqual(idea);
-    expect(result.lens).toBe("founder");
   });
 
   it("corpo sem idea é recusado", () => {
-    const result = validateIdeaPayload({ lens: "founder" });
+    const result = validateIdeaPayload({ nada: true });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/ideia/i);
   });
 
-  it("lens desconhecida vira null em vez de recusar", () => {
+  // a lente saiu do produto, mas uma aba aberta antes do deploy continua
+  // mandando `{ idea, lens }` — o campo a mais é ignorado, nunca recusado.
+  it("campo desconhecido no corpo (ex.: a antiga lens) é ignorado", () => {
     const idea = fakeIdea();
-    const result = validateIdeaPayload({ idea, lens: "astrologia" });
+    const result = validateIdeaPayload({ idea, lens: "founder" });
     expect("error" in result).toBe(false);
     if ("error" in result) return;
-    expect(result.lens).toBeNull();
+    expect(result.idea).toEqual(idea);
   });
 
   it("title acima do teto recusa com mensagem em português", () => {
     const idea = fakeIdea({ title: "a".repeat(MAX_TITLE + 1) });
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/título/i);
@@ -86,7 +87,7 @@ describe("validateIdeaPayload", () => {
       fakeNewsItem({ id: `n${i}` }),
     );
     const idea = fakeIdea({ relatedItems });
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/notícias relacionadas/i);
@@ -95,7 +96,7 @@ describe("validateIdeaPayload", () => {
 
   it("corpo acima do teto de tamanho recusa", () => {
     const idea = fakeIdea({ notes: "x".repeat(MAX_BODY_BYTES + 1) });
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/32\s*KB|tamanho/i);
@@ -107,7 +108,7 @@ describe("validateIdeaPayload", () => {
   // mergulho de verdade, e a IA era chamada para uma ideia nunca mergulhada.
   it("deepDive que não é objeto nem null é recusado", () => {
     const idea = { ...fakeIdea(), deepDive: true } as unknown as SavedIdea;
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/ideia/i);
@@ -115,7 +116,7 @@ describe("validateIdeaPayload", () => {
 
   it("financials que não é objeto nem null é recusado", () => {
     const idea = { ...fakeIdea(), financials: "não" } as unknown as SavedIdea;
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/ideia/i);
@@ -127,7 +128,7 @@ describe("validateIdeaPayload", () => {
   // eram exercitados por um teste.
   it("campo de texto acima do teto (MAX_TEXT) recusa", () => {
     const idea = fakeIdea({ description: "a".repeat(MAX_TEXT + 1) });
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toMatch(/descrição/i);
@@ -138,7 +139,7 @@ describe("validateIdeaPayload", () => {
     const idea = fakeIdea({
       relatedItems: [fakeNewsItem({ summary: "s".repeat(MAX_RELATED_FIELD + 1) })],
     });
-    const result = validateIdeaPayload({ idea, lens: null });
+    const result = validateIdeaPayload({ idea });
     expect("error" in result).toBe(true);
     if (!("error" in result)) return;
     expect(result.error).toContain(String(MAX_RELATED_FIELD));

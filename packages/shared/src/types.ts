@@ -1,10 +1,5 @@
 export type InsightType = "tendencia" | "gap" | "oportunidade";
 
-// Lente/perfil do usuário, escolhida no onboarding. Não muda a taxonomia de
-// insights (universal); afina a "linguagem de direcionamento" do mergulho e o
-// ranqueamento do brief (ver arquiteturad §7).
-export type Lens = "founder" | "investor" | "explorer";
-
 export interface Topic {
   id: string;
   name: string;
@@ -144,8 +139,8 @@ export interface MarketMap {
 
 // Análise específica de cada TIPO de insight — o que muda a pergunta central do
 // mergulho. Discriminada por `kind` (= o tipo do insight), pra a UI renderizar o
-// bloco certo. A taxonomia continua universal (arquiteturad §7); isto é o eixo
-// "tipo decide quais perguntas", separado do eixo "lente decide o tom".
+// bloco certo. A taxonomia continua universal (arquiteturad §7): o tipo decide
+// quais perguntas o mergulho faz.
 export interface TrendAnalysis {
   kind: "tendencia";
   estagio: string; // emergente/acelerando/consolidando + 1 frase — LEITURA QUALITATIVA da IA, não medida

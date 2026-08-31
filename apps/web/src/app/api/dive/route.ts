@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { idea, lens } = parsed;
+  const { idea } = parsed;
 
   // rate limit ANTES de chamar a IA — uma recusa de payload (acima) já não
   // chega até aqui, e não deve consumir cota
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    const dive = await runDeepDive(idea, lens);
+    const dive = await runDeepDive(idea);
     return NextResponse.json(dive);
   } catch (err) {
     console.error("deep dive failed", err);

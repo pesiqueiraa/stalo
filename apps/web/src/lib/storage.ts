@@ -1,4 +1,4 @@
-import type { Insight, InsightType, Lens, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
+import type { Insight, InsightType, NewsItem, SavedIdea, ScanResult, Topic } from "@stalo/shared";
 
 // Única parte do app que toca localStorage. Os dados do visitante vivem aqui
 // desde 2026-08 — não há banco, não há conta, não há sincronização entre
@@ -14,7 +14,6 @@ const KEYS = {
   topics: "stalo:topics",
   scan: "stalo:scan",
   ideas: "stalo:ideas",
-  settings: "stalo:settings",
 } as const;
 
 // Guard de ambiente: no servidor (e no vitest, que roda em `node`) o global
@@ -173,22 +172,4 @@ export function readIdeas(): SavedIdea[] {
 
 export function writeIdeas(ideas: SavedIdea[]): boolean {
   return write(KEYS.ideas, ideas);
-}
-
-// ---------- settings (lente) ----------
-
-const LENSES: Lens[] = ["founder", "investor", "explorer"];
-
-function validLens(raw: unknown): Lens | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const box = raw as { lens?: unknown };
-  return LENSES.includes(box.lens as Lens) ? (box.lens as Lens) : null;
-}
-
-export function readLens(): Lens | null {
-  return read(KEYS.settings, validLens);
-}
-
-export function writeLens(lens: Lens): boolean {
-  return write(KEYS.settings, { lens });
 }

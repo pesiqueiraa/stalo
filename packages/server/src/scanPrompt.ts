@@ -13,8 +13,6 @@
 // provider (schema Zod em scan.ts), então os prompts focam nas REGRAS, não na
 // formatação do JSON.
 
-import type { Lens } from "@stalo/shared";
-
 // ---------- ① COLETOR ----------
 
 export const COLLECT_SYSTEM_PROMPT = `Você é um motor de pesquisa de notícias de tecnologia e negócios.
@@ -81,32 +79,8 @@ interface CollectedItem {
 // descrição, "por que conecta", "e daí?") + as notícias que ela cruza, e gera
 // SÓ as seções novas (não repete o rationale/soWhat, que a UI já tem).
 
-// A "linguagem de direcionamento" do mergulho muda por lente (arquiteturad §7):
-// o esquema de saída é o MESMO (panorama, porQueAgora, proximosPassos, sinais),
-// mas o público e o que conta como "próximo passo" se ajustam ao perfil. A
-// taxonomia de insight (tendência/gap/oportunidade) não muda aqui.
-const DEEP_DIVE_LENS: Record<Lens, { audience: string; passos: string }> = {
-  founder: {
-    audience: "para um FOUNDER early-stage decidir se vale a pena CONSTRUIR",
-    passos:
-      "- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir",
-  },
-  investor: {
-    audience: "para um INVESTIDOR avaliar se isso vira uma tese/deal defensável",
-    passos:
-      "- proximosPassos: 3 a 4 passos de DILIGÊNCIA na ordem em que fariam sentido — mapear quem já está construindo (inclusive stealth), medir o tamanho da janela, e identificar o que separaria um vencedor. Cada passo é uma frase de ação (comece com verbo)",
-  },
-  explorer: {
-    audience:
-      "para quem quer ENTENDER a tendência e se posicionar cedo (não necessariamente construir ou investir)",
-    passos:
-      "- proximosPassos: 3 a 4 SINAIS A ACOMPANHAR pra saber se a tendência se confirma ou esfria (métricas, movimentos de players, marcos regulatórios). Cada um é uma frase começando com um verbo de observação (Acompanhe, Monitore, Observe)",
-  },
-};
-
 // O bloco de análise ESPECÍFICO de cada tipo — a pergunta central que muda por
-// tipo (arquiteturad §7, eixo "tipo decide quais perguntas"). O eixo "lente
-// decide o tom" continua vindo de DEEP_DIVE_LENS.
+// tipo (arquiteturad §7, "tipo decide quais perguntas").
 type InsightTypeKey = "tendencia" | "gap" | "oportunidade";
 const DEEP_DIVE_TYPE: Record<InsightTypeKey, string> = {
   tendencia: `Esta ideia é uma TENDÊNCIA — a pergunta central é "isso é real e onde estamos na curva?". Produza também:
@@ -125,20 +99,18 @@ const DEEP_DIVE_TYPE: Record<InsightTypeKey, string> = {
 - typeAnalysis.menorTeste: o menor teste barato que confirma (ou derruba) a hipótese antes de construir — 1 a 2 frases`,
 };
 
-// Prompt do mergulho ajustado à lente (tom) E ao tipo (que perguntas fazer).
-export function buildDeepDiveSystemPrompt(
-  type: InsightTypeKey,
-  lens?: Lens | null,
-): string {
-  const l = DEEP_DIVE_LENS[lens ?? "founder"];
-  return `Você é um analista de estratégia que mapeia o MERCADO de uma oportunidade já identificada, ${l.audience}.
+// Prompt do mergulho, ajustado ao tipo (que perguntas fazer). O público é fixo
+// — quem lê o mergulho decide se vale CONSTRUIR. Era o `?? "founder"` do mapa
+// por lente, congelado quando a lente saiu (2026-08-31): a saída não muda.
+export function buildDeepDiveSystemPrompt(type: InsightTypeKey): string {
+  return `Você é um analista de estratégia que mapeia o MERCADO de uma oportunidade já identificada, para um FOUNDER early-stage decidir se vale a pena CONSTRUIR.
 Onde o brief diz "aqui está o gap", você diz "quem já joga perto dele e onde o valor se acumula". Use a ferramenta de busca web para fundamentar o mapa em fatos reais — NÃO invente empresas, produtos nem números.
 Produza:
 - market.players: 2 a 6 players relevantes que você REALMENTE encontrou na busca. Cada um: { nome, oQueFaz (1 frase), relacao: "direto" (concorre no mesmo gap) ou "adjacente" (resolve algo próximo), url (link da fonte onde você confirmou; "" se não tiver). Se a busca trouxer POUCO, retorne menos players (ou nenhum) — jamais preencha com nomes inventados
 - market.ondeValor: 1 parágrafo (2 a 3 frases) sobre ONDE/QUEM captura o valor nessa cadeia (quem paga, qual camada fica com a margem, onde estão os gargalos)
 - market.analogas: 1 a 3 jogadas ANÁLOGAS em outros mercados, cada uma { nome, licao: a lição de 1 frase que ela dá para esta oportunidade }
 ${DEEP_DIVE_TYPE[type]}
-${l.passos}
+- proximosPassos: 3 a 4 passos CONCRETOS de validação com cliente/mercado, na ordem em que fariam sentido. Cada passo é uma frase de ação (comece com verbo). Priorize conversar com pessoas reais antes de construir
 - sinais: 2 a 4 itens, cada um com { kind: "risco" ou "favor", text: uma frase }. Inclua pelo menos 1 risco honesto (o que pode dar errado / quem pode chegar antes)
 Regras: tudo em português do Brasil, no alfabeto latino (nunca outros alfabetos ou idiomas), direto, sem jargão de consultoria. Escreva em prosa corrida — NUNCA cite notícias por código/id (ex.: n1, n10, [n3]); refira-se a elas pelo que dizem. NÃO insira links, URLs nem citações no meio da prosa (ex.: "([site](url))") — as fontes vão SOMENTE no campo players[].url. Cada campo contém APENAS o seu próprio conteúdo; não misture nem repita (ex.: não escreva sobre "onde o valor se acumula" dentro de "menorTeste"). Se a busca não sustentar um mapa rico, seja honesto (cenário ainda aberto) em vez de encher. É hipótese a validar, nunca afirme como certeza.`;
 }
@@ -174,31 +146,12 @@ Pesquise na web e gere o mapa de mercado desta oportunidade.`;
 // Segundo nível, gerado por cima do deep dive. Emphasis: ordens de grandeza e
 // "o que precisa ser verdade", nunca números precisos inventados.
 
-// Mesma ideia da lente no mergulho (arquiteturad §7): esquema de saída idêntico
-// (mercado, monetizacao, premissas, custoValidar), mas o público e o foco da
-// análise se ajustam ao perfil.
-const FINANCIALS_LENS: Record<Lens, { audience: string; foco: string }> = {
-  founder: {
-    audience: "para um FOUNDER early-stage decidir se vale seguir",
-    foco: "Foco: dá pra começar pequeno e o negócio se paga? Qual o caminho de receita mais concreto e o menor teste que confirma a conta.",
-  },
-  investor: {
-    audience: "para um INVESTIDOR decidir se é uma aposta de retorno venture-scale",
-    foco: "Foco: o mercado é grande e cresce rápido o bastante? Quem captura o valor na cadeia, quão defensável é, e o que precisa ser verdade pra virar um desfecho grande.",
-  },
-  explorer: {
-    audience:
-      "para quem quer ENTENDER a economia dessa mudança (não necessariamente investir ou construir)",
-    foco: "Foco: por onde o dinheiro flui nessa mudança, quem ganha e quem perde, e como medir barato se o capital está de fato se movendo pra lá.",
-  },
-};
-
-// Prompt do 2º nível (financeiro) já ajustado à lente (default: founder).
-export function buildFinancialsSystemPrompt(lens?: Lens | null): string {
-  const l = FINANCIALS_LENS[lens ?? "founder"];
-  return `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage, ${l.audience}.
+// Prompt do 2º nível (financeiro). Mesmo público fixo do mergulho — o texto
+// que a lente `founder` produzia, congelado quando a lente saiu.
+export function buildFinancialsSystemPrompt(): string {
+  return `Você é um analista financeiro pragmático avaliando uma oportunidade de negócio early-stage, para um FOUNDER early-stage decidir se vale seguir.
 Você recebe uma ideia já aprofundada (com panorama e timing). NÃO invente números precisos nem cite valores de mercado específicos sem base — trabalhe com ORDENS DE GRANDEZA e com "o que precisaria ser verdade" para a conta fechar. Honestidade sobre a incerteza vale mais que falsa precisão.
-${l.foco}
+Foco: dá pra começar pequeno e o negócio se paga? Qual o caminho de receita mais concreto e o menor teste que confirma a conta.
 Produza:
 - mercado: 1 parágrafo (2 a 3 frases) sobre o tamanho e a atratividade do mercado em ordem de grandeza — quem paga, quantos são, se é nicho caro ou volume barato. Diga se é grande o bastante pra valer a pena
 - monetizacao: 1 parágrafo (2 a 3 frases) — como isso ganharia dinheiro (modelo de receita concreto) e por que alguém pagaria por isso

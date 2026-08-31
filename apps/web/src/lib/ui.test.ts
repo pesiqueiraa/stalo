@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatShortDate, insightKey, labelForType, LENS_LEAD_CATEGORY } from "./ui";
+import { formatShortDate, insightKey, labelForType } from "./ui";
 
 describe("insightKey", () => {
   it("normaliza tipo + título (trim + lowercase) para detectar 'já salva'", () => {
@@ -15,14 +15,6 @@ describe("labelForType", () => {
     expect(labelForType("tendencia")).toBe("Tendência");
     expect(labelForType("gap")).toBe("Gap de mercado");
     expect(labelForType("oportunidade")).toBe("Oportunidade");
-  });
-});
-
-describe("LENS_LEAD_CATEGORY", () => {
-  it("mapeia cada lente à categoria que ela lidera no brief", () => {
-    expect(LENS_LEAD_CATEGORY.founder).toBe("oportunidade");
-    expect(LENS_LEAD_CATEGORY.investor).toBe("gap");
-    expect(LENS_LEAD_CATEGORY.explorer).toBe("tendencia");
   });
 });
 

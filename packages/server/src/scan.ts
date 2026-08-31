@@ -29,7 +29,6 @@ import type {
   DeepDive,
   Financials,
   Insight,
-  Lens,
   NewsItem,
   SavedIdea,
   ScanResult,
@@ -231,16 +230,16 @@ function cleanTypeAnalysis(
   return { kind: "oportunidade", beachhead: clean(ta.beachhead), menorTeste: clean(ta.menorTeste) };
 }
 
-export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<DeepDive> {
-  // o tipo do insight escolhe o schema E o bloco do prompt (eixo "tipo decide
-  // quais perguntas"); a lente segue temperando o tom (eixo "lente decide o tom").
+export async function runDeepDive(idea: SavedIdea): Promise<DeepDive> {
+  // o tipo do insight escolhe o schema E o bloco do prompt ("tipo decide quais
+  // perguntas").
   const schema = DIVE_SCHEMA_BY_TYPE[idea.type];
   const res = await client.responses.parse({
     model: DEEP_DIVE_MODEL,
     tools: [{ type: "web_search" }], // o mapa é fundamentado em busca real (anti-alucinação no prompt)
     max_output_tokens: DEEP_DIVE_MAX_TOKENS,
     input: [
-      { role: "system", content: buildDeepDiveSystemPrompt(idea.type, lens) },
+      { role: "system", content: buildDeepDiveSystemPrompt(idea.type) },
       {
         role: "user",
         content: buildDeepDiveMessage({
@@ -289,12 +288,12 @@ export async function runDeepDive(idea: SavedIdea, lens?: Lens | null): Promise<
 // ④ APROFUNDAR — análise financeira (2º nível), por cima do deep dive. Exige que
 // a ideia já tenha sido mergulhada (usa o timing da ideia + "onde o valor se
 // acumula" do mapa de mercado como contexto).
-export async function runFinancials(idea: SavedIdea, lens?: Lens | null): Promise<Financials> {
+export async function runFinancials(idea: SavedIdea): Promise<Financials> {
   const res = await client.responses.parse({
     model: FINANCIALS_MODEL,
     max_output_tokens: FINANCIALS_MAX_TOKENS,
     input: [
-      { role: "system", content: buildFinancialsSystemPrompt(lens) },
+      { role: "system", content: buildFinancialsSystemPrompt() },
       {
         role: "user",
         content: buildFinancialsMessage({

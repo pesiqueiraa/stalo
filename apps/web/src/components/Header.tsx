@@ -1,14 +1,9 @@
-import type { Lens } from "@stalo/shared";
-import { ProfileMenu } from "./ProfileMenu";
-
 interface HeaderProps {
   loading: boolean;
   lastUpdated: string | null;
-  lens: Lens | null;
-  onLensChange: (lens: Lens) => Promise<void>;
 }
 
-export function Header({ loading, lastUpdated, lens, onLensChange }: HeaderProps) {
+export function Header({ loading, lastUpdated }: HeaderProps) {
   const statusText = loading
     ? "buscando e analisando notícias…"
     : lastUpdated
@@ -24,7 +19,6 @@ export function Header({ loading, lastUpdated, lens, onLensChange }: HeaderProps
       <div className="header-titles">
         <p>{statusText}</p>
       </div>
-      <ProfileMenu lens={lens} onLensChange={onLensChange} />
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import type { InsightType, Lens, NewsItem, SavedIdea } from "@stalo/shared";
+import type { InsightType, NewsItem, SavedIdea } from "@stalo/shared";
 
 // Até a tarefa anterior, o conteúdo que ia para o prompt vinha do banco,
 // escrito pelo próprio servidor. Agora a ideia vem no corpo da requisição,
@@ -20,7 +20,6 @@ export const MAX_RELATED_ITEMS = 20;
 export const MAX_RELATED_FIELD = 500;
 
 const INSIGHT_TYPES: InsightType[] = ["tendencia", "gap", "oportunidade"];
-const LENSES: Lens[] = ["founder", "investor", "explorer"];
 
 function isStr(v: unknown): v is string {
   return typeof v === "string";
@@ -32,12 +31,6 @@ function isStr(v: unknown): v is string {
 // mergulhada, e a IA era chamada de verdade para uma ideia nunca mergulhada.
 function isObjectOrNull(v: unknown): boolean {
   return v === null || v === undefined || (typeof v === "object" && !Array.isArray(v));
-}
-
-// a lente é preferência de tom, não conteúdo de prompt de risco — uma lente
-// desconhecida vira null (sem lente) em vez de recusar a requisição inteira.
-function validLens(raw: unknown): Lens | null {
-  return LENSES.includes(raw as Lens) ? (raw as Lens) : null;
 }
 
 function validateRelatedItems(raw: unknown): NewsItem[] | { error: string } {
@@ -81,12 +74,10 @@ function validateRelatedItems(raw: unknown): NewsItem[] | { error: string } {
   return items;
 }
 
-// Valida o corpo de POST /api/dive e /api/financials: `{ idea, lens }`.
-// Devolve a ideia (já com relatedItems normalizado) e a lente, ou uma
-// mensagem de erro em português pronta para virar 400.
-export function validateIdeaPayload(
-  body: unknown,
-): { idea: SavedIdea; lens: Lens | null } | { error: string } {
+// Valida o corpo de POST /api/dive e /api/financials: `{ idea }`. Devolve a
+// ideia (já com relatedItems normalizado) ou uma mensagem de erro em português
+// pronta para virar 400.
+export function validateIdeaPayload(body: unknown): { idea: SavedIdea } | { error: string } {
   // teto de tamanho total, antes de qualquer outra checagem — protege contra
   // um corpo gigante mesmo que a forma pareça válida
   const bodyBytes = new TextEncoder().encode(JSON.stringify(body ?? null)).length;
@@ -97,7 +88,7 @@ export function validateIdeaPayload(
   if (typeof body !== "object" || body === null) {
     return { error: "Envie a ideia no corpo da requisição." };
   }
-  const box = body as { idea?: unknown; lens?: unknown };
+  const box = body as { idea?: unknown };
   const raw = box.idea;
   if (typeof raw !== "object" || raw === null) {
     return { error: "Envie a ideia no corpo da requisição." };
@@ -147,8 +138,6 @@ export function validateIdeaPayload(
   const relatedItems = validateRelatedItems(c.relatedItems);
   if ("error" in relatedItems) return relatedItems;
 
-  const lens = validLens(box.lens);
-
   const idea: SavedIdea = {
     ...c,
     relatedItems,
@@ -156,5 +145,5 @@ export function validateIdeaPayload(
     financials: c.financials ?? null,
   };
 
-  return { idea, lens };
+  return { idea };
 }

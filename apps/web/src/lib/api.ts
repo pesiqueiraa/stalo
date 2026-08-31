@@ -1,5 +1,5 @@
-import { MAX_TOPICS, type Lens, type NewsItem, type SavedIdea, type ScanResult, type Topic } from "@stalo/shared";
-import { readIdeas, readLens, readScan, readTopics, writeIdeas, writeLens, writeScan, writeTopics } from "./storage";
+import { MAX_TOPICS, type NewsItem, type SavedIdea, type ScanResult, type Topic } from "@stalo/shared";
+import { readIdeas, readScan, readTopics, writeIdeas, writeScan, writeTopics } from "./storage";
 
 // Cliente do backend do próprio app. O frontend fala só com estes endpoints,
 // nunca direto com a API de IA nem com o banco (CLAUDE.md regra 1).
@@ -115,18 +115,6 @@ export async function deleteIdea(id: string): Promise<void> {
   }
 }
 
-// ---------- settings (lente do workspace) ----------
-
-export async function fetchSettings(): Promise<{ lens: Lens | null }> {
-  return { lens: readLens() };
-}
-
-export async function saveLens(lens: Lens): Promise<void> {
-  if (!writeLens(lens)) {
-    throw new Error("Não consegui salvar sua lente — armazenamento do navegador indisponível.");
-  }
-}
-
 // "Mergulhar": gera (ou recupera do cache) o relatório fundo e devolve a ideia
 // atualizada, já com o deepDive preenchido. O servidor não guarda mais nada —
 // quem persiste é o navegador (writeIdeas), inclusive o cache: se já tem o
@@ -137,7 +125,7 @@ export async function requestDeepDive(idea: SavedIdea): Promise<SavedIdea> {
   const res = await fetch("/api/dive", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idea, lens: readLens() }),
+    body: JSON.stringify({ idea }),
   });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao aprofundar a ideia."));
   const deepDive = (await res.json()) as SavedIdea["deepDive"];
@@ -162,7 +150,7 @@ export async function requestFinancials(idea: SavedIdea): Promise<SavedIdea> {
   const res = await fetch("/api/financials", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idea, lens: readLens() }),
+    body: JSON.stringify({ idea }),
   });
   if (!res.ok) throw new Error(await parseError(res, "Falha ao gerar a análise financeira."));
   const financials = (await res.json()) as SavedIdea["financials"];

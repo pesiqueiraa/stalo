@@ -17,12 +17,10 @@ import {
   deleteTopic,
   fetchIdeas,
   fetchLatestScan,
-  fetchSettings,
   fetchTopics,
   requestDeepDive,
   requestFinancials,
   requestScan,
-  saveLens,
 } from "@/lib/api";
 import { buildGraph } from "@/lib/graph";
 import { insightKey } from "@/lib/ui";
@@ -37,7 +35,6 @@ import {
   type Graph,
   type GraphNode,
   type InsightNode,
-  type Lens,
   type NewsItem,
   type NewsNode,
   type SavedIdea,
@@ -52,24 +49,6 @@ export default function Home() {
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [graph, setGraph] = useState<Graph>(EMPTY_GRAPH);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [lens, setLens] = useState<Lens | null>(null); // lente do workspace: ordena o brief por perfil
-
-  // troca de lente pelo perfil: aplica na hora (o brief reordena) e persiste. Se
-  // o salvamento falhar, reverte e propaga o erro pro modal avisar.
-  const changeLens = useCallback(
-    async (next: Lens) => {
-      const prev = lens;
-      setLens(next);
-      try {
-        await saveLens(next);
-      } catch (e) {
-        setLens(prev);
-        throw e;
-      }
-    },
-    [lens],
-  );
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30); // janela de recência do scan (30/60/90 ou null = sem limite)
@@ -110,16 +89,14 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       try {
-        const [loadedTopics, loadedIdeas, latest, loadedSettings] = await Promise.all([
+        const [loadedTopics, loadedIdeas, latest] = await Promise.all([
           fetchTopics(),
           fetchIdeas(),
           fetchLatestScan(),
-          fetchSettings(),
         ]);
         if (cancelled) return;
         setTopics(loadedTopics);
         setIdeas(loadedIdeas);
-        setLens(loadedSettings.lens);
         if (latest.result) {
           setGraph(buildGraph(latest.result, loadedTopics.map((t) => t.name)));
           setLastUpdated(latest.createdAt);
@@ -367,12 +344,7 @@ export default function Home() {
 
   return (
     <div id="app">
-      <Header
-        loading={loading}
-        lastUpdated={lastUpdated}
-        lens={lens}
-        onLensChange={changeLens}
-      />
+      <Header loading={loading} lastUpdated={lastUpdated} />
       <div className={`layout${ideasOpen ? "" : " ideas-collapsed"}`}>
         <TopicsPanel
           topics={topics}
@@ -454,7 +426,6 @@ export default function Home() {
                 newsNodes={newsNodes}
                 savedKeys={savedKeys}
                 hasScanned={lastUpdated !== null}
-                lens={lens}
                 onSave={saveIdea}
               />
             )}

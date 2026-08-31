@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { idea, lens } = parsed;
+  const { idea } = parsed;
 
   // o servidor não pode confiar que o cliente checou isso antes de chamar —
   // por isso a checagem continua aqui, mesmo com o atalho equivalente no
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    const fin = await runFinancials(idea, lens);
+    const fin = await runFinancials(idea);
     return NextResponse.json(fin);
   } catch (err) {
     console.error("financials failed", err);

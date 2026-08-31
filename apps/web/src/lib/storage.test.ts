@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   readIdeas,
-  readLens,
   readScan,
   readTopics,
   writeIdeas,
-  writeLens,
   writeScan,
   writeTopics,
 } from "./storage";
@@ -23,7 +21,6 @@ describe("storage", () => {
   it("chave ausente devolve o vazio, não quebra", () => {
     expect(readTopics()).toEqual([]);
     expect(readIdeas()).toEqual([]);
-    expect(readLens()).toBeNull();
   });
 
   it("JSON inválido é descartado em vez de estourar", () => {
@@ -41,13 +38,6 @@ describe("storage", () => {
   it("versão antiga é descartada, não migrada", () => {
     localStorage.setItem("stalo:topics", JSON.stringify({ v: 0, data: [{ id: "1", name: "IA" }] }));
     expect(readTopics()).toEqual([]);
-  });
-
-  it("lente só aceita os três valores conhecidos", () => {
-    writeLens("investor");
-    expect(readLens()).toBe("investor");
-    localStorage.setItem("stalo:settings", JSON.stringify({ v: 1, data: { lens: "hacker" } }));
-    expect(readLens()).toBeNull();
   });
 
   it("ideias corrompidas no meio da lista não derrubam as boas", () => {
@@ -143,7 +133,6 @@ describe("storage", () => {
     // servidor; lá o global não existe
     vi.unstubAllGlobals();
     expect(readTopics()).toEqual([]);
-    expect(readLens()).toBeNull();
     expect(() => writeTopics([{ id: "1", name: "IA" }])).not.toThrow();
   });
 
@@ -172,7 +161,6 @@ describe("storage", () => {
     it("as leituras devolvem o vazio em vez de propagar a exceção", () => {
       expect(readTopics()).toEqual([]);
       expect(readIdeas()).toEqual([]);
-      expect(readLens()).toBeNull();
     });
 
     it("writeTopics não lança", () => {

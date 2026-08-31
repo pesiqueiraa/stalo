@@ -57,7 +57,7 @@ beforeEach(() => {
 
 describe("POST /api/dive", () => {
   it("corpo inválido → 400, sem consultar rate limit nem chamar runDeepDive", async () => {
-    const res = await POST(req({ lens: "founder" })); // sem 'idea'
+    const res = await POST(req({})); // sem 'idea'
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBeTruthy();
@@ -67,7 +67,7 @@ describe("POST /api/dive", () => {
 
   it("corpo acima do teto de tamanho → 400, sem consultar rate limit nem chamar runDeepDive", async () => {
     const idea = fakeIdea({ notes: "x".repeat(MAX_BODY_BYTES + 1) });
-    const res = await POST(req({ idea, lens: null }));
+    const res = await POST(req({ idea }));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toMatch(/32\s*KB|tamanho/i);
@@ -77,7 +77,7 @@ describe("POST /api/dive", () => {
 
   it("contador fora → 503, sem chamar runDeepDive (fail-closed)", async () => {
     mockCheck.mockRejectedValue(new Error("contador fora"));
-    const res = await POST(req({ idea: fakeIdea(), lens: null }));
+    const res = await POST(req({ idea: fakeIdea() }));
     expect(res.status).toBe(503);
     expect(mockRunDeepDive).not.toHaveBeenCalled();
   });
@@ -91,10 +91,10 @@ describe("POST /api/dive", () => {
     };
     mockRunDeepDive.mockResolvedValue(dive as never);
     const idea = fakeIdea();
-    const res = await POST(req({ idea, lens: "founder" }));
+    const res = await POST(req({ idea }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as unknown;
     expect(body).toEqual(dive);
-    expect(mockRunDeepDive).toHaveBeenCalledWith(idea, "founder");
+    expect(mockRunDeepDive).toHaveBeenCalledWith(idea);
   });
 });
