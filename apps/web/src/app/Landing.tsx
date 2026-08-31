@@ -341,59 +341,14 @@ export default function Landing() {
         <div className="hero-scrim" />
         <div className="wrap hero-inner">
           <div className="hero-col">
-            <span className="eyebrow">ache sua oportunidade</span>
-            <h1>
-              Onde dois setores se <span className="cross">cruzam</span>, mora a{" "}
-              <span className="accent">oportunidade</span>.
-            </h1>
+            <h1>Onde dois setores se cruzam, mora a oportunidade.</h1>
             <p className="lede">
-              Escolha seus setores. A IA cruza as notícias e aponta o gap.
+              Escolha os setores que você acompanha. O radar cruza as notícias da semana.
             </p>
             <div className="cta-row">
               <Link className="btn btn-primary" href="/radar">
-                Começar agora <span className="arrow">→</span>
+                Abrir o radar
               </Link>
-              <a className="btn btn-ghost" href="#como">
-                Como funciona
-              </a>
-            </div>
-            <div className="legend">
-              <span className="legend-item">
-                <svg viewBox="-12 -12 24 24" aria-hidden="true">
-                  <path
-                    d="M0 -9 L8 7 L-8 7 Z"
-                    fill="rgba(99,210,155,0.16)"
-                    stroke="#63d29b"
-                    strokeWidth="1.6"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Tendência
-              </span>
-              <span className="legend-item">
-                <svg viewBox="-12 -12 24 24" aria-hidden="true">
-                  <path
-                    d="M0 -9 L9 0 L0 9 L-9 0 Z"
-                    fill="rgba(239,109,126,0.16)"
-                    stroke="#ef6d7e"
-                    strokeWidth="1.6"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Gap de mercado
-              </span>
-              <span className="legend-item">
-                <svg viewBox="-12 -12 24 24" aria-hidden="true">
-                  <path
-                    d="M0 -10 L2.6 -2.6 L10 0 L2.6 2.6 L0 10 L-2.6 2.6 L-10 0 L-2.6 -2.6 Z"
-                    fill="rgba(232,162,61,0.18)"
-                    stroke="#e8a23d"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Oportunidade
-              </span>
             </div>
           </div>
         </div>
@@ -464,7 +419,7 @@ export default function Landing() {
                   Energia · oportunidade
                 </div>
                 <div className="m-body">
-                  <b>E daí? →</b> Broker de capacidade energética pra clusters de GPU. Valide com 5
+                  <b>E daí?</b> Broker de capacidade energética pra clusters de GPU. Valide com 5
                   integradores.
                 </div>
               </div>
@@ -492,7 +447,7 @@ export default function Landing() {
                   Energia · gap
                 </div>
                 <div className="m-body">
-                  <b>O deal →</b> “Energy-for-compute” virando categoria. Já se move lá fora, ninguém no
+                  <b>O deal</b> “Energy-for-compute” virando categoria. Já se move lá fora, ninguém no
                   BR ainda.
                 </div>
               </div>
@@ -520,7 +475,7 @@ export default function Landing() {
                   Energia · tendência
                 </div>
                 <div className="m-body">
-                  <b>A leitura →</b> Energia vira o gargalo do compute. Acompanhe PPAs e leilões pra ver
+                  <b>A leitura</b> Energia vira o gargalo do compute. Acompanhe PPAs e leilões pra ver
                   se acelera.
                 </div>
               </div>
@@ -601,7 +556,6 @@ export default function Landing() {
       <section className="band reveal" id="evidencia">
         <div className="wrap evidence">
           <div className="sec-head">
-            <span className="eyebrow">confiança por construção</span>
             <h2>Insight sem fonte é chute bonito.</h2>
             <p>
               Todo cruzamento carrega as notícias que o sustentam: veículo original, data e link. A
@@ -647,9 +601,6 @@ export default function Landing() {
             <Link className="btn btn-primary" href="/radar">
               Começar agora
             </Link>
-            <a className="btn btn-ghost" href="#pra-quem">
-              Ver qual lente é a minha
-            </a>
           </div>
         </div>
       </section>

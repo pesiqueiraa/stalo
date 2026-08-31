@@ -19,7 +19,7 @@
   --lp-text: #eef2fa;
   --dim: #97a7c2;
   --dimmer: #63748f;
-  /* lentes de público */
+  /* públicos (as três faixas de "pra quem") */
   --founder: var(--amber);
   --investor: var(--cyan);
   --explorer: var(--violet);
@@ -54,32 +54,18 @@
   border-radius: 3px;
 }
 
-/* atmosfera de radar: gradientes + anéis fixos ao fundo, atrás do conteúdo */
+/* fundo fixo atrás do conteúdo: cor chapada, sem brilho ambiente */
 .lp .atmos {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(1000px 640px at 80% -12%, rgba(232, 162, 61, 0.06), transparent 60%),
-    radial-gradient(820px 560px at 6% 8%, rgba(94, 200, 216, 0.05), transparent 55%),
-    var(--void);
+  background: var(--void);
 }
 .lp > *:not(.atmos) { position: relative; z-index: 1; }
 
 .lp .wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: var(--pad); }
 
-.lp .eyebrow {
-  font-family: var(--mono);
-  font-size: 0.71rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--dim);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7em;
-}
-.lp .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--line-2); }
 
 /* logo oficial (apps/web/public/logo-branca.svg) */
 .lp .lp-logo { height: 26px; width: auto; display: block; flex-shrink: 0; }
@@ -111,30 +97,8 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  /* liquid glass nativo: desfoca e satura o radar que passa por baixo (a
-     saturação é o que dá a sensação de refração), com uma quina superior que
-     "pega" a luz. Sem displacement/SVG — funciona em todo browser. Fallbacks
-     sólidos logo abaixo garantem legibilidade onde o vidro não rola. */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 62%),
-    rgba(7, 11, 20, 0.6);
-  backdrop-filter: blur(16px) saturate(1.5);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  background: var(--void);
   border-bottom: 1px solid var(--line);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-/* navegador sem backdrop-filter: fundo quase sólido, legibilidade acima do efeito */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lp .nav { background: rgba(7, 11, 20, 0.94); }
-}
-/* usuário que pediu menos transparência no sistema: vidro vira sólido */
-@media (prefers-reduced-transparency: reduce) {
-  .lp .nav {
-    background: var(--void);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-  }
 }
 .lp .nav-in { display: flex; align-items: center; gap: 1.4rem; padding-block: 0.8rem; }
 .lp .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
@@ -143,31 +107,23 @@
 .lp .nav-links a:hover { color: var(--lp-text); }
 .lp .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 0.7rem; }
 @media (min-width: 820px) { .lp .nav-links { display: flex; } }
-/* telas estreitas: esconde o "Entrar" da nav (alcançável pelo /signup) pra o
-   CTA primário caber sozinho em 1 linha */
-@media (max-width: 480px) {
-  .lp .nav-cta .btn-ghost { display: none; }
-}
-
 /* ---------- hero (radar-grafo imersivo, fundo inteiro) ---------- */
 .lp .hero {
   position: relative;
-  min-height: clamp(600px, 88vh, 840px);
+  min-height: clamp(520px, 76vh, 720px);
   display: flex;
   align-items: center;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
-.lp .radar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.lp .radar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.55; }
 /* escurece a esquerda/base pra o texto respirar por cima do radar */
 .lp .hero-scrim {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, var(--void) 3%, rgba(7, 11, 20, 0.72) 40%, rgba(7, 11, 20, 0) 74%),
-    linear-gradient(0deg, var(--void) 1%, rgba(7, 11, 20, 0) 32%);
+  background: linear-gradient(90deg, var(--void) 6%, rgba(7, 11, 20, 0.7) 46%, rgba(7, 11, 20, 0) 78%);
 }
 .lp .hero-inner { position: relative; z-index: 2; width: 100%; }
 .lp .hero-col { max-width: 620px; }
@@ -180,24 +136,9 @@
   margin: 1rem 0 0;
   text-wrap: balance;
 }
-.lp .hero h1 .cross { color: var(--cyan); }
-.lp .hero h1 .accent { color: var(--amber); }
 .lp .hero .lede { font-size: clamp(1.05rem, 2.1vw, 1.2rem); color: var(--dim); max-width: 50ch; margin: 1.3rem 0 0; }
 .lp .hero .cta-row { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 2rem; }
-.lp .hero .cta-row .arrow { display: inline-block; transition: transform 0.2s ease; }
-.lp .hero .btn-primary:hover .arrow { transform: translateX(3px); }
 
-.lp .legend { display: flex; flex-wrap: wrap; gap: 0.9rem 1.6rem; margin-top: 2.3rem; }
-.lp .legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55em;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
-  color: var(--dim);
-}
-.lp .legend-item svg { width: 18px; height: 18px; display: block; }
 
 /* ---------- seção base ---------- */
 .lp .band { padding-block: clamp(3rem, 7vw, 5.5rem); border-top: 1px solid var(--line); }
@@ -216,11 +157,11 @@
 /* ---------- o cruzamento ---------- */
 .lp .crossing-vis { margin-top: 2.6rem; display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: stretch; }
 @media (min-width: 720px) { .lp .crossing-vis { grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; } }
-.lp .flow-card { border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem; background: linear-gradient(180deg, var(--panel), var(--void-2)); }
+.lp .flow-card { border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem; background: var(--panel); }
 .lp .flow-card .fc-label { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dimmer); display: flex; align-items: center; gap: 0.5em; }
 .lp .flow-card .fc-label .dot { width: 8px; height: 8px; border-radius: 50%; }
 .lp .flow-card p { margin: 0.5rem 0 0; font-size: 0.92rem; color: var(--dim); }
-.lp .flow-card.result { border-color: color-mix(in oklab, var(--amber) 45%, var(--line-2)); background: linear-gradient(180deg, var(--amber-soft), var(--void-2)); }
+.lp .flow-card.result { border-color: color-mix(in oklab, var(--amber) 45%, var(--line-2)); background: var(--amber-soft); }
 .lp .flow-card.result .fc-label { color: var(--amber); }
 .lp .flow-card.result strong { font-family: var(--display); color: var(--lp-text); font-weight: 620; font-size: 1rem; display: block; margin-top: 0.15rem; letter-spacing: -0.01em; line-height: 1.3; }
 .lp .flow-op { justify-self: center; font-size: 1.5rem; color: var(--dimmer); font-weight: 300; }
@@ -233,7 +174,7 @@
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 1.5rem 1.4rem 1.4rem;
-  background: linear-gradient(180deg, var(--panel), var(--void-2));
+  background: var(--panel);
   display: flex;
   flex-direction: column;
   transition: border-color 0.2s ease, transform 0.2s ease;
@@ -276,7 +217,6 @@
   background: var(--void-2);
   display: grid; place-items: center;
   position: relative; z-index: 1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .lp .flow-node svg { width: 22px; height: 22px; display: block; }
 
@@ -304,7 +244,7 @@
 /* ---------- evidência ---------- */
 .lp .evidence { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; }
 @media (min-width: 860px) { .lp .evidence { grid-template-columns: 1fr 0.9fr; } }
-.lp .ev-demo { border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.4rem; background: linear-gradient(180deg, var(--panel), var(--void-2)); }
+.lp .ev-demo { border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.4rem; background: var(--panel); }
 .lp .ev-demo .ed-top { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; margin-bottom: 0.8rem; }
 .lp .ev-demo .tag { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.24em 0.6em; border: 1px solid var(--line-2); border-radius: 8px; display: inline-flex; align-items: center; gap: 0.4em; }
 .lp .ev-demo .tag .d { width: 6px; height: 6px; border-radius: 50%; }
